@@ -36,8 +36,8 @@ cd "${BATOCERA_DIR}"
 
 # If no defconfig has been applied yet, apply it first
 if [ ! -f ".config" ]; then
-    echo "[INFO] Applying defconfig: batocera-a733-cubie-a7s..."
-    make batocera-a733-cubie-a7s_defconfig
+    echo "[INFO] Applying defconfig: a733-cubie-a7s..."
+    make a733-cubie-a7s-defconfig
 fi
 
 echo "[INFO] Starting build..."
