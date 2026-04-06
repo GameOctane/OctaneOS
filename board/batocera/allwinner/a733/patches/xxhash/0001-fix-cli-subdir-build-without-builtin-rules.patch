@@ -1,19 +1,14 @@
-Buildroot passes --no-builtin-rules via MAKEFLAGS to all sub-makes, which
-removes the implicit %.o: %.c pattern rule.  xxhash's Makefile references
-cli/xxhsum.o and friends (via XXHSUM_SPLIT_OBJS) but has no explicit rule
-to compile them.  Add a cli/%.o: cli/%.c pattern rule so the CLI sources
-build correctly under Buildroot's --no-builtin-rules environment.
-
---- a/Makefile
-+++ b/Makefile
-@@ -122,6 +122,10 @@ xxhsum.o: $(XXHSUM_SRC_DIR)/xxhsum.c $(XXHSUM_HEADERS) \
+--- a/Makefile	2026-04-06 11:24:35.213937332 -0700
++++ b/Makefile	2026-04-06 11:24:35.257936904 -0700
+@@ -122,6 +122,11 @@
      xxhash.h xxh_x86dispatch.h
  xxh_x86dispatch.o: xxh_x86dispatch.c xxh_x86dispatch.h xxhash.h
-
-+# Explicit pattern rule for CLI objects - required when --no-builtin-rules is
-+# active (e.g. Buildroot propagates it via MAKEFLAGS to all sub-makes).
+ 
++# Explicit rule for CLI objects; required when --no-builtin-rules is active
++# (Buildroot propagates it via MAKEFLAGS to all sub-makes).
 +cli/%.o: cli/%.c
 +	$(CC) $(FLAGS) -I$(XXHSUM_SRC_DIR) -c $< -o $@
 +
  .PHONY: xxhsum_and_links
  xxhsum_and_links: xxhsum xxh32sum xxh64sum xxh128sum
+ 
