@@ -4,12 +4,13 @@
 # Run this INSIDE WSL2 after setup-build-env.sh has been run.
 #
 # Usage:
-#   ./scripts/build.sh [make-args]
+#   ./scripts/build.sh [CMD=<buildroot-target>] [make-opts...]
 #
 # Examples:
-#   ./scripts/build.sh                        # full build
-#   ./scripts/build.sh linux-rebuild          # rebuild kernel only
-#   ./scripts/build.sh linux-menuconfig       # open kernel config menu
+#   ./scripts/build.sh                        # full image build
+#   ./scripts/build.sh CMD=linux-rebuild      # rebuild kernel only
+#   ./scripts/build.sh CMD=linux-menuconfig   # open kernel config menu
+#   ./scripts/build.sh CMD=mesa3d-rebuild     # rebuild a single package
 # =============================================================================
 
 set -e
@@ -50,11 +51,8 @@ fi
 
 cd "${BATOCERA_DIR}"
 
-# If no defconfig has been applied yet, apply it first
-if [ ! -f ".config" ]; then
-    echo "[INFO] Configuring Buildroot for a733-cubie-a7s..."
-    make a733-cubie-a7s-config DIRECT_BUILD=1
-fi
+# %-build already depends on %-config in the Batocera Makefile, so no
+# explicit pre-config step is needed — it runs automatically.
 
 echo "[INFO] Starting build..."
-make DIRECT_BUILD=1 "$@"
+make a733-cubie-a7s-build DIRECT_BUILD=1 "$@"
