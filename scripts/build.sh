@@ -14,6 +14,22 @@
 
 set -e
 
+# -----------------------------------------------------------------------------
+# WSL2 injects Windows paths (e.g. /mnt/c/Program Files/...) into PATH.
+# Buildroot rejects any PATH entry containing spaces, tabs, or newlines.
+# Strip them out before invoking make.
+# -----------------------------------------------------------------------------
+CLEAN_PATH=""
+IFS=: read -ra _PATH_ENTRIES <<< "$PATH"
+for _entry in "${_PATH_ENTRIES[@]}"; do
+    case "$_entry" in
+        *\ * | *$'\t'* | *$'\n'*) ;;   # skip entries with whitespace
+        *) CLEAN_PATH="${CLEAN_PATH:+${CLEAN_PATH}:}${_entry}" ;;
+    esac
+done
+export PATH="$CLEAN_PATH"
+unset CLEAN_PATH _PATH_ENTRIES _entry
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BATOCERA_DIR="${REPO_ROOT}/batocera"
 

@@ -70,15 +70,34 @@ BR2_LINUX_KERNEL_INTREE_DTS_NAME="allwinner/sun60i-a733-cubie-a7s"
 # NOTE: This is NOT a Mali GPU. Panfrost will not work here.
 # PowerVR open-source Mesa driver (pvr) is in development:
 #   https://gitlab.freedesktop.org/mesa/mesa (look for pvr/rogue driver)
-# Until Mesa PowerVR support matures for BXM series, software rendering
-# via llvmpipe is the fallback. Track upstream progress before enabling GPU accel.
+# For now, use Mesa softpipe (pure-software Gallium driver, no LLVM needed)
+# as the GL/EGL/GLES provider so the full package set can build and run.
+# Track upstream Mesa PVR progress before switching to hardware acceleration.
 # =============================================================================
 #BR2_PACKAGE_BATOCERA_PANFROST_MESA3D=y   # DO NOT enable — wrong GPU architecture
 #BR2_PACKAGE_BATOCERA_POWERVR_MESA3D=y    # TODO: add once Mesa PVR BXM support lands
 
-# Wayland + XWayland (works with software rendering in the interim)
+# Mesa3D with softpipe software renderer — provides libegl + libgles without
+# hardware GPU support.  llvmpipe is faster but requires a large LLVM build;
+# softpipe avoids that dependency for early bringup.
+BR2_PACKAGE_MESA3D=y
+BR2_PACKAGE_MESA3D_GALLIUM_DRIVER_SOFTPIPE=y
+BR2_PACKAGE_MESA3D_OPENGL_EGL=y
+BR2_PACKAGE_MESA3D_OPENGL_ES=y
+
+# Wayland only — no XWayland.
+# XWayland is intentionally excluded: it triggers the BATOCERA_PORTS_SYSTEMS
+# Kconfig selects for ETLEGACY, SONIC3_AIR, and SONIC_MANIA (via
+# `select ... if BR2_x86_64 || BR2_PACKAGE_BATOCERA_XWAYLAND`), all of which
+# pull in libglew → libgl.  libglew also hard-depends on BR2_PACKAGE_XORG7,
+# which we do not enable.  Kconfig `select` cannot be overridden by =n in a
+# defconfig, so the only reliable fix is to not set BATOCERA_XWAYLAND.
+# XWayland is useless without a functioning GL stack anyway.
 BR2_PACKAGE_BATOCERA_WAYLAND_LABWC=y
-BR2_PACKAGE_BATOCERA_XWAYLAND=y
+BR2_PACKAGE_BATOCERA_XWAYLAND=n
 
 # Splash screen
 BR2_PACKAGE_BATOCERA_SPLASH_MPV=y
+
+# Disable arcade systems — many require hardware GL or x86-only emulators.
+BR2_PACKAGE_BATOCERA_ARCADE_SYSTEMS=n
