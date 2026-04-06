@@ -36,9 +36,9 @@ cd "${BATOCERA_DIR}"
 
 # If no defconfig has been applied yet, apply it first
 if [ ! -f ".config" ]; then
-    echo "[INFO] Applying defconfig: a733-cubie-a7s..."
-    make a733-cubie-a7s-defconfig
+    echo "[INFO] Configuring Buildroot for a733-cubie-a7s..."
+    make a733-cubie-a7s-config DIRECT_BUILD=1
 fi
 
 echo "[INFO] Starting build..."
-make "$@"
+make DIRECT_BUILD=1 "$@"
