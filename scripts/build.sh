@@ -31,6 +31,33 @@ done
 export PATH="$CLEAN_PATH"
 unset CLEAN_PATH _PATH_ENTRIES _entry
 
+# -----------------------------------------------------------------------------
+# Batocera's top-level Makefile sets MAKEFLAGS += --no-builtin-rules (stored
+# as the flag letter 'r').  GNU Make propagates MAKEFLAGS to every sub-make,
+# so every package build inherits --no-builtin-rules.  Packages that use
+# hand-written Makefiles (squashfs-tools, lz4, xxhash, zlib, ...) rely on
+# the implicit %.o: %.c rule and fail with "No rule to make target '*.o'".
+#
+# Fix: place a thin make shim at the front of PATH that strips the 'r' flag
+# from MAKEFLAGS before forwarding to the real make.  The shim calls the real
+# make by absolute path so it cannot recurse into itself.
+# -----------------------------------------------------------------------------
+REAL_MAKE="$(command -v make)"
+SHIM_DIR="$(mktemp -d)"
+cat > "${SHIM_DIR}/make" << SHIM_EOF
+#!/bin/bash
+# Strip --no-builtin-rules / -r from inherited MAKEFLAGS.
+# GNU Make stores the flag as 'r'; strip it from the leading flags word.
+_mf="\${MAKEFLAGS}"
+# Remove standalone -r or r at the start of the flags cluster
+_mf="\$(echo "\$_mf" | sed 's/^\\(-*\\)\\([A-QS-Za-qs-z]*\\)r\\([A-Za-z]*\\)/\\1\\2\\3/')"
+export MAKEFLAGS="\$_mf"
+exec ${REAL_MAKE} "\$@"
+SHIM_EOF
+chmod +x "${SHIM_DIR}/make"
+export PATH="${SHIM_DIR}:${PATH}"
+trap 'rm -rf "${SHIM_DIR}"' EXIT
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BATOCERA_DIR="${REPO_ROOT}/batocera"
 

@@ -1,4 +1,5 @@
 include batocera-board.common
+BR2_PACKAGE_OVERRIDE_FILE="$(BR2_EXTERNAL_BATOCERA_PATH)/board/batocera/allwinner/a733/local.mk"
 
 # =============================================================================
 # OctaneOS — Allwinner A733 / Radxa Cubie A7S
@@ -35,10 +36,13 @@ BR2_LINUX_KERNEL_CUSTOM_GIT=y
 BR2_LINUX_KERNEL_CUSTOM_REPO_URL="https://github.com/radxa/kernel"
 BR2_LINUX_KERNEL_CUSTOM_REPO_VERSION="allwinner-aiot-linux-5.15"
 BR2_LINUX_KERNEL_PATCH="$(BR2_EXTERNAL_BATOCERA_PATH)/board/batocera/allwinner/a733/linux_patches"
-# Use the BSP kernel's own defconfig as the base — it knows all the A733 hardware.
-# We layer OctaneOS requirements on top via the fragment file.
-BR2_LINUX_KERNEL_USE_DEFCONFIG=y
-BR2_LINUX_KERNEL_DEFCONFIG="defconfig"
+# The Radxa BSP kernel has a single arch/arm64/configs/defconfig with no
+# prefix.  Buildroot's USE_DEFCONFIG appends _defconfig to the name
+# (yielding "defconfig_defconfig"), so we use USE_CUSTOM_CONFIG and keep
+# a copy of the Radxa defconfig in our board directory instead.
+# OctaneOS-specific options are layered on top via the fragment file.
+BR2_LINUX_KERNEL_USE_CUSTOM_CONFIG=y
+BR2_LINUX_KERNEL_CUSTOM_CONFIG_FILE="$(BR2_EXTERNAL_BATOCERA_PATH)/board/batocera/allwinner/a733/linux-defconfig.config"
 BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_BATOCERA_PATH)/board/batocera/allwinner/a733/linux-defconfig-fragment.config"
 BR2_LINUX_KERNEL_NEEDS_HOST_OPENSSL=y
 BR2_LINUX_KERNEL_DTS_SUPPORT=y
