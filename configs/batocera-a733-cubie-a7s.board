@@ -110,6 +110,11 @@ BR2_PACKAGE_BATOCERA_ARCADE_SYSTEMS=n
 # BCM2836 must NOT be set; it pulls in wm8960-audio-hat and other RPi junk.
 BR2_PACKAGE_BATOCERA_TARGET_A733=y
 
+# Host tools required by genimage to build the FAT32 boot partition image.
+# Without these, post-image fails with "mkdosfs not found" / "mmd not found".
+BR2_PACKAGE_HOST_DOSFSTOOLS=y
+BR2_PACKAGE_HOST_MTOOLS=y
+
 # same-cdi (MAME-based Philips CD-i emulator) repeatedly crashes WSL2 during
 # compilation due to MAME's enormous memory footprint. Disable for first build;
 # re-enable once WSL stability issues are resolved.
