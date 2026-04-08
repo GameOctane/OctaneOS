@@ -25,7 +25,8 @@ mkdir -p "${BATOCERA_BINARIES_DIR}/boot/extlinux" || exit 1
     "${BATOCERA_BINARIES_DIR}/boot/boot/uImage" || exit 1
 
 cp "${BINARIES_DIR}/uInitrd"        "${BATOCERA_BINARIES_DIR}/boot/boot/uInitrd"             || exit 1
-cp "${BINARIES_DIR}/rootfs.squashfs" "${BATOCERA_BINARIES_DIR}/boot/boot/batocera.update"    || exit 1
+cp "${BINARIES_DIR}/rootfs.squashfs" "${BATOCERA_BINARIES_DIR}/boot/boot/batocera.update"      || exit 1
+cp "${BINARIES_DIR}/rufomaculata"    "${BATOCERA_BINARIES_DIR}/boot/boot/rufomaculata.update"  || exit 1
 
 # TODO: verify DTB filename matches what the BSP kernel produces for Cubie A7S
 # If sun60i-a733-cubie-a7s.dtb does not exist, use sun60i-a733-cubie-a7a.dtb as a

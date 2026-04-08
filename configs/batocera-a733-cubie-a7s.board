@@ -110,3 +110,12 @@ BR2_PACKAGE_BATOCERA_ARCADE_SYSTEMS=n
 # packages). A733 has no dedicated target yet — we'll add one later.
 # BCM2836 must NOT be set; it pulls in wm8960-audio-hat and other RPi junk.
 BR2_PACKAGE_BATOCERA_TARGET_T527=y
+
+# same-cdi (MAME-based Philips CD-i emulator) repeatedly crashes WSL2 during
+# compilation due to MAME's enormous memory footprint. Disable for first build;
+# re-enable once WSL stability issues are resolved.
+BR2_PACKAGE_LIBRETRO_SAME_CDI=n
+
+# Override the T527 default image path — T527 Kconfig would set this to
+# allwinner/t527/orangepi-4a, but we have our own board directory.
+BR2_TARGET_BATOCERA_IMAGES="allwinner/a733/cubie-a7s"
