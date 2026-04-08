@@ -81,6 +81,13 @@ jobs:
           key: buildroot-dl-ecwolf-${{ hashFiles('batocera/package/batocera/ports/ecwolf/ecwolf.mk') }}
           restore-keys: buildroot-dl-
 
+      - name: Configure Bitbucket credentials for ecwolf submodules
+        env:
+          BITBUCKET_USER: ${{ secrets.BITBUCKET_USER }}
+          BITBUCKET_PASS: ${{ secrets.BITBUCKET_PASS }}
+        run: |
+          git config --global url."https://${BITBUCKET_USER}:${BITBUCKET_PASS}@bitbucket.org/".insteadOf "https://bitbucket.org/"
+
       - name: Clone ecwolf source directly (bypass Buildroot Bitbucket download)
         run: |
           git clone https://bitbucket.org/ecwolf/ecwolf.git /tmp/ecwolf-src
