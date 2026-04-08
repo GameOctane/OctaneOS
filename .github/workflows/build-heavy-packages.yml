@@ -67,15 +67,11 @@ jobs:
           key: buildroot-dl-ecwolf-${{ hashFiles('batocera/package/batocera/ports/ecwolf/ecwolf.mk') }}
           restore-keys: buildroot-dl-
 
-      - name: Configure Buildroot (creates output Makefile)
+      - name: Build ecwolf
         run: |
           cd batocera
           make a733-cubie-a7s-config DIRECT_BUILD=1
-
-      - name: Build ecwolf
-        run: |
-          cd "${{ env.OUTPUT_DIR }}"
-          make ecwolf
+          make -C buildroot O="$(pwd)/output/a733-cubie-a7s" ecwolf
         timeout-minutes: 120
 
       - name: Collect artifacts
@@ -143,15 +139,11 @@ jobs:
           key: buildroot-dl-same-cdi-${{ hashFiles('batocera/package/batocera/emulators/retroarch/libretro/libretro-same-cdi/libretro-same-cdi.mk') }}
           restore-keys: buildroot-dl-
 
-      - name: Configure Buildroot
+      - name: Build same-cdi (MAME libretro core)
         run: |
           cd batocera
           make a733-cubie-a7s-config DIRECT_BUILD=1
-
-      - name: Build same-cdi (MAME libretro core)
-        run: |
-          cd "${{ env.OUTPUT_DIR }}"
-          make libretro-same-cdi
+          make -C buildroot O="$(pwd)/output/a733-cubie-a7s" libretro-same-cdi
         timeout-minutes: 180
 
       - name: Collect artifacts
