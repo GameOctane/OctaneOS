@@ -70,12 +70,7 @@ jobs:
       - name: Build ecwolf
         run: |
           cd batocera
-          make a733-cubie-a7s-config DIRECT_BUILD=1
-          make O="$(pwd)/output/a733-cubie-a7s" \
-               BR2_EXTERNAL="$(pwd)" \
-               BR2_DL_DIR="$(pwd)/dl" \
-               -C "$(pwd)/buildroot" \
-               ecwolf
+          make a733-cubie-a7s-build CMD=ecwolf DIRECT_BUILD=1
         timeout-minutes: 120
 
       - name: Collect artifacts
@@ -146,12 +141,7 @@ jobs:
       - name: Build same-cdi (MAME libretro core)
         run: |
           cd batocera
-          make a733-cubie-a7s-config DIRECT_BUILD=1
-          make O="$(pwd)/output/a733-cubie-a7s" \
-               BR2_EXTERNAL="$(pwd)" \
-               BR2_DL_DIR="$(pwd)/dl" \
-               -C "$(pwd)/buildroot" \
-               libretro-same-cdi
+          make a733-cubie-a7s-build CMD=libretro-same-cdi DIRECT_BUILD=1
         timeout-minutes: 180
 
       - name: Collect artifacts
