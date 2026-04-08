@@ -1,0 +1,168 @@
+name: Build heavy packages (same-cdi, ecwolf)
+
+# Builds packages that are too memory-intensive for WSL2.
+# Outputs are uploaded as artifacts and can be injected into
+# the local build via local.mk pre-built overrides.
+
+on:
+  workflow_dispatch:        # manual trigger from GitHub UI
+  push:
+    paths:
+      - 'board/batocera/allwinner/a733/local.mk'
+      - 'batocera/package/batocera/ports/ecwolf/**'
+      - 'batocera/package/batocera/emulators/retroarch/libretro/libretro-same-cdi/**'
+      - '.github/workflows/build-heavy-packages.yml'
+
+env:
+  OUTPUT_DIR: batocera/output/a733-cubie-a7s
+
+jobs:
+  build-ecwolf:
+    name: Build ecwolf (aarch64)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout OctaneOS
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Install host build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            build-essential gcc g++ make cmake ninja-build \
+            git curl wget rsync cpio bc \
+            libncurses-dev libssl-dev \
+            python3 python3-dev \
+            unzip file bison flex gawk whiptail \
+            dosfstools mtools
+
+      - name: Set up symlinks (non-interactive)
+        run: |
+          REPO_ROOT="$(pwd)"
+          BATOCERA_DIR="${REPO_ROOT}/batocera"
+          ln -sf "${REPO_ROOT}/board/batocera/allwinner/a733" \
+                 "${BATOCERA_DIR}/board/batocera/allwinner/a733"
+          ln -sf "${REPO_ROOT}/configs/batocera-a733-cubie-a7s.board" \
+                 "${BATOCERA_DIR}/configs/batocera-a733-cubie-a7s.board"
+
+      - name: Sync local.mk into output dir
+        run: |
+          mkdir -p "${{ env.OUTPUT_DIR }}"
+          cp board/batocera/allwinner/a733/local.mk "${{ env.OUTPUT_DIR }}/local.mk"
+
+      - name: Cache Buildroot toolchain
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.OUTPUT_DIR }}/host
+          key: buildroot-host-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}
+          restore-keys: buildroot-host-
+
+      - name: Cache Buildroot downloads
+        uses: actions/cache@v4
+        with:
+          path: batocera/dl
+          key: buildroot-dl-ecwolf-${{ hashFiles('batocera/package/batocera/ports/ecwolf/ecwolf.mk') }}
+          restore-keys: buildroot-dl-
+
+      - name: Configure Buildroot (creates output Makefile)
+        run: |
+          cd batocera
+          make a733-cubie-a7s-config DIRECT_BUILD=1
+
+      - name: Build ecwolf
+        run: |
+          cd "${{ env.OUTPUT_DIR }}"
+          make ecwolf
+        timeout-minutes: 120
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p ci-artifacts/ecwolf
+          find "${{ env.OUTPUT_DIR }}/build" -name "ecwolf" -path "*/buildroot-build/*" \
+            -exec cp {} ci-artifacts/ecwolf/ \;
+          find "${{ env.OUTPUT_DIR }}/build" -name "ecwolf.pk3" \
+            -exec cp {} ci-artifacts/ecwolf/ \;
+
+      - name: Upload ecwolf artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ecwolf-aarch64
+          path: ci-artifacts/ecwolf/
+          retention-days: 90
+
+  build-same-cdi:
+    name: Build same-cdi / MAME (aarch64)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout OctaneOS
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Install host build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            build-essential gcc g++ make \
+            git curl wget rsync cpio bc \
+            libncurses-dev libssl-dev \
+            python3 python3-dev \
+            unzip file bison flex gawk whiptail \
+            dosfstools mtools
+
+      - name: Set up symlinks (non-interactive)
+        run: |
+          REPO_ROOT="$(pwd)"
+          BATOCERA_DIR="${REPO_ROOT}/batocera"
+          ln -sf "${REPO_ROOT}/board/batocera/allwinner/a733" \
+                 "${BATOCERA_DIR}/board/batocera/allwinner/a733"
+          ln -sf "${REPO_ROOT}/configs/batocera-a733-cubie-a7s.board" \
+                 "${BATOCERA_DIR}/configs/batocera-a733-cubie-a7s.board"
+
+      - name: Sync local.mk into output dir
+        run: |
+          mkdir -p "${{ env.OUTPUT_DIR }}"
+          cp board/batocera/allwinner/a733/local.mk "${{ env.OUTPUT_DIR }}/local.mk"
+
+      - name: Cache Buildroot toolchain
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.OUTPUT_DIR }}/host
+          key: buildroot-host-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}
+          restore-keys: buildroot-host-
+
+      - name: Cache Buildroot downloads
+        uses: actions/cache@v4
+        with:
+          path: batocera/dl
+          key: buildroot-dl-same-cdi-${{ hashFiles('batocera/package/batocera/emulators/retroarch/libretro/libretro-same-cdi/libretro-same-cdi.mk') }}
+          restore-keys: buildroot-dl-
+
+      - name: Configure Buildroot
+        run: |
+          cd batocera
+          make a733-cubie-a7s-config DIRECT_BUILD=1
+
+      - name: Build same-cdi (MAME libretro core)
+        run: |
+          cd "${{ env.OUTPUT_DIR }}"
+          make libretro-same-cdi
+        timeout-minutes: 180
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p ci-artifacts/same-cdi
+          find "${{ env.OUTPUT_DIR }}/build" -name "same_cdi_libretro.so" \
+            -exec cp {} ci-artifacts/same-cdi/ \;
+
+      - name: Upload same-cdi artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: same-cdi-aarch64
+          path: ci-artifacts/same-cdi/
+          retention-days: 90
