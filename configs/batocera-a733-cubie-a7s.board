@@ -118,5 +118,5 @@ BR2_PACKAGE_HOST_MTOOLS=y
 # same-cdi and ecwolf were disabled during first build due to WSL2 instability
 # (MAME memory pressure crashes, Bitbucket auth hang). WSL2 is now on D: drive
 # for better I/O stability. Re-enabling both.
-BR2_PACKAGE_LIBRETRO_SAME_CDI=y
+BR2_PACKAGE_LIBRETRO_SAME_CDI=n
 BR2_PACKAGE_ECWOLF=y
