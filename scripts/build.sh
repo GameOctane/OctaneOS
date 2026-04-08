@@ -59,6 +59,16 @@ export PATH="${SHIM_DIR}:${PATH}"
 trap 'rm -rf "${SHIM_DIR}"' EXIT
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# -----------------------------------------------------------------------------
+# Add the Buildroot host/bin to PATH so host tools (mkimage, etc.) installed
+# by Buildroot packages are available to post-install scripts that call them
+# as bare commands without a full path.
+# -----------------------------------------------------------------------------
+HOST_BIN="${REPO_ROOT}/batocera/output/a733-cubie-a7s/host/bin"
+if [ -d "${HOST_BIN}" ]; then
+    export PATH="${HOST_BIN}:${PATH}"
+fi
 BATOCERA_DIR="${REPO_ROOT}/batocera"
 
 if [ ! -d "${BATOCERA_DIR}/.git" ] && [ ! -f "${BATOCERA_DIR}/.git" ]; then

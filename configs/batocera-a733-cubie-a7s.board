@@ -105,3 +105,8 @@ BR2_PACKAGE_BATOCERA_SPLASH_MPV=y
 
 # Disable arcade systems — many require hardware GL or x86-only emulators.
 BR2_PACKAGE_BATOCERA_ARCADE_SYSTEMS=n
+
+# Set Batocera target to T527 (closest Allwinner target without RPi-specific
+# packages). A733 has no dedicated target yet — we'll add one later.
+# BCM2836 must NOT be set; it pulls in wm8960-audio-hat and other RPi junk.
+BR2_PACKAGE_BATOCERA_TARGET_T527=y
