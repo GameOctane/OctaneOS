@@ -53,6 +53,20 @@ jobs:
           mkdir -p "${{ env.OUTPUT_DIR }}"
           cp board/batocera/allwinner/a733/local.mk "${{ env.OUTPUT_DIR }}/local.mk"
 
+      - name: Install make shim (fixes --no-builtin-rules propagation)
+        run: |
+          REAL_MAKE="$(command -v make)"
+          SHIM_DIR="$(mktemp -d)"
+          cat > "${SHIM_DIR}/make" << SHIM_EOF
+          #!/bin/bash
+          _mf="\${MAKEFLAGS}"
+          _mf="\$(echo "\$_mf" | sed 's/^\(-*\)\([A-QS-Za-qs-z]*\)r\([A-Za-z]*\)/\1\2\3/')"
+          export MAKEFLAGS="\$_mf"
+          exec ${REAL_MAKE} "\$@"
+          SHIM_EOF
+          chmod +x "${SHIM_DIR}/make"
+          echo "${SHIM_DIR}" >> "$GITHUB_PATH"
+
       - name: Cache Buildroot toolchain
         uses: actions/cache@v4
         with:
@@ -123,6 +137,20 @@ jobs:
         run: |
           mkdir -p "${{ env.OUTPUT_DIR }}"
           cp board/batocera/allwinner/a733/local.mk "${{ env.OUTPUT_DIR }}/local.mk"
+
+      - name: Install make shim (fixes --no-builtin-rules propagation)
+        run: |
+          REAL_MAKE="$(command -v make)"
+          SHIM_DIR="$(mktemp -d)"
+          cat > "${SHIM_DIR}/make" << SHIM_EOF
+          #!/bin/bash
+          _mf="\${MAKEFLAGS}"
+          _mf="\$(echo "\$_mf" | sed 's/^\(-*\)\([A-QS-Za-qs-z]*\)r\([A-Za-z]*\)/\1\2\3/')"
+          export MAKEFLAGS="\$_mf"
+          exec ${REAL_MAKE} "\$@"
+          SHIM_EOF
+          chmod +x "${SHIM_DIR}/make"
+          echo "${SHIM_DIR}" >> "$GITHUB_PATH"
 
       - name: Cache Buildroot toolchain
         uses: actions/cache@v4
