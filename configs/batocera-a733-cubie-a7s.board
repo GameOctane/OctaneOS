@@ -106,16 +106,11 @@ BR2_PACKAGE_BATOCERA_SPLASH_MPV=y
 # Disable arcade systems — many require hardware GL or x86-only emulators.
 BR2_PACKAGE_BATOCERA_ARCADE_SYSTEMS=n
 
-# Set Batocera target to T527 (closest Allwinner target without RPi-specific
-# packages). A733 has no dedicated target yet — we'll add one later.
+# Allwinner A733 (sun60iw2) target — covers any board built on the A733 SoC.
 # BCM2836 must NOT be set; it pulls in wm8960-audio-hat and other RPi junk.
-BR2_PACKAGE_BATOCERA_TARGET_T527=y
+BR2_PACKAGE_BATOCERA_TARGET_A733=y
 
 # same-cdi (MAME-based Philips CD-i emulator) repeatedly crashes WSL2 during
 # compilation due to MAME's enormous memory footprint. Disable for first build;
 # re-enable once WSL stability issues are resolved.
 BR2_PACKAGE_LIBRETRO_SAME_CDI=n
-
-# Override the T527 default image path — T527 Kconfig would set this to
-# allwinner/t527/orangepi-4a, but we have our own board directory.
-BR2_TARGET_BATOCERA_IMAGES="allwinner/a733/cubie-a7s"
