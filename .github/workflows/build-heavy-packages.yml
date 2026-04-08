@@ -83,10 +83,9 @@ jobs:
 
       - name: Configure Bitbucket credentials for ecwolf submodules
         env:
-          BITBUCKET_USER: ${{ secrets.BITBUCKET_USER }}
           BITBUCKET_PASS: ${{ secrets.BITBUCKET_PASS }}
         run: |
-          git config --global url."https://${BITBUCKET_USER}:${BITBUCKET_PASS}@bitbucket.org/".insteadOf "https://bitbucket.org/"
+          git config --global url."https://x-token-auth:${BITBUCKET_PASS}@bitbucket.org/".insteadOf "https://bitbucket.org/"
 
       - name: Clone ecwolf source directly (bypass Buildroot Bitbucket download)
         run: |
