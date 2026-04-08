@@ -81,6 +81,9 @@ jobs:
           key: buildroot-dl-ecwolf-${{ hashFiles('batocera/package/batocera/ports/ecwolf/ecwolf.mk') }}
           restore-keys: buildroot-dl-
 
+      - name: Clear stale ecwolf dl cache (prevents corrupted-git-cache error)
+        run: rm -rf batocera/dl/ecwolf
+
       - name: Build ecwolf
         run: |
           cd batocera
