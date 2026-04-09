@@ -78,8 +78,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: batocera/dl
-          key: buildroot-dl-ecwolf-${{ hashFiles('batocera/package/batocera/ports/ecwolf/ecwolf.mk') }}
+          key: buildroot-dl-${{ github.run_id }}
           restore-keys: buildroot-dl-
+
+      - name: Pre-fetch tarballs that have flaky mirrors
+        run: |
+          mkdir -p batocera/dl
+          # libtool - ftpmirror.gnu.org is unreliable; fetch directly from ftp.gnu.org
+          wget -q -O batocera/dl/libtool-2.4.7.tar.xz \
+            https://ftp.gnu.org/pub/gnu/libtool/libtool-2.4.7.tar.xz
 
       - name: Pre-fetch ecwolf + SDL submodules (bypass private Bitbucket repos)
         run: |
