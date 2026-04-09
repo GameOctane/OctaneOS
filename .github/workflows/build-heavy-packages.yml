@@ -100,6 +100,10 @@ jobs:
           echo "ECWOLF_OVERRIDE_SRCDIR = /tmp/ecwolf-src" >> "${{ env.OUTPUT_DIR }}/local.mk"
           echo "HOST_ECWOLF_OVERRIDE_SRCDIR = /tmp/ecwolf-src" >> "${{ env.OUTPUT_DIR }}/local.mk"
 
+      - name: Remove host SDL packages that confuse cross-build CMake
+        run: |
+          sudo apt-get remove -y libsdl2-net-dev libsdl2-mixer-dev 2>/dev/null || true
+
       - name: Build ecwolf
         run: |
           cd batocera
