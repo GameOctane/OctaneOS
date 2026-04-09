@@ -81,6 +81,25 @@ jobs:
           key: buildroot-dl-ecwolf-${{ hashFiles('batocera/package/batocera/ports/ecwolf/ecwolf.mk') }}
           restore-keys: buildroot-dl-
 
+      - name: Pre-fetch ecwolf + SDL submodules (bypass private Bitbucket repos)
+        run: |
+          # Clone ecwolf main repo (public)
+          git clone https://bitbucket.org/ecwolf/ecwolf.git /tmp/ecwolf-src
+          git -C /tmp/ecwolf-src checkout d1de69a576d4bb39e89124185a6dfd6991202cb9
+
+          # Populate SDL submodule dirs from public upstream SDL2 repos
+          # (ecwolf's Bitbucket SDL forks are private; upstream SDL2 is compatible)
+          git clone --depth 1 --branch release-2.30.3 \
+            https://github.com/libsdl-org/SDL.git /tmp/ecwolf-src/deps/SDL
+          git clone --depth 1 --branch release-2.8.0 \
+            https://github.com/libsdl-org/SDL_mixer.git /tmp/ecwolf-src/deps/SDL_mixer
+          git clone --depth 1 --branch release-2.2.0 \
+            https://github.com/libsdl-org/SDL_net.git /tmp/ecwolf-src/deps/SDL_net
+
+          # Point Buildroot to this pre-populated source dir
+          echo "ECWOLF_OVERRIDE_SRCDIR = /tmp/ecwolf-src" >> "${{ env.OUTPUT_DIR }}/local.mk"
+          echo "HOST_ECWOLF_OVERRIDE_SRCDIR = /tmp/ecwolf-src" >> "${{ env.OUTPUT_DIR }}/local.mk"
+
       - name: Build ecwolf
         run: |
           cd batocera
