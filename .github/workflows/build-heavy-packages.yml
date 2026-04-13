@@ -14,7 +14,12 @@ on:
       - '.github/workflows/build-heavy-packages.yml'
 
 env:
+  # OUTPUT_DIR is the env var batocera's Makefile uses for O (passed to
+  # buildroot as a relative path). Buildroot runs from batocera/buildroot/,
+  # so the actual on-disk output is buildroot/ + OUTPUT_DIR + /<board>.
+  # local.mk must live at that resolved path for buildroot to read it.
   OUTPUT_DIR: batocera/output/a733-cubie-a7s
+  BR_OUTPUT_DIR: batocera/buildroot/batocera/output/a733-cubie-a7s/a733-cubie-a7s
 
 jobs:
   build-ecwolf:
@@ -50,8 +55,14 @@ jobs:
 
       - name: Sync local.mk into output dir
         run: |
+          # Write local.mk to both the legacy path and the actual buildroot
+          # output path where $(O)/local.mk resolves (buildroot runs from
+          # batocera/buildroot/, so O=batocera/output/.../a733 is relative
+          # to that dir, landing at BR_OUTPUT_DIR on disk).
           mkdir -p "${{ env.OUTPUT_DIR }}"
           cp board/batocera/allwinner/a733/local.mk "${{ env.OUTPUT_DIR }}/local.mk"
+          mkdir -p "${{ env.BR_OUTPUT_DIR }}"
+          cp board/batocera/allwinner/a733/local.mk "${{ env.BR_OUTPUT_DIR }}/local.mk"
 
       - name: Install make shim (fixes --no-builtin-rules propagation)
         run: |
@@ -70,7 +81,7 @@ jobs:
       - name: Cache Buildroot toolchain
         uses: actions/cache@v4
         with:
-          path: ${{ env.OUTPUT_DIR }}/host
+          path: ${{ env.BR_OUTPUT_DIR }}/host
           key: buildroot-host-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}
           restore-keys: buildroot-host-
 
@@ -103,9 +114,9 @@ jobs:
           git clone --depth 1 --branch release-2.2.0 \
             https://github.com/libsdl-org/SDL_net.git /tmp/ecwolf-src/deps/SDL_net
 
-          # Point Buildroot to this pre-populated source dir
-          echo "ECWOLF_OVERRIDE_SRCDIR = /tmp/ecwolf-src" >> "${{ env.OUTPUT_DIR }}/local.mk"
-          echo "HOST_ECWOLF_OVERRIDE_SRCDIR = /tmp/ecwolf-src" >> "${{ env.OUTPUT_DIR }}/local.mk"
+          # Point Buildroot to this pre-populated source dir via the correct local.mk
+          echo "ECWOLF_OVERRIDE_SRCDIR = /tmp/ecwolf-src" >> "${{ env.BR_OUTPUT_DIR }}/local.mk"
+          echo "HOST_ECWOLF_OVERRIDE_SRCDIR = /tmp/ecwolf-src" >> "${{ env.BR_OUTPUT_DIR }}/local.mk"
 
       - name: Remove host SDL packages that confuse cross-build CMake
         run: |
@@ -167,6 +178,8 @@ jobs:
         run: |
           mkdir -p "${{ env.OUTPUT_DIR }}"
           cp board/batocera/allwinner/a733/local.mk "${{ env.OUTPUT_DIR }}/local.mk"
+          mkdir -p "${{ env.BR_OUTPUT_DIR }}"
+          cp board/batocera/allwinner/a733/local.mk "${{ env.BR_OUTPUT_DIR }}/local.mk"
 
       - name: Install make shim (fixes --no-builtin-rules propagation)
         run: |
@@ -185,7 +198,7 @@ jobs:
       - name: Cache Buildroot toolchain
         uses: actions/cache@v4
         with:
-          path: ${{ env.OUTPUT_DIR }}/host
+          path: ${{ env.BR_OUTPUT_DIR }}/host
           key: buildroot-host-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}
           restore-keys: buildroot-host-
 
