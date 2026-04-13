@@ -99,15 +99,17 @@ jobs:
           wget -q -O batocera/dl/libtool-2.4.7.tar.xz \
             https://ftp.gnu.org/pub/gnu/libtool/libtool-2.4.7.tar.xz
 
-      - name: Pre-fetch ecwolf source tarball (courtesy suckbluefrog/Batocera-Multilib)
+      - name: Pre-seed dl/ecwolf/ cache (courtesy suckbluefrog/Batocera-Multilib)
         run: |
-          # Tarball includes ecwolf + private SDL submodules pre-packed,
-          # avoiding the need to clone private Bitbucket repos.
-          mkdir -p batocera/dl/ecwolf
-          wget -q -O batocera/dl/ecwolf/ecwolf-source.tar.gz \
+          # The tarball is a snapshot of a buildroot dl/ecwolf/ cache dir.
+          # It contains ecwolf-<hash>-git4.tar.gz (pre-cloned with submodules)
+          # so buildroot never needs to reach the private Bitbucket repos.
+          mkdir -p batocera/dl
+          wget -q -O /tmp/ecwolf-source.tar.gz \
             https://github.com/suckbluefrog/Batocera-Multilib/releases/download/7-4-2026/ecwolf-source.tar.gz
-          echo "=== tarball top-level structure ==="
-          tar tzf batocera/dl/ecwolf/ecwolf-source.tar.gz | head -30
+          tar xzf /tmp/ecwolf-source.tar.gz -C batocera/dl/
+          echo "=== dl/ecwolf/ contents ==="
+          ls -la batocera/dl/ecwolf/
 
       - name: Verify local.mk placement and content
         run: |
