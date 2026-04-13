@@ -122,10 +122,22 @@ jobs:
         run: |
           sudo apt-get remove -y libsdl2-net-dev libsdl2-mixer-dev 2>/dev/null || true
 
+      - name: Verify local.mk placement and content
+        run: |
+          echo "=== BR_OUTPUT_DIR ==="
+          ls -la "${{ env.BR_OUTPUT_DIR }}/" 2>/dev/null || echo "DIRECTORY NOT FOUND: ${{ env.BR_OUTPUT_DIR }}"
+          echo "=== local.mk ==="
+          cat "${{ env.BR_OUTPUT_DIR }}/local.mk" 2>/dev/null || echo "FILE NOT FOUND"
+
       - name: Build ecwolf
         run: |
           cd batocera
-          make a733-cubie-a7s-build CMD=ecwolf DIRECT_BUILD=1
+          # Pass OVERRIDE_SRCDIR on the command line as a belt-and-suspenders
+          # fallback in case local.mk isn't being read by buildroot.
+          # Command-line variables propagate to sub-makes via MAKEFLAGS.
+          make a733-cubie-a7s-build CMD=ecwolf DIRECT_BUILD=1 \
+            ECWOLF_OVERRIDE_SRCDIR=/tmp/ecwolf-src \
+            HOST_ECWOLF_OVERRIDE_SRCDIR=/tmp/ecwolf-src
         timeout-minutes: 120
 
       - name: Collect artifacts
