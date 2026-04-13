@@ -99,28 +99,13 @@ jobs:
           wget -q -O batocera/dl/libtool-2.4.7.tar.xz \
             https://ftp.gnu.org/pub/gnu/libtool/libtool-2.4.7.tar.xz
 
-      - name: Pre-fetch ecwolf + SDL submodules (bypass private Bitbucket repos)
+      - name: Pre-fetch ecwolf source tarball (courtesy suckbluefrog/Batocera-Multilib)
         run: |
-          # Clone ecwolf main repo (public)
-          git clone https://bitbucket.org/ecwolf/ecwolf.git /tmp/ecwolf-src
-          git -C /tmp/ecwolf-src checkout d1de69a576d4bb39e89124185a6dfd6991202cb9
-
-          # Populate SDL submodule dirs from public upstream SDL2 repos
-          # (ecwolf's Bitbucket SDL forks are private; upstream SDL2 is compatible)
-          git clone --depth 1 --branch release-2.30.3 \
-            https://github.com/libsdl-org/SDL.git /tmp/ecwolf-src/deps/SDL
-          git clone --depth 1 --branch release-2.8.0 \
-            https://github.com/libsdl-org/SDL_mixer.git /tmp/ecwolf-src/deps/SDL_mixer
-          git clone --depth 1 --branch release-2.2.0 \
-            https://github.com/libsdl-org/SDL_net.git /tmp/ecwolf-src/deps/SDL_net
-
-          # Point Buildroot to this pre-populated source dir via the correct local.mk
-          echo "ECWOLF_OVERRIDE_SRCDIR = /tmp/ecwolf-src" >> "${{ env.BR_OUTPUT_DIR }}/local.mk"
-          echo "HOST_ECWOLF_OVERRIDE_SRCDIR = /tmp/ecwolf-src" >> "${{ env.BR_OUTPUT_DIR }}/local.mk"
-
-      - name: Remove host SDL packages that confuse cross-build CMake
-        run: |
-          sudo apt-get remove -y libsdl2-net-dev libsdl2-mixer-dev 2>/dev/null || true
+          # Tarball includes ecwolf + private SDL submodules pre-packed,
+          # avoiding the need to clone private Bitbucket repos.
+          mkdir -p batocera/dl/ecwolf
+          wget -q -O batocera/dl/ecwolf/ecwolf-source.tar.gz \
+            https://github.com/suckbluefrog/Batocera-Multilib/releases/download/7-4-2026/ecwolf-source.tar.gz
 
       - name: Verify local.mk placement and content
         run: |
@@ -132,12 +117,7 @@ jobs:
       - name: Build ecwolf
         run: |
           cd batocera
-          # Pass OVERRIDE_SRCDIR on the command line as a belt-and-suspenders
-          # fallback in case local.mk isn't being read by buildroot.
-          # Command-line variables propagate to sub-makes via MAKEFLAGS.
-          make a733-cubie-a7s-build CMD=ecwolf DIRECT_BUILD=1 \
-            ECWOLF_OVERRIDE_SRCDIR=/tmp/ecwolf-src \
-            HOST_ECWOLF_OVERRIDE_SRCDIR=/tmp/ecwolf-src
+          make a733-cubie-a7s-build CMD=ecwolf DIRECT_BUILD=1
         timeout-minutes: 120
 
       - name: Collect artifacts
