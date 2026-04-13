@@ -106,6 +106,8 @@ jobs:
           mkdir -p batocera/dl/ecwolf
           wget -q -O batocera/dl/ecwolf/ecwolf-source.tar.gz \
             https://github.com/suckbluefrog/Batocera-Multilib/releases/download/7-4-2026/ecwolf-source.tar.gz
+          echo "=== tarball top-level structure ==="
+          tar tzf batocera/dl/ecwolf/ecwolf-source.tar.gz | head -30
 
       - name: Verify local.mk placement and content
         run: |
