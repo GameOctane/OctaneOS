@@ -101,6 +101,7 @@ OctaneOS manages three distinct play modes automatically — no configuration re
 | Milestone | Status |
 |---|---|
 | Batocera fork + A733 build target | ✅ Complete |
+| Boot blobs (boot0 + U-Boot) | ✅ Complete |
 | Debian booting on Cubie A7S | ⏳ Pending hardware |
 | DPI screen bring-up via LCD0 | ⏳ Pending hardware |
 | EmulationStation launching | ⏳ Pending |
