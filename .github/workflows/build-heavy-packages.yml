@@ -214,7 +214,7 @@ jobs:
       - name: Collect artifacts
         run: |
           mkdir -p ci-artifacts/same-cdi
-          find "${{ env.OUTPUT_DIR }}/build" -name "same_cdi_libretro.so" \
+          find "${{ env.BR_OUTPUT_DIR }}/build" -name "same_cdi_libretro.so" \
             -exec cp {} ci-artifacts/same-cdi/ \;
 
       - name: Upload same-cdi artifacts
