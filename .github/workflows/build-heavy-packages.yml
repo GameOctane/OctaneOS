@@ -127,9 +127,9 @@ jobs:
       - name: Collect artifacts
         run: |
           mkdir -p ci-artifacts/ecwolf
-          find "${{ env.OUTPUT_DIR }}/build" -name "ecwolf" -path "*/buildroot-build/*" \
+          find "${{ env.BR_OUTPUT_DIR }}/build" -name "ecwolf" -path "*/buildroot-build/*" \
             -exec cp {} ci-artifacts/ecwolf/ \;
-          find "${{ env.OUTPUT_DIR }}/build" -name "ecwolf.pk3" \
+          find "${{ env.BR_OUTPUT_DIR }}/build" -name "ecwolf.pk3" \
             -exec cp {} ci-artifacts/ecwolf/ \;
 
       - name: Upload ecwolf artifacts
