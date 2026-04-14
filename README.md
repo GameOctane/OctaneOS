@@ -100,7 +100,7 @@ OctaneOS manages three distinct play modes automatically — no configuration re
 
 | Milestone | Status |
 |---|---|
-| Batocera fork + A733 build target | 🔄 In progress |
+| Batocera fork + A733 build target | ✅ Complete |
 | Debian booting on Cubie A7S | ⏳ Pending hardware |
 | DPI screen bring-up via LCD0 | ⏳ Pending hardware |
 | EmulationStation launching | ⏳ Pending |
@@ -109,6 +109,12 @@ OctaneOS manages three distinct play modes automatically — no configuration re
 | Three mode system | ⏳ Pending |
 | OTA update system | ⏳ Pending |
 | GameOctane app | ⏳ Pending |
+
+---
+
+## Credits
+
+- **[suckbluefrog](https://github.com/suckbluefrog)** — Pre-packaged buildroot dl cache tarballs for ecwolf and same-cdi, enabling CI builds without access to private Bitbucket repositories ([Batocera-Multilib](https://github.com/suckbluefrog/Batocera-Multilib))
 
 ---
 
