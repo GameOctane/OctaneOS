@@ -46,28 +46,27 @@ BR2_LINUX_KERNEL_CUSTOM_CONFIG_FILE="$(BR2_EXTERNAL_BATOCERA_PATH)/board/batocer
 BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_BATOCERA_PATH)/board/batocera/allwinner/a733/linux-defconfig-fragment.config"
 BR2_LINUX_KERNEL_NEEDS_HOST_OPENSSL=y
 BR2_LINUX_KERNEL_DTS_SUPPORT=y
-# TODO: sun60i-a733-cubie-a7s.dts does not yet exist in the BSP kernel.
-# Short term: use the A7A DTS as a stand-in (same SoC, close enough to boot).
-# Long term: create a proper Cubie A7S DTS with correct display, GPIO, and button mappings.
+# A7S DTS lives in board/batocera/allwinner/a733/dts/ and is injected via
+# linux_patches. The in-tree name used here must match the DTB filename that
+# the kernel build produces.
 BR2_LINUX_KERNEL_INTREE_DTS_NAME="allwinner/sun60i-a733-cubie-a7s"
 
 # =============================================================================
-# Bootloader — Radxa U-Boot for Cubie A7S
-# TODO: confirm U-Boot repo and branch for Cubie A7S / sun60iw2
-# Reference: https://github.com/radxa/u-boot
-# The genimage.cfg references boot0_sdcard.fex and boot_package.fex — these are
-# the Allwinner-style SPL + U-Boot blobs produced by the Radxa U-Boot build.
+# Bootloader — pre-built blobs from Radxa rsdk-r2 release
 # =============================================================================
-#BR2_TARGET_UBOOT=y
-#BR2_TARGET_UBOOT_BUILD_SYSTEM_KCONFIG=y
-#BR2_TARGET_UBOOT_CUSTOM_GIT=y
-#BR2_TARGET_UBOOT_CUSTOM_REPO_URL="https://github.com/radxa/u-boot"
-#BR2_TARGET_UBOOT_CUSTOM_REPO_VERSION="TODO"
-#BR2_TARGET_UBOOT_BOARD_DEFCONFIG="cubie-a7s"
-#BR2_TARGET_UBOOT_NEEDS_DTC=y
-#BR2_TARGET_UBOOT_NEEDS_ATF_BL31=y
-#BR2_TARGET_UBOOT_SPL=y
-#BR2_TARGET_UBOOT_SPL_NAME="u-boot-sunxi-with-spl.bin"
+# We do NOT build U-Boot through Buildroot. The Radxa U-Boot is a heavily
+# customised Android/AIOT fork and does not integrate cleanly with Buildroot's
+# BR2_TARGET_UBOOT machinery.
+#
+# Instead, pre-extracted blobs are committed to:
+#   board/batocera/allwinner/a733/cubie-a7s/boot/boot0_sdcard.fex  (128KB offset)
+#   board/batocera/allwinner/a733/cubie-a7s/boot/boot_package.fex  (12MB offset)
+#
+# genimage.cfg writes them at the correct raw SD card offsets automatically.
+# To re-extract from a newer Radxa release: scripts/extract-boot-blobs.sh
+#
+# Source: https://github.com/radxa-build/radxa-a733/releases/tag/rsdk-r2
+# U-Boot branch (for reference): https://github.com/radxa/u-boot/tree/cubie-aiot-v1.4.6
 
 # =============================================================================
 # GPU — Imagination PowerVR BXM-4-64 MC1
