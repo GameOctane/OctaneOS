@@ -114,6 +114,11 @@ BR2_PACKAGE_BATOCERA_TARGET_A733=y
 BR2_PACKAGE_HOST_DOSFSTOOLS=y
 BR2_PACKAGE_HOST_MTOOLS=y
 
+# WiFi/BT — AIC8800D80 over USB 2.0
+# select BR2_PACKAGE_AIC8800 automatically via Config.in
+# firmware lands at /lib/firmware/aic8800_fw/USB/ (D80 variant included)
+BR2_PACKAGE_AIC8800_USB=y
+
 # same-cdi and ecwolf were disabled during first build due to WSL2 instability
 # (MAME memory pressure crashes, Bitbucket auth hang). WSL2 is now on D: drive
 # for better I/O stability. Re-enabling both.
