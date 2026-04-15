@@ -1,0 +1,121 @@
+name: Build OctaneOS image (a733-cubie-a7s)
+
+# Full image build — produces a flashable batocera.img artifact.
+# Runs on push to main or manual trigger.
+# Same-cdi and ecwolf are enabled; GitHub Actions runners have enough
+# RAM to handle MAME. Local WSL2 builds disable same-cdi via local.mk.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'CONTRIBUTING.md'
+      - '.github/workflows/build-heavy-packages.yml'
+
+env:
+  OUTPUT_DIR: batocera/output/a733-cubie-a7s
+  BR_OUTPUT_DIR: batocera/buildroot/batocera/output/a733-cubie-a7s/a733-cubie-a7s
+
+jobs:
+  build-image:
+    name: Build OctaneOS image (aarch64)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout OctaneOS
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Install host build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            build-essential gcc g++ make cmake ninja-build \
+            git curl wget rsync cpio bc \
+            libncurses-dev libssl-dev \
+            python3 python3-dev \
+            unzip file bison flex gawk whiptail \
+            dosfstools mtools
+
+      - name: Set up symlinks (non-interactive)
+        run: |
+          REPO_ROOT="$(pwd)"
+          BATOCERA_DIR="${REPO_ROOT}/batocera"
+          ln -sf "${REPO_ROOT}/board/batocera/allwinner/a733" \
+                 "${BATOCERA_DIR}/board/batocera/allwinner/a733"
+          ln -sf "${REPO_ROOT}/configs/batocera-a733-cubie-a7s.board" \
+                 "${BATOCERA_DIR}/configs/batocera-a733-cubie-a7s.board"
+
+      - name: Sync local.mk into output dir
+        run: |
+          mkdir -p "${{ env.OUTPUT_DIR }}"
+          cp board/batocera/allwinner/a733/local.mk "${{ env.OUTPUT_DIR }}/local.mk"
+          mkdir -p "${{ env.BR_OUTPUT_DIR }}"
+          cp board/batocera/allwinner/a733/local.mk "${{ env.BR_OUTPUT_DIR }}/local.mk"
+
+      - name: Install make shim (fixes --no-builtin-rules propagation)
+        run: |
+          REAL_MAKE="$(command -v make)"
+          SHIM_DIR="$(mktemp -d)"
+          cat > "${SHIM_DIR}/make" << SHIM_EOF
+          #!/bin/bash
+          _mf="\${MAKEFLAGS}"
+          _mf="\$(echo "\$_mf" | sed 's/^\(-*\)\([A-QS-Za-qs-z]*\)r\([A-Za-z]*\)/\1\2\3/')"
+          export MAKEFLAGS="\$_mf"
+          exec ${REAL_MAKE} "\$@"
+          SHIM_EOF
+          chmod +x "${SHIM_DIR}/make"
+          echo "${SHIM_DIR}" >> "$GITHUB_PATH"
+
+      - name: Cache Buildroot toolchain
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.BR_OUTPUT_DIR }}/host
+          key: buildroot-host-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}
+          restore-keys: buildroot-host-
+
+      - name: Cache Buildroot downloads
+        uses: actions/cache@v4
+        with:
+          path: batocera/dl
+          key: buildroot-dl-${{ github.run_id }}
+          restore-keys: buildroot-dl-
+
+      - name: Pre-fetch tarballs that have flaky mirrors
+        run: |
+          mkdir -p batocera/dl
+          # libtool - ftpmirror.gnu.org is unreliable; fetch directly from ftp.gnu.org
+          wget -q -O batocera/dl/libtool-2.4.7.tar.xz \
+            https://ftp.gnu.org/pub/gnu/libtool/libtool-2.4.7.tar.xz
+
+      - name: Pre-seed dl/ecwolf/ cache (courtesy suckbluefrog/Batocera-Multilib)
+        run: |
+          mkdir -p batocera/dl
+          wget -q -O /tmp/ecwolf-source.tar.gz \
+            https://github.com/suckbluefrog/Batocera-Multilib/releases/download/7-4-2026/ecwolf-source.tar.gz
+          tar xzf /tmp/ecwolf-source.tar.gz -C batocera/dl/
+
+      - name: Build OctaneOS image
+        run: |
+          cd batocera
+          make a733-cubie-a7s
+        timeout-minutes: 360
+
+      - name: Collect image
+        run: |
+          mkdir -p ci-artifacts
+          find "${{ env.BR_OUTPUT_DIR }}/images" -name "batocera.img" \
+            -exec cp {} ci-artifacts/ \;
+          ls -lh ci-artifacts/
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: octaneos-a733-cubie-a7s
+          path: ci-artifacts/batocera.img
+          retention-days: 30

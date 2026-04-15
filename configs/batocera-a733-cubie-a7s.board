@@ -119,8 +119,9 @@ BR2_PACKAGE_HOST_MTOOLS=y
 # firmware lands at /lib/firmware/aic8800_fw/USB/ (D80 variant included)
 BR2_PACKAGE_AIC8800_USB=y
 
-# same-cdi and ecwolf were disabled during first build due to WSL2 instability
-# (MAME memory pressure crashes, Bitbucket auth hang). WSL2 is now on D: drive
-# for better I/O stability. Re-enabling both.
-BR2_PACKAGE_LIBRETRO_SAME_CDI=n
+# ecwolf: builds via suckbluefrog dl cache tarball (pre-seeded in CI)
+# same-cdi: MAME-based, too memory-intensive for local WSL2 builds.
+#   CI runners have enough RAM — enabled here for full image builds.
+#   Disable locally via local.mk if needed.
+BR2_PACKAGE_LIBRETRO_SAME_CDI=y
 BR2_PACKAGE_ECWOLF=y
