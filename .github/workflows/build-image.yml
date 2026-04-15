@@ -103,7 +103,7 @@ jobs:
       - name: Build OctaneOS image
         run: |
           cd batocera
-          make a733-cubie-a7s
+          make a733-cubie-a7s-build
         timeout-minutes: 360
 
       - name: Collect image
