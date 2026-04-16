@@ -1,0 +1,83 @@
+build_image_task:
+  name: Build OctaneOS image (a733-cubie-a7s)
+
+  only_if: $CIRRUS_BRANCH == 'main'
+
+  container:
+    image: ubuntu:22.04
+    cpu: 4
+    memory: 12G
+
+  env:
+    OUTPUT_DIR: batocera/output/a733-cubie-a7s
+    BR_OUTPUT_DIR: batocera/buildroot/batocera/output/a733-cubie-a7s/a733-cubie-a7s
+    DEBIAN_FRONTEND: noninteractive
+
+  submodules_script: git submodule update --init --recursive
+
+  install_deps_script: |
+    apt-get update -qq
+    apt-get install -y --no-install-recommends \
+      build-essential gcc g++ make cmake ninja-build \
+      git curl wget rsync cpio bc \
+      libncurses-dev libssl-dev \
+      python3 python3-dev \
+      unzip file bison flex gawk whiptail \
+      dosfstools mtools
+
+  setup_script: |
+    REPO_ROOT="$(pwd)"
+    BATOCERA_DIR="${REPO_ROOT}/batocera"
+    ln -sf "${REPO_ROOT}/board/batocera/allwinner/a733" \
+           "${BATOCERA_DIR}/board/batocera/allwinner/a733"
+    ln -sf "${REPO_ROOT}/configs/batocera-a733-cubie-a7s.board" \
+           "${BATOCERA_DIR}/configs/batocera-a733-cubie-a7s.board"
+    mkdir -p "${OUTPUT_DIR}"
+    cp board/batocera/allwinner/a733/local.mk "${OUTPUT_DIR}/local.mk"
+    mkdir -p "${BR_OUTPUT_DIR}"
+    cp board/batocera/allwinner/a733/local.mk "${BR_OUTPUT_DIR}/local.mk"
+
+  make_shim_script: |
+    REAL_MAKE="$(command -v make)"
+    SHIM_DIR="$(mktemp -d)"
+    cat > "${SHIM_DIR}/make" << 'SHIM_EOF'
+    #!/bin/bash
+    _mf="${MAKEFLAGS}"
+    _mf="$(echo "$_mf" | sed 's/^\(-*\)\([A-QS-Za-qs-z]*\)r\([A-Za-z]*\)/\1\2\3/')"
+    export MAKEFLAGS="$_mf"
+    exec REAL_MAKE_PLACEHOLDER "$@"
+    SHIM_EOF
+    sed -i "s|REAL_MAKE_PLACEHOLDER|${REAL_MAKE}|g" "${SHIM_DIR}/make"
+    chmod +x "${SHIM_DIR}/make"
+    echo "${SHIM_DIR}" >> "$CIRRUS_ENV"
+    export PATH="${SHIM_DIR}:${PATH}"
+
+  buildroot_host_cache:
+    folder: $BR_OUTPUT_DIR/host
+    fingerprint_script: cat configs/batocera-a733-cubie-a7s.board batocera/buildroot/toolchain/toolchain-external/toolchain-external-custom/toolchain-external-custom.mk 2>/dev/null || cat configs/batocera-a733-cubie-a7s.board
+
+  buildroot_dl_cache:
+    folder: batocera/dl
+    fingerprint_script: echo "dl-always-reuse"
+    reupload_on_changes: true
+
+  preseed_script: |
+    mkdir -p batocera/dl
+    wget -q -O batocera/dl/libtool-2.4.7.tar.xz \
+      https://ftp.gnu.org/pub/gnu/libtool/libtool-2.4.7.tar.xz
+    wget -q -O /tmp/ecwolf-source.tar.gz \
+      https://github.com/suckbluefrog/Batocera-Multilib/releases/download/7-4-2026/ecwolf-source.tar.gz
+    tar xzf /tmp/ecwolf-source.tar.gz -C batocera/dl/
+
+  build_script: |
+    cd batocera
+    make a733-cubie-a7s-build DIRECT_BUILD=1
+
+  collect_script: |
+    mkdir -p ci-artifacts
+    find "${BR_OUTPUT_DIR}/images" -name "batocera.img" \
+      -exec cp {} ci-artifacts/ \; || true
+    ls -lh ci-artifacts/
+
+  image_artifacts:
+    path: ci-artifacts/batocera.img
