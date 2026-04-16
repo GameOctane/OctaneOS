@@ -79,15 +79,19 @@ jobs:
           key: buildroot-host-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}
           restore-keys: buildroot-host-
 
-      - name: Cache Buildroot build output
-        uses: actions/cache@v4
+      - name: Restore Buildroot build output cache
+        id: cache-build-restore
+        uses: actions/cache/restore@v4
         with:
-          path: ${{ env.BR_OUTPUT_DIR }}/build
+          path: |
+            ${{ env.BR_OUTPUT_DIR }}/build
+            ${{ env.BR_OUTPUT_DIR }}/staging
           key: buildroot-build-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ github.run_id }}
           restore-keys: buildroot-build-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-
 
-      - name: Cache Buildroot downloads
-        uses: actions/cache@v4
+      - name: Restore Buildroot downloads cache
+        id: cache-dl-restore
+        uses: actions/cache/restore@v4
         with:
           path: batocera/dl
           key: buildroot-dl-${{ github.run_id }}
@@ -108,12 +112,31 @@ jobs:
           tar xzf /tmp/ecwolf-source.tar.gz -C batocera/dl/
 
       - name: Build OctaneOS image
+        id: build
         run: |
           cd batocera
           make a733-cubie-a7s-build DIRECT_BUILD=1
-        timeout-minutes: 360
+        timeout-minutes: 320
+        continue-on-error: true
+
+      - name: Save Buildroot build output cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: |
+            ${{ env.BR_OUTPUT_DIR }}/build
+            ${{ env.BR_OUTPUT_DIR }}/staging
+          key: buildroot-build-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ github.run_id }}
+
+      - name: Save Buildroot downloads cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: batocera/dl
+          key: buildroot-dl-${{ github.run_id }}
 
       - name: Collect image
+        if: steps.build.outcome == 'success'
         run: |
           mkdir -p ci-artifacts
           find "${{ env.BR_OUTPUT_DIR }}/images" -name "batocera.img" \
@@ -121,6 +144,7 @@ jobs:
           ls -lh ci-artifacts/
 
       - name: Upload image artifact
+        if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: octaneos-a733-cubie-a7s
