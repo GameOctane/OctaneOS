@@ -121,6 +121,19 @@ jobs:
             https://github.com/suckbluefrog/Batocera-Multilib/releases/download/7-4-2026/ecwolf-source.tar.gz
           tar xzf /tmp/ecwolf-source.tar.gz -C batocera/dl/
 
+      - name: Clean inconsistent package state from cache
+        run: |
+          BUILD_DIR="${{ env.BR_OUTPUT_DIR }}/build"
+          if [ -d "$BUILD_DIR" ]; then
+            find "$BUILD_DIR" -name ".stamp_configured" | while read f; do
+              pkg_dir=$(dirname "$f")
+              if [ ! -f "$pkg_dir/.stamp_built" ]; then
+                echo "Cleaning incomplete package: $pkg_dir"
+                rm -rf "$pkg_dir"
+              fi
+            done
+          fi
+
       - name: Build OctaneOS image
         id: build
         run: |
