@@ -121,6 +121,16 @@ jobs:
             https://github.com/suckbluefrog/Batocera-Multilib/releases/download/7-4-2026/ecwolf-source.tar.gz
           tar xzf /tmp/ecwolf-source.tar.gz -C batocera/dl/
 
+      - name: Validate host toolchain cache
+        run: |
+          if [ ! -f "${{ env.BR_OUTPUT_DIR }}/host/bin/ninja" ]; then
+            echo "Host toolchain missing or incomplete — clearing host stamps to force rebuild"
+            find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -name "host-*" -exec rm -rf {} + 2>/dev/null || true
+            find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -name "toolchain-*" -exec rm -rf {} + 2>/dev/null || true
+          else
+            echo "Host toolchain OK: $(ninja --version 2>/dev/null || ${{ env.BR_OUTPUT_DIR }}/host/bin/ninja --version)"
+          fi
+
       - name: Clean inconsistent package state from cache
         run: |
           BUILD_DIR="${{ env.BR_OUTPUT_DIR }}/build"
