@@ -96,8 +96,8 @@ jobs:
           path: |
             ${{ env.BR_OUTPUT_DIR }}/build
             ${{ env.BR_OUTPUT_DIR }}/staging
-          key: buildroot-build-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ github.run_id }}
-          restore-keys: buildroot-build-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-
+          key: buildroot-build-v2-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ github.run_id }}
+          restore-keys: buildroot-build-v2-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-
 
       - name: Restore Buildroot downloads cache
         id: cache-dl-restore
@@ -149,7 +149,7 @@ jobs:
           path: |
             ${{ env.BR_OUTPUT_DIR }}/build
             ${{ env.BR_OUTPUT_DIR }}/staging
-          key: buildroot-build-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ github.run_id }}
+          key: buildroot-build-v2-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ github.run_id }}
 
       - name: Save Buildroot downloads cache
         uses: actions/cache/save@v4
