@@ -104,7 +104,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: batocera/dl
-          key: buildroot-dl-${{ github.run_id }}
+          key: buildroot-dl-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}
           restore-keys: buildroot-dl-
 
       - name: Pre-fetch tarballs that have flaky mirrors
@@ -163,10 +163,10 @@ jobs:
 
       - name: Save Buildroot downloads cache
         uses: actions/cache/save@v4
-        if: always()
+        if: steps.cache-dl-restore.outputs.cache-hit != 'true'
         with:
           path: batocera/dl
-          key: buildroot-dl-${{ github.run_id }}
+          key: buildroot-dl-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}
 
       - name: Collect image
         if: steps.build.outcome == 'success'
