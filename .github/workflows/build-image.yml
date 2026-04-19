@@ -110,9 +110,11 @@ jobs:
       - name: Pre-fetch tarballs that have flaky mirrors
         run: |
           mkdir -p batocera/dl
-          # libtool - ftpmirror.gnu.org is unreliable; fetch directly from ftp.gnu.org
-          wget -q -O batocera/dl/libtool-2.4.7.tar.xz \
-            https://ftp.gnu.org/pub/gnu/libtool/libtool-2.4.7.tar.xz
+          # Only fetch if not already in the dl/ cache
+          if [ ! -f batocera/dl/libtool-2.4.7.tar.xz ]; then
+            wget -q -O batocera/dl/libtool-2.4.7.tar.xz \
+              https://ftp.gnu.org/pub/gnu/libtool/libtool-2.4.7.tar.xz
+          fi
 
       - name: Pre-seed dl/ecwolf/ cache (courtesy suckbluefrog/Batocera-Multilib)
         run: |
