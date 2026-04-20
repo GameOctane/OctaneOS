@@ -134,11 +134,16 @@ jobs:
             find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -name "glibc-*" -exec rm -rf {} + 2>/dev/null || true
             find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -name "host-gcc-final-*" -exec rm -rf {} + 2>/dev/null || true
           fi
-          # Headers present but startup objects missing means glibc was cached mid-install.
-          # host-gcc-final needs crti.o to link libgcc_s.so.
-          echo "=== crti.o locations in sysroot ==="
-          find "${{ env.BR_OUTPUT_DIR }}/host/aarch64-buildroot-linux-gnu/sysroot" -name "crti.o" 2>/dev/null || echo "crti.o not found anywhere in sysroot"
-          if [ ! -f "${{ env.BR_OUTPUT_DIR }}/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib/crti.o" ]; then
+          # On aarch64, glibc installs crti.o to usr/lib64/ and Buildroot
+          # creates a usr/lib -> lib64 symlink so the cross-linker can find it.
+          # This symlink may be missing from a partial toolchain cache.
+          SYSROOT="${{ env.BR_OUTPUT_DIR }}/host/aarch64-buildroot-linux-gnu/sysroot"
+          if [ -d "${SYSROOT}/usr/lib64" ] && [ ! -e "${SYSROOT}/usr/lib" ]; then
+            echo "Creating missing usr/lib -> lib64 symlink in sysroot"
+            ln -sf lib64 "${SYSROOT}/usr/lib"
+          fi
+          # Trigger glibc+gcc-final rebuild if crti.o is absent from both paths
+          if [ ! -f "${SYSROOT}/usr/lib64/crti.o" ] && [ ! -f "${SYSROOT}/usr/lib/crti.o" ]; then
             echo "Sysroot crti.o missing — forcing glibc and host-gcc-final rebuild"
             find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -name "glibc-*" -exec rm -rf {} + 2>/dev/null || true
             find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -name "host-gcc-final-*" -exec rm -rf {} + 2>/dev/null || true
