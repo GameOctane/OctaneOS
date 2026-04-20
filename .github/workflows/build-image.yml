@@ -142,6 +142,13 @@ jobs:
             find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -name "glibc-*" -exec rm -rf {} + 2>/dev/null || true
             find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -name "host-gcc-final-*" -exec rm -rf {} + 2>/dev/null || true
           fi
+          # Headers present but startup objects missing means glibc was cached mid-install.
+          # host-gcc-final needs crti.o to link libgcc_s.so.
+          if [ ! -f "${{ env.BR_OUTPUT_DIR }}/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib/crti.o" ]; then
+            echo "Sysroot crti.o missing — forcing glibc and host-gcc-final rebuild"
+            find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -name "glibc-*" -exec rm -rf {} + 2>/dev/null || true
+            find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -name "host-gcc-final-*" -exec rm -rf {} + 2>/dev/null || true
+          fi
 
       - name: Clean inconsistent package state from cache
         run: |
