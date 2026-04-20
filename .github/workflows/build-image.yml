@@ -132,12 +132,14 @@ jobs:
           else
             echo "Host toolchain OK: $(${{ env.BR_OUTPUT_DIR }}/host/bin/ninja --version 2>/dev/null || echo n/a)"
           fi
-          # Sysroot headers are installed by linux-headers after initial GCC.
-          # If the toolchain cache was saved before that step ran, the sysroot
-          # will be empty and host-gcc-final will fail. Force both to rebuild.
-          if [ ! -d "${{ env.BR_OUTPUT_DIR }}/host/aarch64-buildroot-linux-gnu/sysroot/usr/include" ]; then
-            echo "Sysroot headers missing — forcing linux-headers and host-gcc-final rebuild"
+          # Sysroot is populated by linux-headers (kernel headers) and glibc
+          # (stdio.h etc.) before host-gcc-final can build libgcc. If the
+          # toolchain cache was saved mid-build, the sysroot may be partial.
+          # Clear all three so buildroot re-installs them cleanly.
+          if [ ! -f "${{ env.BR_OUTPUT_DIR }}/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/stdio.h" ]; then
+            echo "Sysroot C headers missing — forcing linux-headers, glibc, and host-gcc-final rebuild"
             find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -name "linux-headers-*" -exec rm -rf {} + 2>/dev/null || true
+            find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -name "glibc-*" -exec rm -rf {} + 2>/dev/null || true
             find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -name "host-gcc-final-*" -exec rm -rf {} + 2>/dev/null || true
           fi
 
