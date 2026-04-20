@@ -86,8 +86,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.BR_OUTPUT_DIR }}/host
-          key: buildroot-host-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}
-          restore-keys: buildroot-host-
+          key: buildroot-host-v2-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}
+          restore-keys: buildroot-host-v2-
 
       - name: Restore Buildroot build output cache
         id: cache-build-restore
@@ -98,14 +98,6 @@ jobs:
             ${{ env.BR_OUTPUT_DIR }}/staging
           key: buildroot-build-v2-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ github.run_id }}
           restore-keys: buildroot-build-v2-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-
-
-      - name: Restore Buildroot downloads cache
-        id: cache-dl-restore
-        uses: actions/cache/restore@v4
-        with:
-          path: batocera/dl
-          key: buildroot-dl-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}
-          restore-keys: buildroot-dl-
 
       - name: Pre-fetch tarballs that have flaky mirrors
         run: |
@@ -181,13 +173,6 @@ jobs:
             ${{ env.BR_OUTPUT_DIR }}/build
             ${{ env.BR_OUTPUT_DIR }}/staging
           key: buildroot-build-v2-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ github.run_id }}
-
-      - name: Save Buildroot downloads cache
-        uses: actions/cache/save@v4
-        if: steps.cache-dl-restore.outputs.cache-hit != 'true'
-        with:
-          path: batocera/dl
-          key: buildroot-dl-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}
 
       - name: Collect image
         if: steps.build.outcome == 'success'
