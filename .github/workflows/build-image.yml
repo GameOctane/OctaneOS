@@ -144,6 +144,8 @@ jobs:
           fi
           # Headers present but startup objects missing means glibc was cached mid-install.
           # host-gcc-final needs crti.o to link libgcc_s.so.
+          echo "=== crti.o locations in sysroot ==="
+          find "${{ env.BR_OUTPUT_DIR }}/host/aarch64-buildroot-linux-gnu/sysroot" -name "crti.o" 2>/dev/null || echo "crti.o not found anywhere in sysroot"
           if [ ! -f "${{ env.BR_OUTPUT_DIR }}/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib/crti.o" ]; then
             echo "Sysroot crti.o missing — forcing glibc and host-gcc-final rebuild"
             find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -name "glibc-*" -exec rm -rf {} + 2>/dev/null || true
