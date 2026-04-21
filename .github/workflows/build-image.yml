@@ -174,23 +174,27 @@ jobs:
           echo "lib/crti.o:   $([ -f "${SYSROOT}/usr/lib/crti.o"   ] && echo PRESENT || echo missing)"
           echo "lib64/crti.o: $([ -f "${SYSROOT}/usr/lib64/crti.o" ] && echo PRESENT || echo missing)"
 
-          make a733-cubie-a7s-build DIRECT_BUILD=1
-          BUILD_STATUS=$?
-
-          if [ $BUILD_STATUS -ne 0 ]; then
+          # Use `if` so set -e doesn't kill the script when make fails
+          if make a733-cubie-a7s-build DIRECT_BUILD=1; then
+            BUILD_STATUS=0
+          else
+            BUILD_STATUS=$?
             echo "=== Post-failure sysroot state ==="
             ls -la "${SYSROOT}/usr/" 2>/dev/null | head -20 || echo "(sysroot/usr missing)"
             echo "lib/crti.o:   $([ -f "${SYSROOT}/usr/lib/crti.o"   ] && echo PRESENT || echo MISSING)"
             echo "lib64/crti.o: $([ -f "${SYSROOT}/usr/lib64/crti.o" ] && echo PRESENT || echo MISSING)"
 
-            # glibc on aarch64 sometimes installs CRT objects to usr/lib64/ while
-            # the cross-linker searches usr/lib/ — create the symlink and retry.
+            # glibc on aarch64 installs CRT objects to usr/lib64/ while the
+            # cross-linker searches usr/lib/ — create the symlink and retry once.
             if [ -f "${SYSROOT}/usr/lib64/crti.o" ] && [ ! -e "${SYSROOT}/usr/lib" ]; then
               echo "=== Retrying: creating usr/lib -> lib64 symlink in sysroot ==="
               ln -sf lib64 "${SYSROOT}/usr/lib"
               find "${BUILD_DIR}" -maxdepth 1 -name "host-gcc-final-*" -exec rm -rf {} + 2>/dev/null || true
-              make a733-cubie-a7s-build DIRECT_BUILD=1
-              BUILD_STATUS=$?
+              if make a733-cubie-a7s-build DIRECT_BUILD=1; then
+                BUILD_STATUS=0
+              else
+                BUILD_STATUS=$?
+              fi
             fi
           fi
 
