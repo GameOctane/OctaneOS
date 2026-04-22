@@ -120,6 +120,21 @@ jobs:
             wget -q -O batocera/dl/libtool-2.4.7.tar.xz \
               https://ftp.gnu.org/pub/gnu/libtool/libtool-2.4.7.tar.xz
           fi
+          # The following packages all resolve to 131.252.210.176 (freedesktop.org /
+          # mesa3d infrastructure) which is unreachable from GH Actions runners.
+          # Pre-seed from our mirror release so buildroot doesn't attempt the download.
+          BASE_URL="https://github.com/GameOctane/OctaneOS/releases/download/build-deps-v1"
+          mkdir -p batocera/dl/mesa3d batocera/dl/dbus batocera/dl/libdrm batocera/dl/libxcb batocera/dl/xcb-proto
+          [ -f batocera/dl/mesa3d/mesa-25.3.6.tar.xz ] || \
+            wget -q -O batocera/dl/mesa3d/mesa-25.3.6.tar.xz     "${BASE_URL}/mesa-25.3.6.tar.xz"
+          [ -f batocera/dl/dbus/dbus-1.14.10.tar.xz ] || \
+            wget -q -O batocera/dl/dbus/dbus-1.14.10.tar.xz       "${BASE_URL}/dbus-1.14.10.tar.xz"
+          [ -f batocera/dl/libdrm/libdrm-2.4.131.tar.xz ] || \
+            wget -q -O batocera/dl/libdrm/libdrm-2.4.131.tar.xz   "${BASE_URL}/libdrm-2.4.131.tar.xz"
+          [ -f batocera/dl/libxcb/libxcb-1.17.0.tar.xz ] || \
+            wget -q -O batocera/dl/libxcb/libxcb-1.17.0.tar.xz   "${BASE_URL}/libxcb-1.17.0.tar.xz"
+          [ -f batocera/dl/xcb-proto/xcb-proto-1.17.0.tar.xz ] || \
+            wget -q -O batocera/dl/xcb-proto/xcb-proto-1.17.0.tar.xz "${BASE_URL}/xcb-proto-1.17.0.tar.xz"
 
       - name: Pre-seed dl/ecwolf/ cache (courtesy suckbluefrog/Batocera-Multilib)
         run: |
