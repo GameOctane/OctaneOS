@@ -181,8 +181,19 @@ jobs:
           fi
           # Packages that install headers into the sysroot may have their build stamps
           # in the cache while the sysroot files are absent (stale toolchain cache).
-          # Detect and clear the stamps so buildroot reinstalls them into the sysroot.
-          if [ ! -f "${SYSROOT}/usr/include/png.h" ]; then
+          # zlib is one of the earliest target packages; if zlib.h is missing the
+          # entire sysroot is stale — clear all target (non-host, non-toolchain) stamps
+          # so buildroot repopulates the sysroot from scratch.
+          if [ ! -f "${SYSROOT}/usr/include/zlib.h" ]; then
+            echo "zlib.h missing from sysroot — sysroot is stale, clearing all target package stamps"
+            find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -mindepth 1 -type d \
+              ! -name 'host-*' \
+              ! -name 'toolchain*' \
+              ! -name 'linux-headers-*' \
+              ! -name 'glibc-*' \
+              ! -name '.*' \
+              -exec rm -rf {} + 2>/dev/null || true
+          elif [ ! -f "${SYSROOT}/usr/include/png.h" ]; then
             echo "png.h missing from sysroot — clearing libpng stamps to force reinstall"
             find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -name "libpng-*" -exec rm -rf {} + 2>/dev/null || true
           fi
