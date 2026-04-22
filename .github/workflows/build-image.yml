@@ -89,12 +89,14 @@ jobs:
           chmod +x "${SHIM_DIR}/make"
           echo "${SHIM_DIR}" >> "$GITHUB_PATH"
 
-      - name: Cache Buildroot toolchain
-        uses: actions/cache@v4
+      - name: Restore Buildroot toolchain cache
+        uses: actions/cache/restore@v4
         with:
           path: ${{ env.BR_OUTPUT_DIR }}/host
-          key: buildroot-host-v2-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}
-          restore-keys: buildroot-host-v2-
+          key: buildroot-host-v2-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}-${{ github.run_id }}
+          restore-keys: |
+            buildroot-host-v2-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}-
+            buildroot-host-v2-
 
       - name: Restore Buildroot build output cache
         id: cache-build-restore
@@ -230,6 +232,13 @@ jobs:
           exit $BUILD_STATUS
         timeout-minutes: 320
         continue-on-error: true
+
+      - name: Save Buildroot toolchain cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: ${{ env.BR_OUTPUT_DIR }}/host
+          key: buildroot-host-v2-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}-${{ github.run_id }}
 
       - name: Save Buildroot build output cache
         uses: actions/cache/save@v4
