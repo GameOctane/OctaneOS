@@ -74,6 +74,10 @@ jobs:
           # are library calls on aarch64, not compiler built-ins like on x86).
           sed -i '/\$(eval \$(cmake-package))/i FAAD2_CONF_OPTS += -DCMAKE_EXE_LINKER_FLAGS="$(TARGET_LDFLAGS) -lm" -DCMAKE_SHARED_LINKER_FLAGS="$(TARGET_LDFLAGS) -lm"\n' \
             batocera/buildroot/package/faad2/faad2.mk
+          # libmodplug: load_pat.cpp redeclares sinf as static after <cmath> declares it
+          # extern — GCC 13 treats this as an error; -fpermissive downgrades it to a warning.
+          sed -i '/\$(eval \$(cmake-package))/i LIBMODPLUG_CONF_OPTS += -DCMAKE_CXX_FLAGS="$(TARGET_CXXFLAGS) -fpermissive"\n' \
+            batocera/buildroot/package/libmodplug/libmodplug.mk
 
       - name: Install make shim (fixes --no-builtin-rules propagation)
         run: |
