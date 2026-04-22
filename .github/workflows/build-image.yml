@@ -179,6 +179,13 @@ jobs:
               \( -name "toolchain-buildroot*" -o -name "toolchain" \) \
               -exec rm -rf {} + 2>/dev/null || true
           fi
+          # Packages that install headers into the sysroot may have their build stamps
+          # in the cache while the sysroot files are absent (stale toolchain cache).
+          # Detect and clear the stamps so buildroot reinstalls them into the sysroot.
+          if [ ! -f "${SYSROOT}/usr/include/png.h" ]; then
+            echo "png.h missing from sysroot — clearing libpng stamps to force reinstall"
+            find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -name "libpng-*" -exec rm -rf {} + 2>/dev/null || true
+          fi
 
       - name: Clean inconsistent package state from cache
         run: |
