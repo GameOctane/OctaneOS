@@ -148,6 +148,15 @@ jobs:
             find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -name "glibc-*" -exec rm -rf {} + 2>/dev/null || true
             find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -name "host-gcc-final-*" -exec rm -rf {} + 2>/dev/null || true
           fi
+          # host-cargo-c installs cargo-cbuild into host/bin/ but is not a toolchain
+          # package — it's a host dependency of host-librsvg. If the toolchain cache
+          # was saved before cargo-c was installed, the binary will be missing even
+          # though build/host-cargo-c-*/.stamp_installed exists. Clear the stamps so
+          # buildroot reinstalls it.
+          if [ ! -f "${{ env.BR_OUTPUT_DIR }}/host/bin/cargo-cbuild" ]; then
+            echo "cargo-cbuild missing from host/bin — clearing host-cargo-c stamps to force reinstall"
+            find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -name "host-cargo-c-*" -exec rm -rf {} + 2>/dev/null || true
+          fi
 
       - name: Clean inconsistent package state from cache
         run: |
