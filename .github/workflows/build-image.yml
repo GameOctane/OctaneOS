@@ -68,6 +68,13 @@ jobs:
           mkdir -p "${{ env.BR_OUTPUT_DIR }}"
           cp board/batocera/allwinner/a733/local.mk "${{ env.BR_OUTPUT_DIR }}/local.mk"
 
+      - name: Apply buildroot package patches
+        run: |
+          # faad2 2.11.1: missing -lm link on aarch64 (lrintf/sincos/sqrtf/log/pow
+          # are library calls on aarch64, not compiler built-ins like on x86).
+          sed -i '/\$(eval \$(cmake-package))/i FAAD2_CONF_OPTS += -DCMAKE_EXE_LINKER_FLAGS="$(TARGET_LDFLAGS) -lm" -DCMAKE_SHARED_LINKER_FLAGS="$(TARGET_LDFLAGS) -lm"\n' \
+            batocera/buildroot/package/faad2/faad2.mk
+
       - name: Install make shim (fixes --no-builtin-rules propagation)
         run: |
           REAL_MAKE="$(command -v make)"
