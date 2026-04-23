@@ -82,7 +82,7 @@ jobs:
           # and ICONV_LIBRARIES (old-style, pre-3.11 cmake convention). On glibc iconv is
           # in libc — pre-set both variables so the module's find_path/find_library are
           # skipped and ICONV_FOUND=TRUE is set directly.
-          sed -i '/\$(eval \$(cmake-package))/i POPPLER_CONF_OPTS += -DICONV_INCLUDE_DIR=$(STAGING_DIR)/usr/include -DICONV_LIBRARIES=$(STAGING_DIR)/usr/lib/libc.so\n' \
+          sed -i '/\$(eval \$(cmake-package))/i POPPLER_CONF_OPTS += -DICONV_INCLUDE_DIR=$(STAGING_DIR)/usr/include -DICONV_LIBRARIES=-lc\n' \
             batocera/buildroot/package/poppler/poppler.mk
 
       - name: Install make shim (fixes --no-builtin-rules propagation)
