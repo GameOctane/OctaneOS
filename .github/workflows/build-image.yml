@@ -78,6 +78,11 @@ jobs:
           # extern — GCC 13 treats this as an error; -fpermissive downgrades it to a warning.
           sed -i '/\$(eval \$(cmake-package))/i LIBMODPLUG_CONF_OPTS += -DCMAKE_CXX_FLAGS="$(TARGET_CXXFLAGS) -fpermissive"\n' \
             batocera/buildroot/package/libmodplug/libmodplug.mk
+          # poppler-22.12.0: cmake FindIconv fails in cross-compilation because it
+          # can't prove iconv_open is in libc without running a test binary.
+          # On glibc iconv is built into libc — tell cmake explicitly.
+          sed -i '/\$(eval \$(cmake-package))/i POPPLER_CONF_OPTS += -DIconv_IS_BUILT_IN=TRUE -DIconv_INCLUDE_DIR=$(STAGING_DIR)/usr/include\n' \
+            batocera/buildroot/package/poppler/poppler.mk
 
       - name: Install make shim (fixes --no-builtin-rules propagation)
         run: |
