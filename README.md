@@ -60,7 +60,7 @@ OctaneOS is built for the **Radxa Cubie A7S** with the Allwinner A733 SoC.
 | Display out | USB-C DisplayPort Alt Mode |
 | GPIO | 30-pin + 15-pin headers |
 
-Full hardware specification available in the [Octane Platform Spec](https://gameoctane.com).
+Full hardware specification available in the [Octane Platform Spec v1.3](docs/Octane_Platform_Spec_v1_3.pdf).
 
 ---
 
@@ -96,13 +96,17 @@ OctaneOS manages three distinct play modes automatically — no configuration re
 
 ## Build Status
 
+[![CI](https://github.com/GameOctane/OctaneOS/actions/workflows/build-image.yml/badge.svg)](https://github.com/GameOctane/OctaneOS/actions/workflows/build-image.yml)
+
 > 🚧 OctaneOS is in active early development. We are building in public from day one — including the failures. Follow along.
 
 | Milestone | Status |
 |---|---|
 | Batocera fork + A733 build target | ✅ Complete |
-| Boot blobs (boot0 + U-Boot) | ✅ Complete |
-| Debian booting on Cubie A7S | ⏳ Pending hardware |
+| GitHub Actions CI image build | ✅ Complete |
+| A733 kernel + Cubie A7S device tree | ✅ Complete |
+| Boot blobs (boot0 + U-Boot) | 🚧 In Progress |
+| OctaneOS booting on Cubie A7S hardware | ⏳ Pending hardware |
 | DPI screen bring-up via LCD0 | ⏳ Pending hardware |
 | EmulationStation launching | ⏳ Pending |
 | First ROM running | ⏳ Pending |
