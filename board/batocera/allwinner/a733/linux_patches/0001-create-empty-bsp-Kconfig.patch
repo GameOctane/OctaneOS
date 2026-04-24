@@ -1,8 +1,13 @@
-The allwinner-aiot-linux-5.15 root Kconfig sources bsp/Kconfig, which lives
-in a git submodule not present in buildroot's git archive download.
-Create a stub so olddefconfig can proceed.
+The allwinner-aiot-linux-5.15 root Kconfig sources bsp/Kconfig and the
+kernel Makefile descends into bsp/ to build it. Both live in a git submodule
+not present in buildroot's git archive download. Create stubs so the kernel
+config and build steps can proceed.
 
 --- /dev/null
 +++ b/bsp/Kconfig
 @@ -0,0 +1 @@
 +# BSP Kconfig stub (bsp/ submodule not available in archive builds)
+--- /dev/null
++++ b/bsp/Makefile
+@@ -0,0 +1 @@
++# BSP Makefile stub (bsp/ submodule not available in archive builds)
