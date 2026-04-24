@@ -31,6 +31,7 @@ Batocera is an incredible foundation. OctaneOS builds on top of it with features
 |---|---|---|
 | Allwinner A733 support | ❌ | ✅ |
 | Three mode system | ❌ | ✅ |
+| Dual-radio WiFi — internet + streaming simultaneously | ❌ | ✅ |
 | Cover art dock mode | ❌ | ✅ |
 | Achievement overlay on device screen | ❌ | ✅ |
 | Wireless streaming stack | ❌ | ✅ |
@@ -72,7 +73,7 @@ OctaneOS manages three distinct play modes automatically — no configuration re
 
 **Docked** — single USB-C cable carries DisplayPort video to TV and charges simultaneously. Octane screen switches to cover art and achievement notification mode.
 
-**Wireless Streaming** — Octane stays in your hands. Game streams over WiFi 6 to the dock chip, which outputs to the TV. Octane screen becomes a companion display.
+**Wireless Streaming** — Octane stays in your hands. Game streams over a dedicated WiFi 6 radio (wlan1) to the dock. A second independent radio (wlan0) keeps the home network connection live — RetroAchievements, OTA updates, and netplay all work during streaming. Octane screen becomes a companion display.
 
 ---
 
@@ -105,6 +106,7 @@ OctaneOS manages three distinct play modes automatically — no configuration re
 | Batocera fork + A733 build target | ✅ Complete |
 | GitHub Actions CI image build | ✅ Complete |
 | A733 kernel + Cubie A7S device tree | ✅ Complete |
+| aic8800 WiFi driver integrated into image build | ✅ Complete |
 | Boot blobs (boot0 + U-Boot) | 🚧 In Progress |
 | OctaneOS booting on Cubie A7S hardware | ⏳ Pending hardware |
 | DPI screen bring-up via LCD0 | ⏳ Pending hardware |
