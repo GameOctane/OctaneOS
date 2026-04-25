@@ -234,6 +234,15 @@ jobs:
                 rm -rf "$pkg_dir"
               fi
             done
+            # If the kernel build dir is missing the sun60iw2 dt-bindings headers it
+            # was patched before linux_patches/0003 existed. Clear the kernel dir so
+            # buildroot re-extracts and re-applies all patches including the new one.
+            KERNEL_DIR=$(find "$BUILD_DIR" -maxdepth 1 -name "linux-*" -type d 2>/dev/null | head -1)
+            if [ -n "$KERNEL_DIR" ] && \
+               [ ! -f "$KERNEL_DIR/include/dt-bindings/clock/sun60iw2-ccu.h" ]; then
+              echo "sun60iw2 dt-bindings missing from kernel tree — clearing kernel dir to force re-patch"
+              rm -rf "$KERNEL_DIR"
+            fi
           fi
 
       - name: Build OctaneOS image
