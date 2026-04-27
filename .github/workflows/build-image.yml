@@ -229,9 +229,19 @@ jobs:
           if [ -d "$BUILD_DIR" ]; then
             find "$BUILD_DIR" -name ".stamp_configured" | while read f; do
               pkg_dir=$(dirname "$f")
+              pkg_name=$(basename "$pkg_dir")
               if [ ! -f "$pkg_dir/.stamp_built" ]; then
-                echo "Cleaning incomplete package: $pkg_dir"
-                rm -rf "$pkg_dir"
+                # WebKit packages take longer than one CI window to compile.
+                # Leave them intact so ninja can resume across runs.
+                case "$pkg_name" in
+                  webkitgtk-*|wpewebkit-*)
+                    echo "Leaving partial WebKit build intact for resume: $pkg_name"
+                    ;;
+                  *)
+                    echo "Cleaning incomplete package: $pkg_dir"
+                    rm -rf "$pkg_dir"
+                    ;;
+                esac
               fi
             done
             # If the kernel build dir is missing the sun60iw2 dt-bindings headers it
