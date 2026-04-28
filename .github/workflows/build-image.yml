@@ -103,10 +103,9 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.BR_OUTPUT_DIR }}/host
-          key: buildroot-host-v2-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}-${{ github.run_id }}
+          key: buildroot-host-v3-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}
           restore-keys: |
-            buildroot-host-v2-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}-
-            buildroot-host-v2-
+            buildroot-host-v3-
 
       - name: Restore Buildroot build output cache
         id: cache-build-restore
@@ -300,7 +299,7 @@ jobs:
         if: always()
         with:
           path: ${{ env.BR_OUTPUT_DIR }}/host
-          key: buildroot-host-v2-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}-${{ github.run_id }}
+          key: buildroot-host-v3-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}
 
       - name: Save Buildroot build output cache
         uses: actions/cache/save@v4
