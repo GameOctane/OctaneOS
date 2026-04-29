@@ -301,6 +301,17 @@ jobs:
           path: ${{ env.BR_OUTPUT_DIR }}/host
           key: buildroot-host-v3-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}
 
+      - name: Prune old build output caches
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/${{ github.repository }}/actions/caches \
+            --jq '.actions_caches[] | select(.key | startswith("buildroot-build-v2-")) | .id' \
+            | while read id; do
+              gh api --method DELETE repos/${{ github.repository }}/actions/caches/$id || true
+            done
+
       - name: Save Buildroot build output cache
         uses: actions/cache/save@v4
         if: always()
