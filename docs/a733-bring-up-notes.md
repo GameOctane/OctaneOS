@@ -95,6 +95,41 @@ The `.board` file format uses Buildroot `BR2_` variables and Batocera-specific `
 
 ---
 
+## Power Button & Volume Controls
+
+Both are handled by existing in-kernel drivers — no new driver work needed.
+
+**Power button**
+- Use a spare GPIO pin on the 15-pin header
+- Driver: `gpio-keys` (standard kernel driver, in BSP defconfig)
+- Implementation: device tree entry only — add a `gpio-keys` node pointing at the chosen pin
+- Long-press shutdown is handled by a userspace daemon (e.g. `gpio-power-button` or custom script) watching the input event
+
+**Volume controls**
+- Route up/down buttons through the existing MCP23017 I2C GPIO expander (TWI3, pins 3/5)
+- MCP23017 has 16 GPIO pins; game controls use ~12, leaving headroom for 2 volume buttons
+- Driver chain: `mcp23017` → `gpio-keys` → standard Linux key events (KEY_VOLUMEUP / KEY_VOLUMEDOWN)
+- EmulationStation and RetroArch both respond to standard key events natively
+- Physical volume hardware is optional — software volume via ALSA/USB DAC works without it
+
+Both require only device tree additions. Add during hardware bring-up once pin assignments are confirmed.
+
+---
+
+## Audio Output
+
+Handled by the existing Allwinner audio driver stack — no new driver work needed.
+
+- **SoC codec:** Allwinner A733 has a built-in audio codec; driver is `snd-soc-sunxi` (in BSP defconfig)
+- **Physical jack:** Cubie A7S likely routes the codec output to a 3.5mm jack — verify against board schematic during bring-up
+- **Driver stack:** `sunxi-codec` + `sunxi-codec-machine` → ALSA sound card; RetroArch and EmulationStation use ALSA natively
+- **Implementation:** device tree node for the codec DAI link only — no kernel or build changes required
+- **Fallback:** if the jack routing is unclear at first boot, USB DAC (class-compliant) works out of the box with zero DTS changes
+
+Add the codec DTS node when creating `sun60i-a733-cubie-a7s.dts`. Reference: `sun60i-a733-cubie-a7a.dts` will have a working codec node to copy from.
+
+---
+
 ## Open TODOs Before First Boot
 
 1. Create `sun60i-a733-cubie-a7s.dts` (derive from A7A DTS, map Octane-specific hardware)
