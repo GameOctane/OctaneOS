@@ -294,6 +294,21 @@ jobs:
         timeout-minutes: 320
         continue-on-error: true
 
+      - name: Pre-cache diagnostics and process cleanup
+        if: always()
+        run: |
+          echo "=== Lingering build processes ==="
+          ps aux | grep -E "ninja|cmake|make|g\+\+|cc1plus|as" | grep -v grep || echo "(none)"
+          sudo killall -q ninja make cmake || true
+          sudo killall -q aarch64-buildroot-linux-gnu-g++.br_real cc1plus as || true
+          sleep 3
+          echo "=== Processes after kill ==="
+          ps aux | grep -E "ninja|cmake|make|g\+\+|cc1plus|as" | grep -v grep || echo "(none)"
+          echo "=== Build output disk usage ==="
+          du -sh "${{ env.BR_OUTPUT_DIR }}/build" "${{ env.BR_OUTPUT_DIR }}/staging" 2>/dev/null || echo "(dirs missing)"
+          echo "=== Disk free ==="
+          df -h /
+
       - name: Save Buildroot toolchain cache
         uses: actions/cache/save@v4
         if: always()
@@ -301,18 +316,8 @@ jobs:
           path: ${{ env.BR_OUTPUT_DIR }}/host
           key: buildroot-host-v3-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}
 
-      - name: Prune old build output caches
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api repos/${{ github.repository }}/actions/caches \
-            --jq '.actions_caches[] | select(.key | startswith("buildroot-build-v2-")) | .id' \
-            | while read id; do
-              gh api --method DELETE repos/${{ github.repository }}/actions/caches/$id || true
-            done
-
       - name: Save Buildroot build output cache
+        id: save-build-cache
         uses: actions/cache/save@v4
         if: always()
         with:
@@ -320,6 +325,18 @@ jobs:
             ${{ env.BR_OUTPUT_DIR }}/build
             ${{ env.BR_OUTPUT_DIR }}/staging
           key: buildroot-build-v2-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ github.run_id }}
+
+      - name: Prune old build output caches
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          CURRENT_KEY="buildroot-build-v2-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ github.run_id }}"
+          gh api repos/${{ github.repository }}/actions/caches \
+            --jq ".actions_caches[] | select(.key | startswith(\"buildroot-build-v2-\")) | select(.key != \"$CURRENT_KEY\") | .id" \
+            | while read id; do
+              gh api --method DELETE repos/${{ github.repository }}/actions/caches/$id || true
+            done
 
       - name: Collect image
         if: steps.build.outcome == 'success'
