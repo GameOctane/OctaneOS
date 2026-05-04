@@ -322,7 +322,7 @@ jobs:
           fi
 
           exit $BUILD_STATUS
-        timeout-minutes: 320
+        timeout-minutes: 300
         continue-on-error: true
 
       - name: Pre-cache diagnostics and process cleanup
@@ -339,6 +339,24 @@ jobs:
           du -sh "${{ env.BR_OUTPUT_DIR }}/build" "${{ env.BR_OUTPUT_DIR }}/staging" 2>/dev/null || echo "(dirs missing)"
           echo "=== Disk free ==="
           df -h /
+
+      - name: Strip object files from fully-installed packages
+        if: always()
+        run: |
+          BUILD_DIR="${{ env.BR_OUTPUT_DIR }}/build"
+          if [ ! -d "$BUILD_DIR" ]; then
+            echo "Build dir missing, skipping."
+            exit 0
+          fi
+          echo "=== Cache size before cleanup ==="
+          du -sh "$BUILD_DIR" || true
+          find "$BUILD_DIR" -maxdepth 1 -mindepth 1 -type d | while read pkg_dir; do
+            if [ -f "$pkg_dir/.stamp_installed" ]; then
+              find "$pkg_dir" -type f \( -name "*.o" -o -name "*.lo" -o -name "*.la" \) -delete 2>/dev/null || true
+            fi
+          done
+          echo "=== Cache size after cleanup ==="
+          du -sh "$BUILD_DIR" || true
 
       - name: Save Buildroot toolchain cache
         uses: actions/cache/save@v4
