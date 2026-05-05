@@ -103,9 +103,9 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.BR_OUTPUT_DIR }}/host
-          key: buildroot-host-v3-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}
+          key: buildroot-host-v4-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}
           restore-keys: |
-            buildroot-host-v3-
+            buildroot-host-v4-
 
       - name: Restore Buildroot build output cache
         id: cache-build-restore
@@ -234,21 +234,8 @@ jobs:
               \( -name "toolchain-buildroot*" -o -name "toolchain" \) \
               -exec rm -rf {} + 2>/dev/null || true
           fi
-          # Packages that install headers into the sysroot may have their build stamps
-          # in the cache while the sysroot files are absent (stale toolchain cache).
-          # zlib is one of the earliest target packages; if zlib.h is missing the
-          # entire sysroot is stale — clear all target (non-host, non-toolchain) stamps
-          # so buildroot repopulates the sysroot from scratch.
-          if [ ! -f "${SYSROOT}/usr/include/zlib.h" ]; then
-            echo "zlib.h missing from sysroot — sysroot is stale, clearing all target package stamps"
-            find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -mindepth 1 -type d \
-              ! -name 'host-*' \
-              ! -name 'toolchain*' \
-              ! -name 'linux-headers-*' \
-              ! -name 'glibc-*' \
-              ! -name '.*' \
-              -exec rm -rf {} + 2>/dev/null || true
-          elif [ ! -f "${SYSROOT}/usr/include/png.h" ]; then
+          # Only clear libpng if png.h is missing — targeted, not a full wipe.
+          if [ ! -f "${SYSROOT}/usr/include/png.h" ]; then
             echo "png.h missing from sysroot — clearing libpng stamps to force reinstall"
             find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -name "libpng-*" -exec rm -rf {} + 2>/dev/null || true
           fi
@@ -363,7 +350,7 @@ jobs:
         if: always()
         with:
           path: ${{ env.BR_OUTPUT_DIR }}/host
-          key: buildroot-host-v3-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}
+          key: buildroot-host-v4-${{ hashFiles('configs/batocera-a733-cubie-a7s.board') }}-${{ hashFiles('batocera/buildroot/toolchain/**/*.mk') }}
 
       - name: Save Buildroot build output cache
         id: save-build-cache
