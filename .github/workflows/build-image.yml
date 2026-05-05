@@ -352,7 +352,7 @@ jobs:
           du -sh "$BUILD_DIR" || true
           find "$BUILD_DIR" -maxdepth 1 -mindepth 1 -type d | while read pkg_dir; do
             if [ -f "$pkg_dir/.stamp_installed" ]; then
-              find "$pkg_dir" -type f \( -name "*.o" -o -name "*.lo" -o -name "*.la" \) -delete 2>/dev/null || true
+              find "$pkg_dir" -type f \( -name "*.o" -o -name "*.lo" \) -delete 2>/dev/null || true
             fi
           done
           echo "=== Cache size after cleanup ==="
