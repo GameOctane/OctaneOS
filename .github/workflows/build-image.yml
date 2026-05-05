@@ -212,7 +212,8 @@ jobs:
             "libvpx.so:libvpx" \
             "libx264.so:x264" \
             "libmpg123.so:mpg123" \
-            "libcrypt.so:libxcrypt"; do
+            "libcrypt.so:libxcrypt" \
+            "libz.so:zlib"; do
             lib="${pkg_check%%:*}"
             pkg="${pkg_check##*:}"
             if [ ! -f "${SYSROOT}/usr/lib/${lib}" ] && [ ! -f "${SYSROOT}/usr/lib64/${lib}" ]; then
