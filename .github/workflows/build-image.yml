@@ -201,7 +201,7 @@ jobs:
           # toolchain cache predates their installation. Clear the corresponding package
           # stamps so buildroot reinstalls them before webkit tries to link.
           SYSROOT="${{ env.BR_OUTPUT_DIR }}/host/aarch64-buildroot-linux-gnu/sysroot"
-          for pkg_check in "libwoff2dec.so:woff2"; do
+          for pkg_check in "libwoff2dec.so:woff2" "libtheora.so:libtheora" "libvorbis.so:libvorbis"; do
             lib="${pkg_check%%:*}"
             pkg="${pkg_check##*:}"
             if [ ! -f "${SYSROOT}/usr/lib/${lib}" ] && [ ! -f "${SYSROOT}/usr/lib64/${lib}" ]; then
