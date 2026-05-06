@@ -256,6 +256,11 @@ jobs:
               \( -name "toolchain-buildroot*" -o -name "toolchain" \) \
               -exec rm -rf {} + 2>/dev/null || true
           fi
+          # pipewire-ffmpeg-plugins install was missing 'install -d' for videoconvert/
+          # causing "Not a directory" on every run (target/ is fresh, stamp is stale).
+          # Always clear the target-install stamp so the fixed script runs.
+          find "${{ env.BR_OUTPUT_DIR }}/build" -maxdepth 1 -name "pipewire-ffmpeg-plugins-*" \
+            -exec rm -f {}/.stamp_target_installed \; 2>/dev/null || true
           # If libz.so is missing the sysroot is essentially empty — the toolchain cache
           # was saved before target packages were installed. Clear all fast target package
           # stamps (excluding heavyweight packages that take hours) so buildroot reinstalls
