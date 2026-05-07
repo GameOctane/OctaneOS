@@ -86,6 +86,10 @@ jobs:
           # skipped and ICONV_FOUND=TRUE is set directly.
           sed -i '/\$(eval \$(cmake-package))/i POPPLER_CONF_OPTS += -DICONV_INCLUDE_DIR:PATH=$(STAGING_DIR)/usr/include -DICONV_LIBRARIES:STRING=-lc\n' \
             batocera/buildroot/package/poppler/poppler.mk
+          # hatari v2.6.1: fmodl is a library call on aarch64, not a compiler builtin.
+          # Link explicitly against libm so the linker can find fmodl@@GLIBC_2.17.
+          sed -i '/\$(eval \$(cmake-package))/i HATARI_CONF_OPTS += -DCMAKE_EXE_LINKER_FLAGS="$(TARGET_LDFLAGS) -lm"\n' \
+            batocera/buildroot/package/hatari/hatari.mk
 
       - name: Install make shim (fixes --no-builtin-rules propagation)
         run: |
