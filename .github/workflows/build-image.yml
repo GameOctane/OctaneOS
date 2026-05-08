@@ -88,7 +88,7 @@ jobs:
             batocera/buildroot/package/poppler/poppler.mk
           # libretro-melonds: A733 has no desktop GL (softpipe GLES only).
           # Inject A733-specific block before the generic aarch64 fallback.
-          python3 -c 'import pathlib; f=pathlib.Path("batocera/package/batocera/emulators/retroarch/libretro/libretro-melonds/libretro-melonds.mk"); txt=f.read_text(); old="else ifeq ($(BR2_aarch64),y)\nLIBRETRO_MELONDS_PLATFORM = unix"; new="else ifeq ($(BR2_PACKAGE_BATOCERA_TARGET_A733),y)\nLIBRETRO_MELONDS_PLATFORM = unix\nLIBRETRO_MELONDS_EXTRA_ARGS += HAVE_OPENGL=0\n\n"+old; f.write_text(txt.replace(old, new, 1))'
+          python3 -c 'import pathlib; f=pathlib.Path("batocera/package/batocera/emulators/retroarch/libretro/libretro-melonds/libretro-melonds.mk"); txt=f.read_text(); old="else ifeq ($(BR2_aarch64),y)\nLIBRETRO_MELONDS_PLATFORM = unix"; new="else ifeq ($(BR2_PACKAGE_BATOCERA_TARGET_A733),y)\nLIBRETRO_MELONDS_PLATFORM = unix\nLIBRETRO_MELONDS_EXTRA_ARGS += HAVE_OPENGL=0 ARCH=arm64\n\n"+old; f.write_text(txt.replace(old, new, 1))'
 
       - name: Install make shim (fixes --no-builtin-rules propagation)
         run: |
