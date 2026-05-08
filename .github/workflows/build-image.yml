@@ -89,14 +89,14 @@ jobs:
           # libretro-melonds: A733 has no desktop GL (softpipe GLES only).
           # Inject A733-specific block before the generic aarch64 fallback to
           # disable desktop OpenGL and avoid GL/gl.h not found.
-          python3 - <<'PYEOF'
-import re, pathlib
-f = pathlib.Path("batocera/package/batocera/emulators/retroarch/libretro/libretro-melonds/libretro-melonds.mk")
+          python3 -c "
+import pathlib
+f = pathlib.Path('batocera/package/batocera/emulators/retroarch/libretro/libretro-melonds/libretro-melonds.mk')
 txt = f.read_text()
-old = "else ifeq ($(BR2_aarch64),y)\nLIBRETRO_MELONDS_PLATFORM = unix"
-new = "else ifeq ($(BR2_PACKAGE_BATOCERA_TARGET_A733),y)\nLIBRETRO_MELONDS_PLATFORM = unix\nLIBRETRO_MELONDS_EXTRA_ARGS += HAVE_OPENGL=0\n\n" + old
+old = 'else ifeq (\$(BR2_aarch64),y)\nLIBRETRO_MELONDS_PLATFORM = unix'
+new = 'else ifeq (\$(BR2_PACKAGE_BATOCERA_TARGET_A733),y)\nLIBRETRO_MELONDS_PLATFORM = unix\nLIBRETRO_MELONDS_EXTRA_ARGS += HAVE_OPENGL=0\n\n' + old
 f.write_text(txt.replace(old, new, 1))
-PYEOF
+"
 
       - name: Install make shim (fixes --no-builtin-rules propagation)
         run: |
