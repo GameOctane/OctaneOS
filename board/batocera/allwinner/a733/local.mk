@@ -12,6 +12,10 @@ HOST_CXXFLAGS += -std=gnu++11 -D_GL_ATTRIBUTE_NODISCARD=
 # that adds -DCMAKE_POLICY_VERSION_MINIMUM=3.5 to every cmake invocation,
 # fixing all affected packages (hiredis, etc.) globally.
 BR2_CMAKE = $(BR2_EXTERNAL)/../scripts/host-cmake-compat
+# host-heimdal uses crypt() which glibc 2.28+ moved to libxcrypt (-lcrypt).
+# The Flatpak GCC environment has libcrypt.so but won't link it automatically.
+HOST_HEIMDAL_CONF_ENV += LIBS="-lcrypt"
+
 # host-ruby 3.3.5 gc.c triggers -Wformat= errors on GCC 12+ due to PRIdSIZE
 # expanding incorrectly. Pass --disable-werror so the build doesn't abort.
 HOST_RUBY_CONF_OPTS += --disable-werror
