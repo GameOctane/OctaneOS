@@ -18,6 +18,12 @@ BR2_CMAKE = $(BR2_EXTERNAL)/../scripts/host-cmake-compat
 # make command line to force the linker to include libcrypt.
 HOST_HEIMDAL_MAKE_OPTS += LIBS="-pthread -lpthread -lcrypt"
 
+# cpuinfo downloads googlebenchmark and googletest at configure time when tests
+# are enabled. Those bundled CMakeLists.txt have cmake_minimum_required < 3.5
+# which CMake 4.0 rejects, and the download then leaves empty dep dirs that
+# cause ADD_SUBDIRECTORY to fail. Disable all test/benchmark targets globally.
+CPUINFO_CONF_OPTS += -DCPUINFO_BUILD_UNIT_TESTS=OFF -DCPUINFO_BUILD_MOCK_TESTS=OFF -DCPUINFO_BUILD_BENCHMARKS=OFF
+
 # host-ruby 3.3.5 gc.c triggers -Wformat= errors on GCC 12+ due to PRIdSIZE
 # expanding incorrectly. Pass --disable-werror so the build doesn't abort.
 HOST_RUBY_CONF_OPTS += --disable-werror
