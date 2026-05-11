@@ -1,74 +1,24 @@
 From: OctaneOS Build Fix <noreply@octaneos>
 Date: Sun, 11 May 2026 00:00:00 +0000
-Subject: [PATCH] Support: use initial-exec TLS model for shared lib compat
+Subject: [PATCH] cmake: enable position-independent code globally
 
-All thread_local variables in LLVMSupport are compiled with the default
-local-exec TLS model when built without -fPIC. When LLVM links them into
-libLLVM.so the linker rejects the R_X86_64_TPOFF32 relocations:
+LLVM static libraries are compiled without -fPIC by default, but
+LLVM_BUILD_LLVM_DYLIB=ON (set by Buildroot's llvm.mk) links them all
+into libLLVM.so. The linker rejects the resulting non-PIC relocations:
 
-  relocation R_X86_64_TPOFF32 can not be used when making a shared object;
-  local-exec is incompatible with -shared
+  R_X86_64_TPOFF32 (local-exec TLS) and R_X86_64_PC32 (vtables)
+  can not be used when making a shared object; recompile with -fPIC
 
-Switch all affected variables to initial-exec, which uses GOT-based access
-and is fully compatible with shared libraries that are not dlopen'd.
-
-Files affected:
-  lib/Support/CrashRecoveryContext.cpp  (3 vars)
-  lib/Support/Parallel.cpp              (2 vars)
-  lib/Support/PrettyStackTrace.cpp      (2 vars)
-  lib/Support/ThreadPool.cpp            (1 var)
-  lib/Support/TimeProfiler.cpp          (1 var)
+Setting CMAKE_POSITION_INDEPENDENT_CODE globally after project() causes
+cmake to add -fPIC to all compilations, making the static library objects
+safe to link into shared libraries.
 ---
- lib/Support/CrashRecoveryContext.cpp | 6 +++---
- lib/Support/Parallel.cpp             | 4 ++--
- lib/Support/PrettyStackTrace.cpp     | 4 ++--
- lib/Support/ThreadPool.cpp           | 2 +-
- lib/Support/TimeProfiler.cpp         | 2 +-
- 5 files changed, 9 insertions(+), 9 deletions(-)
+ CMakeLists.txt | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/lib/Support/CrashRecoveryContext.cpp b/lib/Support/CrashRecoveryContext.cpp
---- a/lib/Support/CrashRecoveryContext.cpp
-+++ b/lib/Support/CrashRecoveryContext.cpp
-@@ -24,1 +24,1 @@
--static LLVM_THREAD_LOCAL const CrashRecoveryContextImpl *CurrentContext;
-+static LLVM_THREAD_LOCAL __attribute__((tls_model("initial-exec"))) const CrashRecoveryContextImpl *CurrentContext;
-@@ -91,1 +91,1 @@
--static LLVM_THREAD_LOCAL const CrashRecoveryContext *IsRecoveringFromCrash;
-+static LLVM_THREAD_LOCAL __attribute__((tls_model("initial-exec"))) const CrashRecoveryContext *IsRecoveringFromCrash;
-@@ -310,1 +310,1 @@
--static LLVM_THREAD_LOCAL const void* sCurrentExceptionHandle;
-+static LLVM_THREAD_LOCAL __attribute__((tls_model("initial-exec"))) const void* sCurrentExceptionHandle;
-
-diff --git a/lib/Support/Parallel.cpp b/lib/Support/Parallel.cpp
---- a/lib/Support/Parallel.cpp
-+++ b/lib/Support/Parallel.cpp
-@@ -26,1 +26,1 @@
--static thread_local unsigned threadIndex = UINT_MAX;
-+static thread_local __attribute__((tls_model("initial-exec"))) unsigned threadIndex = UINT_MAX;
-@@ -30,1 +30,1 @@
--thread_local unsigned threadIndex = UINT_MAX;
-+thread_local __attribute__((tls_model("initial-exec"))) unsigned threadIndex = UINT_MAX;
-
-diff --git a/lib/Support/PrettyStackTrace.cpp b/lib/Support/PrettyStackTrace.cpp
---- a/lib/Support/PrettyStackTrace.cpp
-+++ b/lib/Support/PrettyStackTrace.cpp
-@@ -53,1 +53,1 @@
--static LLVM_THREAD_LOCAL PrettyStackTraceEntry *PrettyStackTraceHead = nullptr;
-+static LLVM_THREAD_LOCAL __attribute__((tls_model("initial-exec"))) PrettyStackTraceEntry *PrettyStackTraceHead = nullptr;
-@@ -68,1 +68,1 @@
--static LLVM_THREAD_LOCAL unsigned ThreadLocalSigInfoGenerationCounter = 0;
-+static LLVM_THREAD_LOCAL __attribute__((tls_model("initial-exec"))) unsigned ThreadLocalSigInfoGenerationCounter = 0;
-
-diff --git a/lib/Support/ThreadPool.cpp b/lib/Support/ThreadPool.cpp
---- a/lib/Support/ThreadPool.cpp
-+++ b/lib/Support/ThreadPool.cpp
-@@ -55,1 +55,1 @@
--static LLVM_THREAD_LOCAL std::vector<ThreadPoolTaskGroup *>
-+static LLVM_THREAD_LOCAL __attribute__((tls_model("initial-exec"))) std::vector<ThreadPoolTaskGroup *>
-
-diff --git a/lib/Support/TimeProfiler.cpp b/lib/Support/TimeProfiler.cpp
---- a/lib/Support/TimeProfiler.cpp
-+++ b/lib/Support/TimeProfiler.cpp
-@@ -55,1 +55,1 @@
--static LLVM_THREAD_LOCAL TimeTraceProfiler *TimeTraceProfilerInstance = nullptr;
-+static LLVM_THREAD_LOCAL __attribute__((tls_model("initial-exec"))) TimeTraceProfiler *TimeTraceProfilerInstance = nullptr;
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -46,0 +46,2 @@
++
++set(CMAKE_POSITION_INDEPENDENT_CODE ON)
