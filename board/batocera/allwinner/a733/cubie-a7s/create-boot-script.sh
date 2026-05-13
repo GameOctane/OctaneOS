@@ -38,6 +38,8 @@ if [ ! -f "${BINARIES_DIR}/${DTB_NAME}" ]; then
 fi
 cp "${BINARIES_DIR}/${DTB_NAME}" "${BATOCERA_BINARIES_DIR}/boot/boot/${DTB_NAME}" || exit 1
 
-cp "${BOARD_DIR}/boot/extlinux.conf" "${BATOCERA_BINARIES_DIR}/boot/extlinux/" || exit 1
+cp "${BOARD_DIR}/boot/extlinux.conf"   "${BATOCERA_BINARIES_DIR}/boot/extlinux/"     || exit 1
+cp "${BOARD_DIR}/boot/boot0_sdcard.fex" "${BATOCERA_BINARIES_DIR}/boot/boot0_sdcard.fex" || exit 1
+cp "${BOARD_DIR}/boot/boot_package.fex" "${BATOCERA_BINARIES_DIR}/boot/boot_package.fex" || exit 1
 
 exit 0
