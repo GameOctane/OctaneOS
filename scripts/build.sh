@@ -85,7 +85,7 @@ RSYNC_EOF
     fi
 fi
 
-export PATH="${SHIM_DIR}:${PATH}"
+export PATH="${SHIM_DIR}:$HOME/bin:${PATH}"
 trap 'rm -rf "${SHIM_DIR}"' EXIT
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
