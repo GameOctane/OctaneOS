@@ -103,8 +103,8 @@ OctaneOS manages three distinct play modes automatically — no configuration re
 
 **Linux / Mac**
 ```
-gunzip OctaneOS-a733-cubie-a7s-43-20260520.img.gz
-dd if=OctaneOS-a733-cubie-a7s-43-20260520.img of=/dev/sdX bs=4M status=progress
+gunzip OctaneOS-a733-cubie-a7s-43-20260521.img.gz
+dd if=OctaneOS-a733-cubie-a7s-43-20260521.img of=/dev/sdX bs=4M status=progress
 ```
 
 Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or `.sha256` file before flashing.
