@@ -24,6 +24,7 @@ mkdir -p "${BATOCERA_BINARIES_DIR}/boot/extlinux" || exit 1
     -d "${BINARIES_DIR}/Image" \
     "${BATOCERA_BINARIES_DIR}/boot/boot/uImage" || exit 1
 
+cp "${BINARIES_DIR}/Image"          "${BATOCERA_BINARIES_DIR}/boot/boot/Image"              || exit 1
 cp "${BINARIES_DIR}/uInitrd"        "${BATOCERA_BINARIES_DIR}/boot/boot/uInitrd"             || exit 1
 cp "${BINARIES_DIR}/rootfs.squashfs" "${BATOCERA_BINARIES_DIR}/boot/boot/batocera.update"      || exit 1
 cp "${BINARIES_DIR}/rufomaculata"    "${BATOCERA_BINARIES_DIR}/boot/boot/rufomaculata.update"  || exit 1
