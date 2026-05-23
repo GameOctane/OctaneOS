@@ -7007,7 +7007,7 @@ These board-specific files are not present in allwinner-aiot-linux-5.15.
 +		};
 +
 +		sdc0: sdmmc@4020000 {
-+			compatible = "allwinner,sunxi-mmc-v5p3x";
++			compatible = "allwinner,sunxi-mmc-v5p3x", "allwinner,sun50i-a100-mmc";
 +			device_type = "sdc0";
 +			reg = <0x0 0x04020000 0x0 0x1000>;
 +			interrupts = <GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH>;
@@ -7062,7 +7062,7 @@ These board-specific files are not present in allwinner-aiot-linux-5.15.
 +		};
 +
 +		sdc1: sdmmc@4021000 {
-+			compatible = "allwinner,sunxi-mmc-v5p3x";
++			compatible = "allwinner,sunxi-mmc-v5p3x", "allwinner,sun50i-a100-mmc";
 +			device_type = "sdc1";
 +			reg = <0x0 0x04021000 0x0 0x1000>;
 +			interrupts = <GIC_SPI 162 IRQ_TYPE_LEVEL_HIGH>;
