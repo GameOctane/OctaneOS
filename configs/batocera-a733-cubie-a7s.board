@@ -28,13 +28,15 @@ BR2_KERNEL_HEADERS_AS_KERNEL=y
 BR2_PACKAGE_HOST_LINUX_HEADERS_CUSTOM_5_15=y
 
 # =============================================================================
-# Kernel — Radxa BSP kernel, Allwinner AIOT 5.15
-# https://github.com/radxa/kernel/tree/allwinner-aiot-linux-5.15
+# Kernel — Orange Pi BSP kernel, sun60iw2 (A733) 5.15
+# https://github.com/orangepi-xunlong/linux-orangepi/tree/orange-pi-5.15-sun60iw2
+# Has full A733 CCU driver (ccu-sun60iw2.c), MMC, display, USB-C DP alt mode,
+# and Cadence combo PHY — all missing from Radxa's allwinner-aiot-linux-5.15.
 # =============================================================================
 BR2_LINUX_KERNEL=y
 BR2_LINUX_KERNEL_CUSTOM_GIT=y
-BR2_LINUX_KERNEL_CUSTOM_REPO_URL="https://github.com/radxa/kernel"
-BR2_LINUX_KERNEL_CUSTOM_REPO_VERSION="allwinner-aiot-linux-5.15"
+BR2_LINUX_KERNEL_CUSTOM_REPO_URL="https://github.com/orangepi-xunlong/linux-orangepi"
+BR2_LINUX_KERNEL_CUSTOM_REPO_VERSION="orange-pi-5.15-sun60iw2"
 BR2_LINUX_KERNEL_PATCH="$(BR2_EXTERNAL_BATOCERA_PATH)/board/batocera/allwinner/a733/linux_patches"
 # The Radxa BSP kernel has a single arch/arm64/configs/defconfig with no
 # prefix.  Buildroot's USE_DEFCONFIG appends _defconfig to the name
