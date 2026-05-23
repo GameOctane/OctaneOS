@@ -2009,11 +2009,3 @@ are already present in the Orange Pi kernel tree.
 +	status = "okay";
 +};
 
---- a/arch/arm64/boot/dts/allwinner/Makefile
-+++ b/arch/arm64/boot/dts/allwinner/Makefile
-@@ -41,4 +41,5 @@
- dtb-$(CONFIG_ARCH_SUNXI) += sun60i-t736-ai-pc-lite-b.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun60i-t736-ai-pc-lite-c.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun60i-a733-orangepi-4-pro.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun60i-a733-orangepi-zero3w.dtb
-+dtb-$(CONFIG_ARCH_SUNXI) += sun60i-a733-cubie-a7s.dtb
