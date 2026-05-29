@@ -751,7 +751,8 @@
 		gpio-pins = <&pio PJ 26 GPIO_ACTIVE_HIGH>;
 		pin-names = "standby_led";
 		init-status = <GPIO_ACTIVE_HIGH>;
-		status = "okay";
+		/* disabled: conflicts with gpio-leds/led-1 heartbeat on PJ 26 */
+		status = "disabled";
 	};
 
 };
