@@ -1,0 +1,28 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: OctaneOS <noreply@octaneos.local>
+Date: Thu, 29 May 2026 00:00:00 +0000
+Subject: [PATCH] cpufreq: sun50i: add allwinner,sun60i-a733 to match list
+
+The Allwinner A733 (sun60iw2) uses the same EFUSE-based OPP selection
+mechanism as the H6. Without this match entry the driver never loads,
+cpufreq-dt falls back and fails because the OPP table entries use the
+vendor-specific opp-microvolt-vfXXXX format, and all CPUs are left
+locked at the U-Boot frequency (~1014 MHz).
+
+Signed-off-by: OctaneOS <noreply@octaneos.local>
+---
+ drivers/cpufreq/sun50i-cpufreq-nvmem.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/cpufreq/sun50i-cpufreq-nvmem.c b/drivers/cpufreq/sun50i-cpufreq-nvmem.c
+index 1111111..2222222 100644
+--- a/drivers/cpufreq/sun50i-cpufreq-nvmem.c
++++ b/drivers/cpufreq/sun50i-cpufreq-nvmem.c
+@@ -165,6 +165,7 @@ static int __exit sun50i_cpufreq_nvmem_remove(struct platform_device *pdev)
+
+ static const struct of_device_id sun50i_cpufreq_match_list[] = {
+ 	{ .compatible = "allwinner,sun50i-h6" },
++	{ .compatible = "allwinner,sun60i-a733" },
+ 	{}
+ };
+ MODULE_DEVICE_TABLE(of, sun50i_cpufreq_match_list);
