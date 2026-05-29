@@ -140,6 +140,8 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 
 - **[suckbluefrog](https://github.com/suckbluefrog)** — Pre-packaged buildroot dl cache tarballs for ecwolf and same-cdi, enabling CI builds without access to private Bitbucket repositories ([Batocera-Multilib](https://github.com/suckbluefrog/Batocera-Multilib))
 
+- **[NickAlilovic](https://github.com/NickAlilovic)** — A733 bring-up work in the Armbian community build ([build/tree/Radxa-A7A](https://github.com/NickAlilovic/build/tree/Radxa-A7A)), which served as an essential reference for getting OctaneOS running on Cubie A7S hardware
+
 ---
 
 ## Development References
