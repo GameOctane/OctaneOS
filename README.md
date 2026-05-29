@@ -97,14 +97,14 @@ OctaneOS manages three distinct play modes automatically — no configuration re
 
 ## Download
 
-**[OctaneOS v0.1.0-alpha — Radxa Cubie A7S](https://github.com/GameOctane/OctaneOS/releases/tag/v0.1.0-alpha)**
+**[OctaneOS v0.2.0 — Radxa Cubie A7S](https://github.com/GameOctane/OctaneOS/releases/tag/v0.2.0)**
 
 **Windows** — Use [Balena Etcher](https://etcher.balena.io). Flash the `.img.gz` directly — no need to decompress.
 
 **Linux / Mac**
 ```
-gunzip OctaneOS-a733-cubie-a7s-43-20260522.img.gz
-dd if=OctaneOS-a733-cubie-a7s-43-20260522.img of=/dev/sdX bs=4M status=progress
+gunzip OctaneOS-a733-cubie-a7s-43-20260528.img.gz
+dd if=OctaneOS-a733-cubie-a7s-43-20260528.img of=/dev/sdX bs=4M status=progress
 ```
 
 Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or `.sha256` file before flashing.
@@ -125,9 +125,9 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 | aic8800 WiFi driver integrated into image build | ✅ Complete |
 | Boot blobs (boot0 + U-Boot) staged into image | ✅ Complete |
 | First flashable image released | ✅ Complete |
-| OctaneOS booting on Cubie A7S hardware | 🚧 In Progress |
-| DPI screen bring-up via LCD0 | ⏳ Pending hardware |
-| EmulationStation launching | ⏳ Pending |
+| OctaneOS booting on Cubie A7S hardware | ✅ Complete |
+| USB-C DisplayPort Alt Mode display output | ✅ Complete |
+| EmulationStation launching | 🚧 In Progress |
 | First ROM running | ⏳ Pending |
 | RetroAchievements configured | ⏳ Pending |
 | Three mode system | ⏳ Pending |
@@ -147,7 +147,7 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 These resources are the foundation OctaneOS is built on:
 
 - [Batocera Linux](https://github.com/batocera-linux/batocera.linux) — upstream fork base
-- [Radxa BSP Kernel](https://github.com/radxa/kernel/tree/allwinner-aiot-linux-5.15) — Allwinner A733 kernel
+- [Orange Pi BSP Kernel](https://github.com/orangepi-xunlong/linux-orangepi/tree/orange-pi-5.15-sun60iw2) — A733 kernel with full CCU, display, USB-C DP Alt Mode, and Cadence combo PHY support
 - [Armbian A733 Community Build](https://github.com/NickAlilovic/build/tree/Radxa-A7A) — A733 bring-up reference
 - [Radxa Cubie A7S Docs](https://docs.radxa.com/en/cubie/a7s) — hardware documentation
 - [linux-sunxi A733](https://linux-sunxi.org/A733) — mainline kernel status
