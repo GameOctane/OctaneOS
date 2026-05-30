@@ -97,7 +97,7 @@ OctaneOS manages three distinct play modes automatically — no configuration re
 
 ## Download
 
-**[OctaneOS v0.2.2 — Radxa Cubie A7S](https://github.com/GameOctane/OctaneOS/releases/tag/v0.2.2)**
+**[OctaneOS v0.2.3 — Radxa Cubie A7S](https://github.com/GameOctane/OctaneOS/releases/tag/v0.2.3)**
 
 **Windows** — Use [Balena Etcher](https://etcher.balena.io). Flash the `.img.gz` directly — no need to decompress.
 
@@ -130,7 +130,7 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 | USB-A host ports (controllers, keyboards, mice) | ✅ Complete |
 | Wired controller input | ✅ Complete |
 | Gigabit Ethernet | ✅ Complete |
-| CPU frequency scaling | ✅ Complete |
+| CPU frequency scaling (A55 up to 1.8GHz, A76 up to 2.0GHz) | ✅ Complete |
 | 120Hz DisplayPort output | ✅ Complete |
 | EmulationStation launching | 🚧 In Progress |
 | First ROM running | ⏳ Pending |
