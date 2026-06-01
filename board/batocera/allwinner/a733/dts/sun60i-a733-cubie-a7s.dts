@@ -847,41 +847,34 @@
 };
 
 /*
- * CPU frequency scaling — plain frequency-only OPP tables.
- *
- * The BSP OPP tables (sun60iw2p1-cpu-vf.dtsi) use opp-microvolt-vfXXXX
- * properties that require the SID NVMEM to be wired up via
- * sun50i-cpufreq-nvmem.  That path is not yet complete on the Cubie A7S.
- * Instead, define simple operating-points-v2 tables so cpufreq-dt can
- * drive frequency scaling at fixed PMIC boot voltage.  Frequencies are
- * drawn from the VF table's primary bin; DVFS (voltage scaling) can be
- * added later once SID NVMEM is wired.
+ * CPU DVFS OPP tables — voltages from BSP sun60iw2p1-cpu-vf.dtsi vf0000
+ * grade (worst-case, safe for all silicon).
+ * DCDC5 → LITTLE cluster (cpu0-5), DCDC3 → BIG cluster (cpu6-7).
  */
 / {
 	a733_cluster0_opp: cluster0-opp-table-a733 {
 		compatible = "operating-points-v2";
 		opp-shared;
 
-		opp-408000000  { opp-hz = /bits/ 64 <408000000>;  clock-latency-ns = <244144>; };
-		opp-720000000  { opp-hz = /bits/ 64 <720000000>;  clock-latency-ns = <244144>; };
-		opp-1008000000 { opp-hz = /bits/ 64 <1008000000>; clock-latency-ns = <244144>; };
-		opp-1200000000 { opp-hz = /bits/ 64 <1200000000>; clock-latency-ns = <244144>; };
-		opp-1416000000 { opp-hz = /bits/ 64 <1416000000>; clock-latency-ns = <244144>; };
-		opp-1608000000 { opp-hz = /bits/ 64 <1608000000>; clock-latency-ns = <244144>; };
-		opp-1800000000 { opp-hz = /bits/ 64 <1800000000>; clock-latency-ns = <244144>; };
+		opp-408000000  { opp-hz = /bits/ 64 <408000000>;  opp-microvolt = <800000>;  clock-latency-ns = <244144>; };
+		opp-720000000  { opp-hz = /bits/ 64 <720000000>;  opp-microvolt = <800000>;  clock-latency-ns = <244144>; };
+		opp-1008000000 { opp-hz = /bits/ 64 <1008000000>; opp-microvolt = <800000>;  clock-latency-ns = <244144>; };
+		opp-1200000000 { opp-hz = /bits/ 64 <1200000000>; opp-microvolt = <800000>;  clock-latency-ns = <244144>; };
+		opp-1416000000 { opp-hz = /bits/ 64 <1416000000>; opp-microvolt = <800000>;  clock-latency-ns = <244144>; };
+		opp-1608000000 { opp-hz = /bits/ 64 <1608000000>; opp-microvolt = <900000>;  clock-latency-ns = <244144>; };
+		opp-1800000000 { opp-hz = /bits/ 64 <1800000000>; opp-microvolt = <1000000>; clock-latency-ns = <244144>; };
 	};
 
 	a733_cluster1_opp: cluster1-opp-table-a733 {
 		compatible = "operating-points-v2";
 		opp-shared;
 
-		opp-408000000  { opp-hz = /bits/ 64 <408000000>;  clock-latency-ns = <244144>; };
-		opp-720000000  { opp-hz = /bits/ 64 <720000000>;  clock-latency-ns = <244144>; };
-		opp-1008000000 { opp-hz = /bits/ 64 <1008000000>; clock-latency-ns = <244144>; };
-		opp-1200000000 { opp-hz = /bits/ 64 <1200000000>; clock-latency-ns = <244144>; };
-		opp-1512000000 { opp-hz = /bits/ 64 <1512000000>; clock-latency-ns = <244144>; };
-		opp-1800000000 { opp-hz = /bits/ 64 <1800000000>; clock-latency-ns = <244144>; };
-		opp-1992000000 { opp-hz = /bits/ 64 <1992000000>; clock-latency-ns = <244144>; };
+		opp-408000000  { opp-hz = /bits/ 64 <408000000>;  opp-microvolt = <800000>; clock-latency-ns = <244144>; };
+		opp-720000000  { opp-hz = /bits/ 64 <720000000>;  opp-microvolt = <800000>; clock-latency-ns = <244144>; };
+		opp-1008000000 { opp-hz = /bits/ 64 <1008000000>; opp-microvolt = <800000>; clock-latency-ns = <244144>; };
+		opp-1200000000 { opp-hz = /bits/ 64 <1200000000>; opp-microvolt = <800000>; clock-latency-ns = <244144>; };
+		opp-1512000000 { opp-hz = /bits/ 64 <1512000000>; opp-microvolt = <800000>; clock-latency-ns = <244144>; };
+		opp-1800000000 { opp-hz = /bits/ 64 <1800000000>; opp-microvolt = <950000>;  clock-latency-ns = <244144>; };
 	};
 };
 
