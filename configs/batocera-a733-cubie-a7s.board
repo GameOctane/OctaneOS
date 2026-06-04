@@ -25,19 +25,26 @@ BR2_TARGET_ROOTFS_SQUASHFS4_ZSTD=y
 
 # Linux headers — must match kernel series
 BR2_KERNEL_HEADERS_AS_KERNEL=y
-BR2_PACKAGE_HOST_LINUX_HEADERS_CUSTOM_5_15=y
+BR2_PACKAGE_HOST_LINUX_HEADERS_CUSTOM_6_6=y
 
 # =============================================================================
-# Kernel — Orange Pi BSP kernel, sun60iw2 (A733) 5.15
-# https://github.com/orangepi-xunlong/linux-orangepi/tree/orange-pi-5.15-sun60iw2
-# Has full A733 CCU driver (ccu-sun60iw2.c), MMC, display, USB-C DP alt mode,
-# and Cadence combo PHY — all missing from Radxa's allwinner-aiot-linux-5.15.
+# Kernel — Radxa 6.6 BSP kernel + allwinner-bsp overlay
+# https://github.com/radxa/kernel  (branch: allwinner-aiot-linux-6.6)
+#
+# The kernel source tree must be pre-baked by scripts/setup-kernel-66.sh,
+# which clones the kernel, clones allwinner-bsp into bsp/, copies A733 DTSI
+# files, copies dt-bindings headers from the BSP, and applies OctaneOS patches.
+# local.mk sets LINUX_OVERRIDE_SRCDIR to point Buildroot at this tree.
+#
+# The Radxa 6.6 kernel Makefile has drivers-y += bsp/ baked in, so once
+# bsp/ is populated, all AW_* BSP drivers AND pvrsrvkm.ko (GPU) build
+# automatically as part of the kernel build — no separate DKMS step.
 # =============================================================================
 BR2_LINUX_KERNEL=y
 BR2_LINUX_KERNEL_CUSTOM_GIT=y
-BR2_LINUX_KERNEL_CUSTOM_REPO_URL="https://github.com/orangepi-xunlong/linux-orangepi"
-BR2_LINUX_KERNEL_CUSTOM_REPO_VERSION="orange-pi-5.15-sun60iw2"
-BR2_LINUX_KERNEL_PATCH="$(BR2_EXTERNAL_BATOCERA_PATH)/board/batocera/allwinner/a733/linux_patches"
+BR2_LINUX_KERNEL_CUSTOM_REPO_URL="https://github.com/radxa/kernel"
+BR2_LINUX_KERNEL_CUSTOM_REPO_VERSION="allwinner-aiot-linux-6.6"
+BR2_LINUX_KERNEL_PATCH="$(BR2_EXTERNAL_BATOCERA_PATH)/board/batocera/allwinner/a733/linux_patches_66"
 # The Radxa BSP kernel has a single arch/arm64/configs/defconfig with no
 # prefix.  Buildroot's USE_DEFCONFIG appends _defconfig to the name
 # (yielding "defconfig_defconfig"), so we use USE_CUSTOM_CONFIG and keep

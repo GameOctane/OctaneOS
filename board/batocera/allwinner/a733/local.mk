@@ -1,5 +1,21 @@
 # OctaneOS build overrides
 
+# =============================================================================
+# Radxa 6.6 kernel — pre-baked source tree (kernel + allwinner-bsp merged)
+#
+# Run scripts/setup-kernel-66.sh once to populate linux/kernel-66/:
+#   1. Clones radxa/kernel (allwinner-aiot-linux-6.6)
+#   2. Clones radxa/allwinner-bsp (cubie-aiot-v1.4.8) into bsp/
+#   3. Copies A733 DTSI files from bsp/configs/linux-6.6/ into the DTS tree
+#   4. Copies dt-bindings headers from bsp/include/ into include/
+#   5. Applies OctaneOS patches (board DTS, cpufreq A733 match)
+#
+# When LINUX_OVERRIDE_SRCDIR is set, Buildroot skips download/patch and builds
+# the kernel directly from this directory.  Patches in linux_patches_66/ are
+# applied by setup-kernel-66.sh (Buildroot does not apply them in override mode).
+# =============================================================================
+LINUX_OVERRIDE_SRCDIR = $(BR2_EXTERNAL)/../linux/kernel-66
+
 # GCC 15 defaults to -std=gnu23 (C23). Many host packages use gnulib macros
 # (e.g. _GL_ATTRIBUTE_NODISCARD) that break under C23. Force C11/C++11 for
 # all host package compilations. local.mk is included after package/Makefile.in
