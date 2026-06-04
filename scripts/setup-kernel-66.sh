@@ -85,11 +85,12 @@ fi
 # since the BSP is always cloned into bsp/ inside the kernel tree.
 # -----------------------------------------------------------------------------
 echo "[kernel-66] Step 3: fix BSP Kconfig for Buildroot (BSP_TOP → bsp/)"
-BSP_KCONFIG="${KERNEL_DIR}/bsp/Kconfig"
-if grep -q '$(BSP_TOP)' "${BSP_KCONFIG}" 2>/dev/null; then
-    sed -i 's|\$(BSP_TOP)|bsp/|g' "${BSP_KCONFIG}"
-    echo "  Fixed BSP_TOP references in bsp/Kconfig"
-fi
+# The BSP has ~39 Kconfig files that use $(BSP_TOP) for sourcing sub-configs.
+# Fix all of them in one pass.
+COUNT=$(find "${KERNEL_DIR}/bsp" -name 'Kconfig*' -exec grep -l '\$(BSP_TOP)' {} \; | wc -l)
+find "${KERNEL_DIR}/bsp" -name 'Kconfig*' -exec grep -l '\$(BSP_TOP)' {} \; \
+    | xargs sed -i 's|\$(BSP_TOP)|bsp/|g'
+echo "  Fixed ${COUNT} Kconfig files (BSP_TOP → bsp/)"
 
 # -----------------------------------------------------------------------------
 # 4. Copy A733 SoC DTSI files from BSP into the kernel DTS tree
