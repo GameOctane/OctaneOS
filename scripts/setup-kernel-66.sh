@@ -125,6 +125,13 @@ sed -i '/obj-y += modules\/nand\//d' "${KERNEL_DIR}/bsp/Makefile"
 sed -i '/obj-y += modules\/gpu\//d'  "${KERNEL_DIR}/bsp/Makefile"
 echo "  Removed modules/nand/ and modules/gpu/ from bsp/Makefile"
 
+# The rogue_km build system has a compiler allowlist in config/compilers/.
+# The Buildroot cross-compiler is aarch64-buildroot-linux-gnu- which isn't
+# listed.  Symlink it to the standard aarch64-linux-gnu.mk (identical settings).
+ROGUE_COMPILERS="${KERNEL_DIR}/bsp/modules/gpu/img-bxm/linux/rogue_km/build/linux/config/compilers"
+ln -sf aarch64-linux-gnu.mk "${ROGUE_COMPILERS}/aarch64-buildroot-linux-gnu.mk"
+echo "  Added aarch64-buildroot-linux-gnu.mk compiler config for rogue_km"
+
 # BSP USB host Makefile uses -I$(srctree)/drivers/usb/host so that
 # #include <../sunxi_usb/include/...> resolves from drivers/usb/.
 # Symlink the BSP sunxi_usb dir into mainline so the path resolves.
