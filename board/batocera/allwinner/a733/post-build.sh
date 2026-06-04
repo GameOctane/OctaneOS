@@ -16,9 +16,15 @@ if [ -z "${HOST_DIR}" ]; then
 fi
 
 CROSS="${HOST_DIR}/bin/aarch64-buildroot-linux-gnu-"
-KERNEL_DIR="$(dirname "${BASH_SOURCE[0]}")/../../../../linux/kernel-66"
-KERNEL_DIR="$(realpath "${KERNEL_DIR}")"
-GPU_MODULE_DIR="${KERNEL_DIR}/bsp/modules/gpu"
+
+# Buildroot builds the kernel in BUILD_DIR/linux-custom/ (rsynced from source).
+# auto.conf, Module.symvers, etc. live there — the module must build against it.
+BUILD_DIR="${BUILD_DIR:-$(realpath "$(dirname "${BASH_SOURCE[0]}")/../../../../batocera/output/a733-cubie-a7s/build")}"
+KERNEL_BUILD="${BUILD_DIR}/linux-custom"
+
+# GPU module source lives in the original BSP tree (not the build copy)
+KERNEL_SRC="$(realpath "$(dirname "${BASH_SOURCE[0]}")/../../../../linux/kernel-66")"
+GPU_MODULE_DIR="${KERNEL_SRC}/bsp/modules/gpu"
 
 # =============================================================================
 # Build pvrsrvkm.ko (Imagination PowerVR BXM-4-64 kernel module)
@@ -34,10 +40,12 @@ if [ ! -d "${GPU_MODULE_DIR}" ]; then
 fi
 
 echo "[post-build] Building pvrsrvkm.ko (PowerVR BXM-4-64)..."
-make -C "${KERNEL_DIR}" \
+echo "[post-build]   Kernel build : ${KERNEL_BUILD}"
+echo "[post-build]   GPU source   : ${GPU_MODULE_DIR}"
+make -C "${KERNEL_BUILD}" \
     M="${GPU_MODULE_DIR}" \
-    KERNEL_SRC_DIR="${KERNEL_DIR}" \
-    KERNEL_OUT_DIR="${KERNEL_DIR}" \
+    KERNEL_SRC_DIR="${KERNEL_BUILD}" \
+    KERNEL_OUT_DIR="${KERNEL_BUILD}" \
     ARCH=arm64 \
     CROSS_COMPILE="${CROSS}" \
     PVR_SYSTEM=rgx_sunxi \
@@ -48,8 +56,8 @@ make -C "${KERNEL_DIR}" \
     modules
 
 # Find built .ko files and install them
-KVER=$(cat "${KERNEL_DIR}/include/config/kernel.release" 2>/dev/null || \
-       awk -F\" '/UTS_RELEASE/{print $2}' "${KERNEL_DIR}/include/generated/utsrelease.h" 2>/dev/null || \
+KVER=$(cat "${KERNEL_BUILD}/include/config/kernel.release" 2>/dev/null || \
+       awk -F\" '/UTS_RELEASE/{print $2}' "${KERNEL_BUILD}/include/generated/utsrelease.h" 2>/dev/null || \
        echo "unknown")
 
 KO_DEST="${TARGET_DIR}/lib/modules/${KVER}/extra"
