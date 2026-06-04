@@ -114,7 +114,13 @@ echo "  Fixed ${COUNT} Kconfig files (BSP_TOP → bsp/)"
 # live in bsp/configs/linux-6.6/ and must be available in arch/arm64/boot/
 # dts/allwinner/ before the board DTS can be compiled.
 # -----------------------------------------------------------------------------
-echo "[kernel-66] Step 5: create BSP bridge symlinks in mainline driver tree"
+echo "[kernel-66] Step 5: patch BSP Makefile + create bridge symlinks"
+# Remove NAND module: bsp/modules/nand/ uses KERNEL_SRC_DIR (out-of-tree
+# build convention) which is never set in the Buildroot kernel build.
+# A7S uses MMC (not NAND), so the module is not needed.
+sed -i '/obj-y += modules\/nand\//d' "${KERNEL_DIR}/bsp/Makefile"
+echo "  Removed modules/nand/ from bsp/Makefile (not needed; uses KERNEL_SRC_DIR)"
+
 # BSP USB host Makefile uses -I$(srctree)/drivers/usb/host so that
 # #include <../sunxi_usb/include/...> resolves from drivers/usb/.
 # Symlink the BSP sunxi_usb dir into mainline so the path resolves.
