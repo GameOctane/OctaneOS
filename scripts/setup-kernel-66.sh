@@ -115,11 +115,15 @@ echo "  Fixed ${COUNT} Kconfig files (BSP_TOP → bsp/)"
 # dts/allwinner/ before the board DTS can be compiled.
 # -----------------------------------------------------------------------------
 echo "[kernel-66] Step 5: patch BSP Makefile + create bridge symlinks"
-# Remove NAND module: bsp/modules/nand/ uses KERNEL_SRC_DIR (out-of-tree
-# build convention) which is never set in the Buildroot kernel build.
-# A7S uses MMC (not NAND), so the module is not needed.
+# Remove NAND and GPU modules from in-tree BSP build.
+# Both bsp/modules/nand/ and bsp/modules/gpu/ use out-of-tree build
+# conventions (they check for KERNEL_SRC_DIR) and cannot be built as
+# part of the in-tree kernel make.  NAND is not used on A7S (MMC-only).
+# pvrsrvkm.ko (GPU) is built separately via package/pvrsrvkm after the
+# kernel is done and KERNEL_SRC_DIR can be set to the built kernel tree.
 sed -i '/obj-y += modules\/nand\//d' "${KERNEL_DIR}/bsp/Makefile"
-echo "  Removed modules/nand/ from bsp/Makefile (not needed; uses KERNEL_SRC_DIR)"
+sed -i '/obj-y += modules\/gpu\//d'  "${KERNEL_DIR}/bsp/Makefile"
+echo "  Removed modules/nand/ and modules/gpu/ from bsp/Makefile"
 
 # BSP USB host Makefile uses -I$(srctree)/drivers/usb/host so that
 # #include <../sunxi_usb/include/...> resolves from drivers/usb/.
