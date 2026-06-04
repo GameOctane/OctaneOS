@@ -42,18 +42,24 @@ fi
 echo "[post-build] Building pvrsrvkm.ko (PowerVR BXM-4-64)..."
 echo "[post-build]   Kernel build : ${KERNEL_BUILD}"
 echo "[post-build]   GPU source   : ${GPU_MODULE_DIR}"
-make -C "${KERNEL_BUILD}" \
-    M="${GPU_MODULE_DIR}" \
+
+# The GPU Makefile uses a custom build system, not Kbuild obj-m.
+# Call its 'build' target directly with GPU_TYPE=bxm.
+# The build target internally does:
+#   $(MAKE) -C img-bxm/linux/rogue_km/build/linux/sunxi_linux BUILD=release
+# Output: img-bxm/linux/rogue_km/binary_sunxi_linux_nulldrmws_release/target_aarch64/kbuild/pvrsrvkm.ko
+make -C "${GPU_MODULE_DIR}" build \
     KERNEL_SRC_DIR="${KERNEL_BUILD}" \
     KERNEL_OUT_DIR="${KERNEL_BUILD}" \
+    KERNELDIR="${KERNEL_BUILD}" \
+    KDIR="${KERNEL_BUILD}" \
     ARCH=arm64 \
     CROSS_COMPILE="${CROSS}" \
-    PVR_SYSTEM=rgx_sunxi \
-    RGX_BVNC=36.56.104.183 \
-    WINDOW_SYSTEM=nulldrmws \
+    CPU_ARCH=arm64 \
+    GPU_TYPE=bxm \
     CONFIG_OS_TYPE=linux \
-    -j$(nproc) \
-    modules
+    GPU_BUILD_TYPE=release \
+    -j$(nproc)
 
 # Find built .ko files and install them
 KVER=$(cat "${KERNEL_BUILD}/include/config/kernel.release" 2>/dev/null || \
@@ -63,9 +69,13 @@ KVER=$(cat "${KERNEL_BUILD}/include/config/kernel.release" 2>/dev/null || \
 KO_DEST="${TARGET_DIR}/lib/modules/${KVER}/extra"
 mkdir -p "${KO_DEST}"
 
-find "${GPU_MODULE_DIR}" -name "pvrsrvkm.ko" | while read ko; do
-    "${CROSS}strip" --strip-debug "${ko}" -o "${KO_DEST}/pvrsrvkm.ko"
-    echo "[post-build] Installed: ${KO_DEST}/pvrsrvkm.ko"
-done
+# Output lands in binary_sunxi_linux_nulldrmws_release/target_aarch64/kbuild/
+KO_SRC=$(find "${GPU_MODULE_DIR}/img-bxm" -name "pvrsrvkm.ko" 2>/dev/null | head -1)
+if [ -z "${KO_SRC}" ]; then
+    echo "[post-build] ERROR: pvrsrvkm.ko not found after build"
+    exit 1
+fi
+"${CROSS}strip" --strip-debug "${KO_SRC}" -o "${KO_DEST}/pvrsrvkm.ko"
+echo "[post-build] Installed: ${KO_DEST}/pvrsrvkm.ko  (from ${KO_SRC})"
 
 echo "[post-build] pvrsrvkm.ko done."
