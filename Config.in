@@ -1,1 +1,3 @@
 mainmenu "OctaneOS Configuration"
+
+source "$BR2_EXTERNAL_OCTANEOS_PATH/package/pvrsrvkm/Config.in"
