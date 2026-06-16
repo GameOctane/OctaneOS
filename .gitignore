@@ -1,5 +1,6 @@
 # Prerequisites
 *.d
+!board/**/fsoverlay/**/init.d/
 
 # Object files
 *.o
