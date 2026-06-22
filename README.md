@@ -103,8 +103,8 @@ OctaneOS manages three distinct play modes automatically — no configuration re
 
 **Linux / Mac**
 ```
-gunzip OctaneOS-a733-cubie-a7s-43-20260621.img.gz
-dd if=OctaneOS-a733-cubie-a7s-43-20260621.img of=/dev/sdX bs=4M status=progress
+gunzip OctaneOS-a733-cubie-a7s-43-20260622.img.gz
+dd if=OctaneOS-a733-cubie-a7s-43-20260622.img of=/dev/sdX bs=4M status=progress
 ```
 
 Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or `.sha256` file before flashing.
@@ -135,7 +135,7 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 | Batocera userspace + overlayfs booting | ✅ Complete |
 | PowerVR GPU hardware acceleration | ⏳ Pending |
 | EmulationStation launching | ✅ Complete |
-| Wired controller input (USB HID + xpad) | 🚧 In Progress |
+| Wired controller input (USB HID + xpad) | ✅ Complete |
 | First ROM running | ⏳ Pending |
 | RetroAchievements configured | ⏳ Pending |
 | Three mode system | ⏳ Pending |
