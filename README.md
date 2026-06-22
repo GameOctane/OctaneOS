@@ -131,8 +131,9 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 | Gigabit Ethernet | ✅ Complete |
 | CPU frequency scaling (A55 up to 1.8GHz, A76 up to 2.0GHz) | ✅ Complete |
 | 120Hz DisplayPort output | ✅ Complete |
-| PowerVR BXM-4-64 GPU driver loading | ✅ Complete |
+| PowerVR BXM-4-64 GPU kernel module loading | ✅ Complete |
 | Batocera userspace + overlayfs booting | ✅ Complete |
+| PowerVR GPU hardware acceleration | ⏳ Pending |
 | EmulationStation launching | ✅ Complete |
 | Wired controller input (USB HID + xpad) | 🚧 In Progress |
 | First ROM running | ⏳ Pending |
