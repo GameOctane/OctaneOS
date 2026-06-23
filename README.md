@@ -97,7 +97,7 @@ OctaneOS manages three distinct play modes automatically — no configuration re
 
 ## Download
 
-**[OctaneOS v0.4.0-alpha — Radxa Cubie A7S](https://github.com/GameOctane/OctaneOS/releases/tag/v0.4.0-alpha)**
+**[OctaneOS v0.4.1-alpha — Radxa Cubie A7S](https://github.com/GameOctane/OctaneOS/releases/tag/v0.4.1-alpha)**
 
 **Windows** — Use [Balena Etcher](https://etcher.balena.io). Flash the `.img.gz` directly — no need to decompress.
 
@@ -108,6 +108,18 @@ dd if=OctaneOS-a733-cubie-a7s-43-20260622.img of=/dev/sdX bs=4M status=progress
 ```
 
 Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or `.sha256` file before flashing.
+
+### Optional: Enable GPU Acceleration
+
+After flashing and booting, SSH in (or use the serial console) and run:
+
+```
+/usr/local/sbin/enable-powervr-gpu
+```
+
+This downloads Radxa's PowerVR DDK userspace (~27MB) from their package repo, installs it to `/userdata`, and configures labwc to use hardware GLES2 rendering. The kernel module (`pvrsrvkm.ko`) is already in the image — this just adds the missing userspace layer. Reboot once after running the script to activate.
+
+> The PowerVR userspace is Imagination proprietary software and cannot be included in the image directly. This script downloads it from [Radxa's a733-bullseye package repo](https://github.com/radxa-repo/a733-bullseye).
 
 ---
 
@@ -133,7 +145,7 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 | 120Hz DisplayPort output | ✅ Complete |
 | PowerVR BXM-4-64 GPU kernel module loading | ✅ Complete |
 | Batocera userspace + overlayfs booting | ✅ Complete |
-| PowerVR GPU hardware acceleration | ⏳ Pending |
+| PowerVR GPU hardware acceleration | 🚧 In Progress — run `enable-powervr-gpu` after flash |
 | EmulationStation launching | ✅ Complete |
 | Wired controller input (USB HID + xpad) | ✅ Complete |
 | First ROM running | ⏳ Pending |
