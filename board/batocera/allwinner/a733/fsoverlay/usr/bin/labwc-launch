@@ -83,8 +83,14 @@ echo "Starting labwc (keyboard: $XKB_DEFAULT_LAYOUT)" >> "$LOG_FILE"
 
 # Derive the PVR render node. There are exactly 2 DRM devices: sunxi-drm (display)
 # and pvrsrvkm (GPU). Card N uses renderD(128+N). PVR is the non-display card.
+# If pvrsrvkm does not expose a DRM render node, fall back to card1 directly.
 DISPLAY_NUM=${DISPLAY_CARD#card}
-PVR_RENDER_NODE="/dev/dri/renderD$(( 128 + 1 - DISPLAY_NUM ))"
+PVR_CARD_NUM=$(( 1 - DISPLAY_NUM ))
+PVR_RENDER_NODE="/dev/dri/renderD$(( 128 + PVR_CARD_NUM ))"
+if [ ! -e "$PVR_RENDER_NODE" ]; then
+    serial "renderD$(( 128 + PVR_CARD_NUM )) absent — using /dev/dri/card${PVR_CARD_NUM} directly"
+    PVR_RENDER_NODE="/dev/dri/card${PVR_CARD_NUM}"
+fi
 serial "PVR render node: $PVR_RENDER_NODE"
 
 # Try GLES2 with the PowerVR DDK. WLR_RENDER_DRM_DEVICE points wlroots at the

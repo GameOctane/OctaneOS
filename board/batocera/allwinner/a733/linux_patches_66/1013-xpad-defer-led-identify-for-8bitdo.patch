@@ -1,17 +1,14 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: OctaneOS <noreply@octaneos.local>
 Date: Thu, 26 Jun 2026 00:00:00 +0000
-Subject: [PATCH] xpad: fix 8BitDo disconnect — disable autosuspend + defer LED 2s
+Subject: [PATCH] xpad: fix 8BitDo disconnect — autosuspend + LED + EP2 NAK
 
-Two separate issues cause the 8BitDo SN30 Pro+ to disconnect under the
-6.6 BSP EHCI TT:
+Three issues cause the 8BitDo SN30 Pro+ to disconnect under the
+Allwinner BSP 6.6 EHCI TT:
 
 1. usb_disable_autosuspend() missing from probe: the BSP xpad.c omits
-   this call that upstream includes. Without it, USB autosuspend can fire
-   on the controller; the Allwinner BSP EHCI TT fails to resume a
-   full-speed device through the transaction translator (-EPIPE), causing
-   disconnect. This is the primary cause of the 60-100s disconnect cycle
-   even with usbcore.autosuspend=-1 set globally.
+   this call that upstream includes. Without it USB autosuspend can fire
+   on the controller.
 
 2. Probe-time LED URB stalls EP2: with CONFIG_JOYSTICK_XPAD_LEDS=y,
    xpad_led_probe() calls xpad_identify_controller() immediately during
@@ -19,63 +16,105 @@ Two separate issues cause the 8BitDo SN30 Pro+ to disconnect under the
    initialising. This stalls EP2 and corrupts EHCI TT state causing rapid
    connect/disconnect cycling.
 
-Fix both: call usb_disable_autosuspend() after usb_set_intfdata(), and
-defer the LED player-indicator assignment by 2 seconds via delayed_work.
+3. EP2 NAK flood: the 8BitDo NAKs the LED command OUT URB indefinitely
+   (it never ACKs, just keeps NAKing). The EHCI retries every polling
+   interval, flooding EP2 for 45+ seconds until the 8BitDo firmware
+   gives up and disconnects. The default xpad_irq_out error path for
+   unexpected URB status was also incorrectly trying to resubmit on
+   -ENODEV (device gone at disconnect time).
 
-Cancel the delayed work in xpad_led_disconnect() to avoid use-after-free
-if the controller is unplugged before the work fires.
+Fix all three:
+- Call usb_disable_autosuspend() after usb_set_intfdata() in probe.
+- Defer the LED player-indicator assignment by 2 seconds via delayed_work.
+- After the LED work fires, schedule a cancel work at +5s: if the OUT
+  URB is still pending (8BitDo NAKing), usb_kill_urb() cancels it cleanly
+  via ENOENT (existing shutdown path), stopping the NAK flood before it
+  triggers firmware disconnect.
+- Add -ENODEV to the shutdown cases in xpad_irq_out so device disconnect
+  does not trigger a spurious resubmit attempt and error log.
+- Promote default-case xpad_irq_out logging from dev_dbg to dev_warn so
+  unexpected URB status codes appear in the serial log for diagnosis.
+
+Cancel both delayed works in xpad_led_disconnect() to avoid
+use-after-free if the controller is unplugged before they fire.
 
 Signed-off-by: OctaneOS <noreply@octaneos.local>
 ---
- drivers/input/joystick/xpad.c | 17 +++++++++++++++--
- 1 file changed, 15 insertions(+), 2 deletions(-)
+ drivers/input/joystick/xpad.c | 48 ++++++++++++++++++++++++++++------
+ 1 file changed, 40 insertions(+), 8 deletions(-)
 
 diff --git a/drivers/input/joystick/xpad.c b/drivers/input/joystick/xpad.c
-index 05c00421f..b1f3cd57e 100644
+index 05c00421f..c2d4f89a1 100644
 --- a/drivers/input/joystick/xpad.c
 +++ b/drivers/input/joystick/xpad.c
 @@ -1640,6 +1640,7 @@ struct xpad_led {
  	char name[16];
  	struct led_classdev led_cdev;
  	struct usb_xpad *xpad;
-+	struct delayed_work led_work;
++	struct delayed_work irq_out_cancel_work;
+ 	struct delayed_work led_work;
  };
 
- /*
-@@ -1713,6 +1713,14 @@ static void xpad_identify_controller(struct usb_xpad *xpad)
+@@ -1352,8 +1352,9 @@ static void xpad_irq_out(struct urb *urb)
+ 	case -ECONNRESET:
+ 	case -ENOENT:
+ 	case -ESHUTDOWN:
++	case -ENODEV:
+ 		/* this urb is terminated, clean up */
+ 		dev_dbg(dev, "%s - urb shutting down with status: %d\n",
+ 			__func__, status);
+ 		xpad->irq_out_active = false;
+ 		break;
+
+ 	default:
+-		dev_dbg(dev, "%s - nonzero urb status received: %d\n",
+-			__func__, status);
++		dev_warn(dev, "%s - nonzero urb status received: %d\n",
++			 __func__, status);
+ 		break;
+
+@@ -1713,6 +1713,20 @@ static void xpad_identify_controller(struct usb_xpad *xpad)
  	led_set_brightness(&xpad->led->led_cdev, (xpad->pad_nr % 4) + 2);
  }
 
-+static void xpad_led_identify_work(struct work_struct *work)
++static void xpad_irq_out_cancel_work_fn(struct work_struct *work)
 +{
 +	struct xpad_led *xpad_led = container_of(to_delayed_work(work),
-+						 struct xpad_led, led_work);
++						 struct xpad_led, irq_out_cancel_work);
++	struct usb_xpad *xpad = xpad_led->xpad;
 +
-+	xpad_identify_controller(xpad_led->xpad);
++	if (xpad->irq_out_active) {
++		dev_warn(&xpad->intf->dev,
++			 "xpad: EP2 OUT pending 5s — cancelling to stop 8BitDo NAK flood\n");
++		usb_kill_urb(xpad->irq_out);
++	}
 +}
 +
- static void xpad_led_set(struct led_classdev *led_cdev,
- 			 enum led_brightness value)
+ static void xpad_led_identify_work(struct work_struct *work)
  {
-@@ -1753,7 +1761,8 @@ static int xpad_led_probe(struct usb_xpad *xpad)
- 	if (error)
- 		goto err_free_id;
+ 	struct xpad_led *xpad_led = container_of(to_delayed_work(work),
+@@ -1721,6 +1735,8 @@ static void xpad_led_identify_work(struct work_struct *work)
 
--	xpad_identify_controller(xpad);
-+	INIT_DELAYED_WORK(&led->led_work, xpad_led_identify_work);
-+	schedule_delayed_work(&led->led_work, msecs_to_jiffies(2000));
+ 	xpad_identify_controller(xpad_led->xpad);
++	/* Cancel OUT URB after 5s if still pending (stops EP2 NAK flood) */
++	schedule_delayed_work(&xpad_led->irq_out_cancel_work, msecs_to_jiffies(5000));
+ }
+
+@@ -1761,7 +1777,8 @@ static int xpad_led_probe(struct usb_xpad *xpad)
+ 	INIT_DELAYED_WORK(&led->led_work, xpad_led_identify_work);
+ 	schedule_delayed_work(&led->led_work, msecs_to_jiffies(2000));
++	INIT_DELAYED_WORK(&led->irq_out_cancel_work, xpad_irq_out_cancel_work_fn);
 
  	return 0;
 
-@@ -1769,6 +1778,7 @@ static void xpad_led_disconnect(struct usb_xpad *xpad)
- 	struct xpad_led *xpad_led = xpad->led;
+@@ -1778,6 +1795,7 @@ static void xpad_led_disconnect(struct usb_xpad *xpad)
 
  	if (xpad_led) {
-+		cancel_delayed_work_sync(&xpad_led->led_work);
++		cancel_delayed_work_sync(&xpad_led->irq_out_cancel_work);
+ 		cancel_delayed_work_sync(&xpad_led->led_work);
  		led_classdev_unregister(&xpad_led->led_cdev);
- 		ida_simple_remove(&xpad_pad_seq, xpad->pad_nr);
- 		kfree(xpad_led);
-@@ -2178,6 +2187,9 @@ static int xpad_probe(struct usb_interface *intf, const struct usb_device_id *id
+
+@@ -2178,6 +2196,9 @@ static int xpad_probe(struct usb_interface *intf, const struct usb_device_id *id
 
  	usb_set_intfdata(intf, xpad);
 +	usb_disable_autosuspend(udev);
