@@ -1,0 +1,83 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: OctaneOS <noreply@octaneos.local>
+Date: Thu, 26 Jun 2026 00:00:00 +0000
+Subject: [PATCH] xpad: fix 8BitDo disconnect — disable autosuspend + defer LED 2s
+
+Two separate issues cause the 8BitDo SN30 Pro+ to disconnect under the
+6.6 BSP EHCI TT:
+
+1. usb_disable_autosuspend() missing from probe: the BSP xpad.c omits
+   this call that upstream includes. Without it, USB autosuspend can fire
+   on the controller; the Allwinner BSP EHCI TT fails to resume a
+   full-speed device through the transaction translator (-EPIPE), causing
+   disconnect. This is the primary cause of the 60-100s disconnect cycle
+   even with usbcore.autosuspend=-1 set globally.
+
+2. Probe-time LED URB stalls EP2: with CONFIG_JOYSTICK_XPAD_LEDS=y,
+   xpad_led_probe() calls xpad_identify_controller() immediately during
+   probe, sending an interrupt OUT URB while the 8BitDo endpoint is still
+   initialising. This stalls EP2 and corrupts EHCI TT state causing rapid
+   connect/disconnect cycling.
+
+Fix both: call usb_disable_autosuspend() after usb_set_intfdata(), and
+defer the LED player-indicator assignment by 2 seconds via delayed_work.
+
+Cancel the delayed work in xpad_led_disconnect() to avoid use-after-free
+if the controller is unplugged before the work fires.
+
+Signed-off-by: OctaneOS <noreply@octaneos.local>
+---
+ drivers/input/joystick/xpad.c | 17 +++++++++++++++--
+ 1 file changed, 15 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/input/joystick/xpad.c b/drivers/input/joystick/xpad.c
+index 05c00421f..b1f3cd57e 100644
+--- a/drivers/input/joystick/xpad.c
++++ b/drivers/input/joystick/xpad.c
+@@ -1640,6 +1640,7 @@ struct xpad_led {
+ 	char name[16];
+ 	struct led_classdev led_cdev;
+ 	struct usb_xpad *xpad;
++	struct delayed_work led_work;
+ };
+
+ /*
+@@ -1713,6 +1713,14 @@ static void xpad_identify_controller(struct usb_xpad *xpad)
+ 	led_set_brightness(&xpad->led->led_cdev, (xpad->pad_nr % 4) + 2);
+ }
+
++static void xpad_led_identify_work(struct work_struct *work)
++{
++	struct xpad_led *xpad_led = container_of(to_delayed_work(work),
++						 struct xpad_led, led_work);
++
++	xpad_identify_controller(xpad_led->xpad);
++}
++
+ static void xpad_led_set(struct led_classdev *led_cdev,
+ 			 enum led_brightness value)
+ {
+@@ -1753,7 +1761,8 @@ static int xpad_led_probe(struct usb_xpad *xpad)
+ 	if (error)
+ 		goto err_free_id;
+
+-	xpad_identify_controller(xpad);
++	INIT_DELAYED_WORK(&led->led_work, xpad_led_identify_work);
++	schedule_delayed_work(&led->led_work, msecs_to_jiffies(2000));
+
+ 	return 0;
+
+@@ -1769,6 +1778,7 @@ static void xpad_led_disconnect(struct usb_xpad *xpad)
+ 	struct xpad_led *xpad_led = xpad->led;
+
+ 	if (xpad_led) {
++		cancel_delayed_work_sync(&xpad_led->led_work);
+ 		led_classdev_unregister(&xpad_led->led_cdev);
+ 		ida_simple_remove(&xpad_pad_seq, xpad->pad_nr);
+ 		kfree(xpad_led);
+@@ -2178,6 +2187,9 @@ static int xpad_probe(struct usb_interface *intf, const struct usb_device_id *id
+
+ 	usb_set_intfdata(intf, xpad);
++	usb_disable_autosuspend(udev);
+
+ 	/* Packet type detection */

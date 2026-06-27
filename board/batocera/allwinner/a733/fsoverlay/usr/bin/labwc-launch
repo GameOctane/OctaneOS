@@ -14,7 +14,8 @@ unset WAYLAND_DISPLAY
 # Log and configuration file paths
 LOG_FILE="/userdata/system/logs/display.log"
 LABWC_CONF_DIR="/userdata/system/.config/labwc"
-LABWC_LOG_FILE="/var/log/labwc.log"
+LABWC_LOG_FILE="/userdata/system/logs/labwc.log"
+LABWC_GLES2_LOG="/userdata/system/logs/labwc-gles2.log"
 
 mkdir -p /userdata/system/logs
 mkdir -p /var/run
@@ -55,49 +56,88 @@ if [ -n "$PRIME_PCI_ID" ]; then
     done
 fi
 
-# Wait for the sunxi-drm display device — the card that owns DP-1.
-# The PVR GPU also creates a DRM device and may claim card0 first, so
-# we must find the card with the DP-1 connector rather than assuming card0.
+# Wait for the sunxi-drm display device — find the card that owns any DP or eDP
+# connector. PVR GPU also creates a DRM device (no connectors) and may claim
+# card0 first, so we must not hardcode card0.
 i=0
 DISPLAY_CARD=""
+DISPLAY_CONN=""
 while [ $i -lt 60 ]; do
-    for conn in /sys/class/drm/card*-DP-1; do
-        [ -e "$conn" ] && DISPLAY_CARD=$(basename "$(dirname "$conn")") && break 2
+    for conn in /sys/class/drm/card*-DP-1 /sys/class/drm/card*-eDP-1; do
+        [ -e "$conn" ] && DISPLAY_CARD=$(basename "${conn%%-*}") && DISPLAY_CONN=$(basename "$conn") && break 2
     done
-    [ $((i % 5)) -eq 0 ] && serial "waiting for DP-1 connector (${i}s)..."
-    echo "Waiting for DP-1 connector... ($i s)" >> "$LOG_FILE"
+    [ $((i % 5)) -eq 0 ] && serial "waiting for display connector (${i}s)... drm: $(ls /sys/class/drm/ 2>/dev/null | tr '\n' ' ')"
+    echo "Waiting for display connector... ($i s)" >> "$LOG_FILE"
     sleep 1
     i=$((i + 1))
 done
 if [ -z "$DISPLAY_CARD" ]; then
-    serial "ERROR: DP-1 connector never appeared after 60s — aborting"
+    serial "ERROR: no DP-1 or eDP-1 connector found after 60s — aborting"
+    serial "DRM entries: $(ls /sys/class/drm/ 2>/dev/null | tr '\n' ' ')"
     exit 1
 fi
-serial "DP-1 on /dev/dri/$DISPLAY_CARD appeared at ${i}s"
-echo "DP-1 on /dev/dri/$DISPLAY_CARD appeared at ${i}s" >> "$LOG_FILE"
-serial "DRM connectors: $(ls /sys/class/drm/ 2>/dev/null | grep -v '^card$' | tr '\n' ' ')"
+serial "display connector: $DISPLAY_CONN on /dev/dri/$DISPLAY_CARD (found at ${i}s)"
+echo "display connector: $DISPLAY_CONN on /dev/dri/$DISPLAY_CARD (found at ${i}s)" >> "$LOG_FILE"
 
 echo "Starting labwc (keyboard: $XKB_DEFAULT_LAYOUT)" >> "$LOG_FILE"
 
-# Try GLES2 first with the PowerVR DDK baked into /usr/local/lib and /usr/lib.
+# Derive the PVR render node. There are exactly 2 DRM devices: sunxi-drm (display)
+# and pvrsrvkm (GPU). Card N uses renderD(128+N). PVR is the non-display card.
+DISPLAY_NUM=${DISPLAY_CARD#card}
+PVR_RENDER_NODE="/dev/dri/renderD$(( 128 + 1 - DISPLAY_NUM ))"
+serial "PVR render node: $PVR_RENDER_NODE"
+
+# Try GLES2 with the PowerVR DDK. WLR_RENDER_DRM_DEVICE points wlroots at the
+# PVR render node instead of the sunxi-drm render node (which can't do GLES2).
 # If labwc crashes within 5s (EGL init failure), fall back to pixman.
-serial "Attempting WLR_RENDERER=gles2 on /dev/dri/$DISPLAY_CARD"
+
+# Pre-flight: write library state to log before launching so we have diagnostics
+# even if labwc crashes before producing any output of its own.
+{
+    echo "=== PVR pre-flight $(date) ==="
+    echo "DISPLAY_CARD=/dev/dri/$DISPLAY_CARD  PVR_RENDER_NODE=$PVR_RENDER_NODE"
+    echo "--- /dev/dri/ ---"
+    ls -la /dev/dri/ 2>&1
+    echo "--- /usr/local/lib/gbm/ ---"
+    ls -la /usr/local/lib/gbm/ 2>&1
+    echo "--- /usr/local/lib/dri/ ---"
+    ls -la /usr/local/lib/dri/ 2>&1
+    echo "--- /usr/local/lib/libEGL* libGLES* ---"
+    ls -la /usr/local/lib/libEGL* /usr/local/lib/libGLES* 2>&1
+    echo "--- /etc/powervr.ini ---"
+    cat /etc/powervr.ini 2>&1
+    echo "--- ldd /usr/bin/labwc ---"
+    LD_LIBRARY_PATH="/usr/local/lib:/usr/lib" ldd /usr/bin/labwc 2>&1
+    echo "=== launching labwc GLES2 ==="
+} > "$LABWC_GLES2_LOG" 2>&1
+
+serial "Attempting WLR_RENDERER=gles2 on /dev/dri/$DISPLAY_CARD + $PVR_RENDER_NODE"
 LD_LIBRARY_PATH="/usr/local/lib:/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
-WLR_RENDERER=gles2 WLR_DRM_DEVICES="/dev/dri/$DISPLAY_CARD" WLR_LIBINPUT_NO_DEVICES=1 \
-    /usr/bin/labwc -d -C $LABWC_CONF_DIR > "$LABWC_LOG_FILE" 2>&1 &
+LIBGL_DRIVERS_PATH="/usr/local/lib/dri" \
+GBM_BACKENDS_PATH="/usr/local/lib/gbm" \
+MESA_LOADER_DRIVER_OVERRIDE=pvr \
+WLR_RENDERER=gles2 \
+WLR_DRM_DEVICES="/dev/dri/$DISPLAY_CARD" \
+WLR_RENDER_DRM_DEVICE="$PVR_RENDER_NODE" \
+WLR_LIBINPUT_NO_DEVICES=1 \
+EGL_LOG_LEVEL=debug \
+MESA_DEBUG=1 \
+    /usr/bin/labwc -d -C $LABWC_CONF_DIR >> "$LABWC_GLES2_LOG" 2>&1 &
 LABWC_PID=$!
 
 sleep 5
 if kill -0 $LABWC_PID 2>/dev/null; then
     serial "labwc GLES2 alive after 5s — GPU rendering active"
+    cp "$LABWC_GLES2_LOG" "$LABWC_LOG_FILE"
     wait $LABWC_PID
     EXIT_CODE=$?
 else
     serial "labwc GLES2 crashed — falling back to pixman"
-    while IFS= read -r line; do serial "  $line"; done < "$LABWC_LOG_FILE"
+    cp "$LABWC_GLES2_LOG" "$LABWC_LOG_FILE"
+    tail -20 "$LABWC_GLES2_LOG" | while IFS= read -r line; do serial "  $line"; done
     WLR_RENDERER=pixman WLR_RENDERER_ALLOW_SOFTWARE=1 \
     WLR_DRM_DEVICES="/dev/dri/$DISPLAY_CARD" WLR_LIBINPUT_NO_DEVICES=1 \
-        /usr/bin/labwc -d -C $LABWC_CONF_DIR > "$LABWC_LOG_FILE" 2>&1 &
+        /usr/bin/labwc -d -C $LABWC_CONF_DIR >> "$LABWC_LOG_FILE" 2>&1 &
     LABWC_PID=$!
     serial "labwc pixman fallback started with PID $LABWC_PID"
     wait $LABWC_PID
