@@ -23,7 +23,7 @@ mkdir -p /var/log
 
 # Helper: write a message to the serial console directly.
 # /dev/console = tty1 (display), so init.d stdout never appears on serial.
-serial() { printf '[labwc-launch] %s\n' "$*" > /dev/ttyAS0 2>/dev/null; }
+serial() { printf '[labwc-launch] %s\n' "$*" > /dev/ttyS0 2>/dev/null; }
 
 serial "started (pid $$)"
 
@@ -81,15 +81,14 @@ echo "display connector: $DISPLAY_CONN on /dev/dri/$DISPLAY_CARD (found at ${i}s
 
 echo "Starting labwc (keyboard: $XKB_DEFAULT_LAYOUT)" >> "$LOG_FILE"
 
-# Derive the PVR render node. There are exactly 2 DRM devices: sunxi-drm (display)
-# and pvrsrvkm (GPU). Card N uses renderD(128+N). PVR is the non-display card.
-# If pvrsrvkm does not expose a DRM render node, fall back to card1 directly.
-DISPLAY_NUM=${DISPLAY_CARD#card}
-PVR_CARD_NUM=$(( 1 - DISPLAY_NUM ))
-PVR_RENDER_NODE="/dev/dri/renderD$(( 128 + PVR_CARD_NUM ))"
-if [ ! -e "$PVR_RENDER_NODE" ]; then
-    serial "renderD$(( 128 + PVR_CARD_NUM )) absent — using /dev/dri/card${PVR_CARD_NUM} directly"
-    PVR_RENDER_NODE="/dev/dri/card${PVR_CARD_NUM}"
+# pvrsrvkm's render node. sunxi-drm (display) does NOT set DRIVER_RENDER so it
+# gets no renderD node. pvrsrvkm does, and gets the first available minor (128).
+# Do NOT derive by card-number arithmetic — render node minors are assigned by
+# DRIVER_RENDER registration order, not card index.
+PVR_RENDER_NODE=$(ls /dev/dri/renderD* 2>/dev/null | head -1)
+if [ -z "$PVR_RENDER_NODE" ]; then
+    serial "ERROR: no render node found — pvrsrvkm.ko may not be loaded"
+    exit 1
 fi
 serial "PVR render node: $PVR_RENDER_NODE"
 
@@ -117,7 +116,7 @@ serial "PVR render node: $PVR_RENDER_NODE"
     echo "=== launching labwc GLES2 ==="
 } > "$LABWC_GLES2_LOG" 2>&1
 
-serial "Attempting WLR_RENDERER=gles2 on /dev/dri/$DISPLAY_CARD + $PVR_RENDER_NODE"
+serial "Attempting WLR_RENDERER=gles2 display=/dev/dri/$DISPLAY_CARD render=$PVR_RENDER_NODE"
 LD_LIBRARY_PATH="/usr/local/lib:/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
 LIBGL_DRIVERS_PATH="/usr/local/lib/dri" \
 GBM_BACKENDS_PATH="/usr/local/lib/gbm" \
@@ -126,6 +125,7 @@ WLR_RENDERER=gles2 \
 WLR_DRM_DEVICES="/dev/dri/$DISPLAY_CARD" \
 WLR_RENDER_DRM_DEVICE="$PVR_RENDER_NODE" \
 WLR_LIBINPUT_NO_DEVICES=1 \
+WLR_DRM_NO_MODIFIERS=1 \
 EGL_LOG_LEVEL=debug \
 MESA_DEBUG=1 \
     /usr/bin/labwc -d -C $LABWC_CONF_DIR >> "$LABWC_GLES2_LOG" 2>&1 &

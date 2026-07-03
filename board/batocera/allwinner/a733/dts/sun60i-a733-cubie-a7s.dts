@@ -766,6 +766,13 @@
 };
 
 &uart0 {
+	/* allwinner,uart-v100 is not matched by any compiled driver (AW_UART handles
+	 * older sun8i/50i/55i strings; AW_UART_NG not enabled). Add snps,dw-apb-uart
+	 * so CONFIG_SERIAL_8250_DW binds and creates /dev/ttyS0. reg-shift=2 and
+	 * reg-io-width=4 match earlycon mmio32 — standard for Allwinner 32-bit UARTs. */
+	compatible = "allwinner,uart-v100", "snps,dw-apb-uart";
+	reg-shift = <2>;
+	reg-io-width = <4>;
 	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&uart0_pins_active>;
 	pinctrl-1 = <&uart0_pins_sleep>;

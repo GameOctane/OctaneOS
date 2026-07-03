@@ -23,4 +23,4 @@ fi
     grep -E "mmcblk|boot|userdata" /proc/mounts
     echo "=== batocera.conf ==="
     cat "$CONF" 2>/dev/null || echo "(not found)"
-} > /dev/ttyAS0 2>/dev/null
+} > /dev/ttyS0 2>/dev/null

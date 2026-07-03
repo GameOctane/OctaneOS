@@ -13,7 +13,7 @@ si5::sysinit:/bin/hostname -F /etc/hostname
 si6::sysinit:/etc/init.d/rcS
 
 # Serial console login on Allwinner UART0 (ttyAS0, 115200 baud)
-S0:3:respawn:/sbin/getty -L 115200 ttyAS0 vt100
+S0:3:respawn:/sbin/getty -L 115200 ttyS0 vt100
 
 # 2:3:respawn:/sbin/getty 38400 tty2
 # 3:3:respawn:/sbin/getty 38400 tty3

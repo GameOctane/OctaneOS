@@ -97,14 +97,14 @@ OctaneOS manages three distinct play modes automatically — no configuration re
 
 ## Download
 
-**[OctaneOS v0.4.1-alpha — Radxa Cubie A7S](https://github.com/GameOctane/OctaneOS/releases/tag/v0.4.1-alpha)**
+**[OctaneOS v0.5.0-alpha — Radxa Cubie A7S](https://github.com/GameOctane/OctaneOS/releases/tag/v0.5.0-alpha)**
 
 **Windows** — Use [Balena Etcher](https://etcher.balena.io). Flash the `.img.gz` directly — no need to decompress.
 
 **Linux / Mac**
 ```
-gunzip OctaneOS-a733-cubie-a7s-43-20260623.img.gz
-dd if=OctaneOS-a733-cubie-a7s-43-20260623.img of=/dev/sdX bs=4M status=progress
+gunzip OctaneOS-a733-cubie-a7s-43-20260703.img.gz
+dd if=OctaneOS-a733-cubie-a7s-43-20260703.img of=/dev/sdX bs=4M status=progress
 ```
 
 Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or `.sha256` file before flashing.
@@ -115,7 +115,7 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 
 [![Release](https://img.shields.io/github/v/release/GameOctane/OctaneOS?include_prereleases&label=latest)](https://github.com/GameOctane/OctaneOS/releases/latest)
 
-> 🚧 OctaneOS is in active early development. We are building in public from day one — including the failures. Follow along.
+> OctaneOS is in active early development. GPU hardware acceleration just shipped — EmulationStation is running smooth and ROMs are playing. We are building in public from day one — including the failures. Follow along.
 
 | Milestone | Status |
 |---|---|
@@ -133,10 +133,10 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 | 120Hz DisplayPort output | ✅ Complete |
 | PowerVR BXM-4-64 GPU kernel module loading | ✅ Complete |
 | Batocera userspace + overlayfs booting | ✅ Complete |
-| PowerVR GPU hardware acceleration | 🚧 In Progress |
+| PowerVR GPU hardware acceleration (GLES2) | ✅ Complete |
 | EmulationStation launching | ✅ Complete |
 | Wired controller input (USB HID + xpad) | ✅ Complete |
-| First ROM running | ⏳ Pending |
+| First ROM running | ✅ Complete |
 | RetroAchievements configured | ⏳ Pending |
 | Three mode system | ⏳ Pending |
 | OTA update system | ⏳ Pending |
