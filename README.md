@@ -109,6 +109,8 @@ dd if=OctaneOS-a733-cubie-a7s-43-20260704.img of=/dev/sdX bs=4M status=progress
 
 Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or `.sha256` file before flashing.
 
+**USB-C cable requirement** — DisplayPort Alt Mode requires a Full-Featured USB-C cable (also called "USB-C DP Alt Mode" or "Thunderbolt" cable). Standard charging cables do not carry video. If you see no display, the cable is the first thing to check.
+
 ---
 
 ## Build Status
