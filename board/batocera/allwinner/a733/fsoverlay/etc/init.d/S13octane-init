@@ -17,6 +17,29 @@ case "$1" in
         echo "system.kblayout=us" >> "$BATOCERA_CONF"
     fi
 
+    # Disable the ES screensaver. The default screensaver fires after 5 min idle and
+    # attempts video playback which hangs the compositor on A733 (no HW video decode).
+    # system.screensaver.time=0 → "Never" in the ES UI.
+    # system.screensaver.behavior=black → safe fallback if user re-enables.
+    if ! grep -q "^system.screensaver.time=" "$BATOCERA_CONF" 2>/dev/null; then
+        echo "system.screensaver.time=0" >> "$BATOCERA_CONF"
+    fi
+    if ! grep -q "^system.screensaver.behavior=" "$BATOCERA_CONF" 2>/dev/null; then
+        echo "system.screensaver.behavior=black" >> "$BATOCERA_CONF"
+    fi
+
+    # Disable USB autosuspend for the AIC8800 WiFi dongle (VID a69c, PID 8800/8801).
+    # The USB core parks the dongle after 2s idle by default; the aic8800 driver does
+    # not implement suspend/resume and the kernel hangs trying to communicate with it
+    # after it powers down. Force power/control=on so udev never suspends it.
+    for dev in /sys/bus/usb/devices/*; do
+        vid=$(cat "$dev/idVendor" 2>/dev/null)
+        pid=$(cat "$dev/idProduct" 2>/dev/null)
+        if [ "$vid" = "a69c" ] && { [ "$pid" = "8800" ] || [ "$pid" = "8801" ]; }; then
+            echo on > "$dev/power/control" 2>/dev/null || true
+        fi
+    done
+
     SSH_DIR=/userdata/system/.ssh
     AUTH_KEYS=$SSH_DIR/authorized_keys
     mkdir -p -m 0700 "$SSH_DIR"

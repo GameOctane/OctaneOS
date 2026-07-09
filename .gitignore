@@ -1,6 +1,7 @@
 # Prerequisites
 *.d
 !board/**/fsoverlay/**/init.d/
+!board/**/fsoverlay/**/modprobe.d/
 
 # Object files
 *.o

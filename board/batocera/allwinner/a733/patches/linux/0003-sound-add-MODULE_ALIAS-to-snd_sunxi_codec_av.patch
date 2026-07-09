@@ -1,0 +1,33 @@
+From: OctaneOS <octaneos@local>
+Date: Wed, 09 Jul 2026 00:00:00 +0000
+Subject: [PATCH] sound: add MODULE_ALIAS to snd_sunxi_codec_av for udev auto-load
+
+The sunxi-snd-codec-av platform device is created dynamically by the
+DRM EDP driver during probe.  Without a MODULE_ALIAS the kernel's depmod
+generates no alias for snd_sunxi_codec_av.ko, so udev never triggers
+modprobe when the device appears.
+
+The machine driver (i2s3_mach) references the codec via
+sound-dai = <&edp0>; soc-core resolves it through the OF parent node
+fallback (soc-core.c:806).  If snd_sunxi_codec_av is not loaded before
+the machine driver probes, snd_soc_of_get_dai_link_codecs() returns
+-EPROBE_DEFER forever → i2s3_mach never registers → aplay -l shows
+"no soundcards found".
+
+Add MODULE_ALIAS("platform:sunxi-snd-codec-av") so depmod creates the
+platform alias and udev auto-loads the module when the EDP driver
+creates the platform device.
+
+---
+ bsp/drivers/sound/platform/snd_sunxi_codec_av.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/bsp/drivers/sound/platform/snd_sunxi_codec_av.c b/bsp/drivers/sound/platform/snd_sunxi_codec_av.c
+index aaaaaa1..bbbbbbb 100644
+--- a/bsp/drivers/sound/platform/snd_sunxi_codec_av.c
++++ b/bsp/drivers/sound/platform/snd_sunxi_codec_av.c
+@@ -271,3 +271,4 @@
+ MODULE_LICENSE("GPL");
+ MODULE_VERSION("1.0.0");
+ MODULE_DESCRIPTION("sunxi soundcard codec of av");
++MODULE_ALIAS("platform:sunxi-snd-codec-av");
