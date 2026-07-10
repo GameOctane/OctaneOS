@@ -3,7 +3,7 @@ phase: active
 priority: high
 category: hardware
 progress: 85
-focus: Audio MODULE_ALIAS fix + CPU info display fix (v0.5.5)
+focus: Freeze fixes — xpad auto_poweroff, screensaver, labwc idle, USB autosuspend (v0.5.6)
 next_milestone: Audio confirmed working + RetroAchievements
 milestone_distance: weeks
 community_pressure: high
@@ -32,16 +32,19 @@ OctaneOS is the foundation everything else in GameOctane sits on. GPU hardware a
 - [ ] Suppress spurious DP-1 hotplug events from sunxi-drm BSP
 - [ ] Audio — aplay -l returns no soundcards; machine driver failing (simple_dai_link_of errors)
 
-## What just shipped (v0.5.4-alpha)
-Bash shell, US keyboard layout, AXP8191 clean shutdown, audio drivers in (SND_SOC_SUNXI_CODEC_AV=m). Audio still not working — see v0.5.5 fix below.
+## What just shipped (v0.5.5-alpha)
+Audio MODULE_ALIAS fix: snd_soc_sunxi_codec_av now auto-loads via udev. CPU info display shows 8 cores and 2 clusters. xpad auto_poweroff=N committed for v0.5.6 (was missing from v0.5.5 image).
 
-## What's in v0.5.5-alpha (building now)
-**Audio fix (root cause)**: SND_SOC_SUNXI_CODEC_AV had no MODULE_ALIAS in the BSP source — udev could never auto-load it when the DRM EDP driver created the platform device. Machine driver hit EPROBE_DEFER forever. Fix: added MODULE_ALIAS("platform:sunxi-snd-codec-av") to snd_sunxi_codec_av.c so depmod generates the alias and udev triggers modprobe at the right moment.
-
-**batocera-info CPU display**: Script showed "CPU Cores: 6" on A733 (8-core). Bug: sysfs fallback used physical_package_id (all 0 on single-SoC ARM) + core_id — A76 core_ids 0-1 collided with A55 core_ids 0-1 → 6 unique pairs. Fix: try cluster_id first (A55=0, A76=1). Now shows 8 cores + two clusters with correct frequencies.
+## What's in v0.5.6-alpha
+**Freeze fix (20-min hard freeze)**: Three root causes identified and fixed:
+1. xpad auto_poweroff=Y (6.6 BSP default): 8BitDo repeatedly self-powered off after idle, corrupting USB EHCI TT state → hard freeze. Fix: options xpad auto_poweroff=N.
+2. ES screensaver default fires after 5min → software video decode at 1080p hangs compositor (no HW decode on A733). Fix: system.screensaver.time=0 default in S13octane-init.
+3. labwc idle DPMS: added <idle><timeout>0</timeout></idle> to rc.xml fsoverlay.
+4. AIC8800 USB autosuspend: USB core parks dongle after 2s; aic8800 driver has no suspend/resume → kernel hangs. Fix: S13octane-init writes power/control=on at boot.
+Also: MODULE_ALIAS formalized as kernel patch (0003); .gitignore fixed for modprobe.d/.
 
 ## Resume here
-v0.5.5-alpha building. Verify: aplay -l shows allwinner-edp card, CPU Cores shows 8, CPU Cluster 1: 6 cores @ 1800 MHz / CPU Cluster 2: 2 cores @ 2000 MHz.
+v0.5.6-alpha released. Audio -EINVAL still active — soundcard registers and loads, PipeWire has streams, but snd_soc_link_hw_params returns -22 from asoc_simple_hw_params. All traced paths return 0 for 48kHz. Need device online to check dmesg for the specific SND_LOG_ERR message that precedes the -22.
 
 ## Last session
-2026-07-07/08: Audio root cause — no MODULE_ALIAS on snd_soc_sunxi_codec_av (=y blocked by Kconfig if-block). Added MODULE_ALIAS to BSP source. batocera-info fsoverlay override for CPU core count and frequency display. Released v0.5.5-alpha.
+2026-07-08/09: Freeze root causes identified. xpad auto_poweroff, screensaver, labwc idle, USB autosuspend all fixed and committed. Build completed. Released v0.5.6-alpha.
