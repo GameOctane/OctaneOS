@@ -32,19 +32,14 @@ OctaneOS is the foundation everything else in GameOctane sits on. GPU hardware a
 - [ ] Suppress spurious DP-1 hotplug events from sunxi-drm BSP
 - [ ] Audio — aplay -l returns no soundcards; machine driver failing (simple_dai_link_of errors)
 
-## What just shipped (v0.5.5-alpha)
-Audio MODULE_ALIAS fix: snd_soc_sunxi_codec_av now auto-loads via udev. CPU info display shows 8 cores and 2 clusters. xpad auto_poweroff=N committed for v0.5.6 (was missing from v0.5.5 image).
+## What just shipped (v0.5.6-alpha)
+**Freeze fix (20-min hard freeze)**: Four root causes identified and fixed — xpad auto_poweroff, ES screensaver, labwc idle DPMS, AIC8800 USB autosuspend.
 
-## What's in v0.5.6-alpha
-**Freeze fix (20-min hard freeze)**: Three root causes identified and fixed:
-1. xpad auto_poweroff=Y (6.6 BSP default): 8BitDo repeatedly self-powered off after idle, corrupting USB EHCI TT state → hard freeze. Fix: options xpad auto_poweroff=N.
-2. ES screensaver default fires after 5min → software video decode at 1080p hangs compositor (no HW decode on A733). Fix: system.screensaver.time=0 default in S13octane-init.
-3. labwc idle DPMS: added <idle><timeout>0</timeout></idle> to rc.xml fsoverlay.
-4. AIC8800 USB autosuspend: USB core parks dongle after 2s; aic8800 driver has no suspend/resume → kernel hangs. Fix: S13octane-init writes power/control=on at boot.
-Also: MODULE_ALIAS formalized as kernel patch (0003); .gitignore fixed for modprobe.d/.
+## What's in v0.5.7-alpha
+**Audio fix + UI freeze fix**: Root cause of audio -22 error identified via live dmesg. PipeWire probes ALSA with unconstrained rate (INT_MAX = 2,147,483,647). Without hw_constraint_list, asoc_simple_hw_params hits default → -EINVAL → PipeWire sink fails → ES blocks on audio init → UI freeze. Fix: snd_pcm_hw_constraint_list() in asoc_simple_startup() (0004 patch). Also: A76 OPP table extended to 2000MHz @ 1050mV (requires next linux-rebuild to take effect in image — DTS committed, image not yet rebuilt).
 
 ## Resume here
-v0.5.7 kernel build in progress. Audio -22 root cause found: PipeWire sends rate=INT_MAX (2147483647) because no hw_constraint_list was registered. The rate switch hits default → -22 → PipeWire sink fails → ES blocks on audio init → UI freeze. Fix: added snd_pcm_hw_constraint_list() in asoc_simple_startup() (0004 patch). Full path for 48kHz verified to return 0 (extparam also safe — virtual notifier block returns 0). Rebuild underway. Next: flash v0.5.7, test audio in game.
+v0.5.7-alpha released. Next: flash v0.5.7, test audio. A76 2000MHz OPP needs linux-rebuild + image build for v0.5.8.
 
 ## Last session
-2026-07-09/10: Live dmesg captured — "Invalid rate 2147483647" at line 87. Rate constraint fix applied to kernel (0004 patch). Controller disconnect at ~193s is symptom of ES freeze (no input → 8BitDo disconnects), not a separate cause. v0.5.7 building overnight.
+2026-07-10: v0.5.7-alpha released. Audio -22 root cause: PipeWire INT_MAX rate, fixed with hw_constraint_list in asoc_simple_startup. A76 2000MHz OPP added to DTS but needs rebuild. Controller disconnect was symptom of audio freeze, not separate cause.
