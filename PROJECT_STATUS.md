@@ -44,7 +44,7 @@ Audio MODULE_ALIAS fix: snd_soc_sunxi_codec_av now auto-loads via udev. CPU info
 Also: MODULE_ALIAS formalized as kernel patch (0003); .gitignore fixed for modprobe.d/.
 
 ## Resume here
-v0.5.6-alpha released. Audio -EINVAL still active — soundcard registers and loads, PipeWire has streams, but snd_soc_link_hw_params returns -22 from asoc_simple_hw_params. All traced paths return 0 for 48kHz. Need device online to check dmesg for the specific SND_LOG_ERR message that precedes the -22.
+v0.5.7 kernel build in progress. Audio -22 root cause found: PipeWire sends rate=INT_MAX (2147483647) because no hw_constraint_list was registered. The rate switch hits default → -22 → PipeWire sink fails → ES blocks on audio init → UI freeze. Fix: added snd_pcm_hw_constraint_list() in asoc_simple_startup() (0004 patch). Full path for 48kHz verified to return 0 (extparam also safe — virtual notifier block returns 0). Rebuild underway. Next: flash v0.5.7, test audio in game.
 
 ## Last session
-2026-07-08/09: Freeze root causes identified. xpad auto_poweroff, screensaver, labwc idle, USB autosuspend all fixed and committed. Build completed. Released v0.5.6-alpha.
+2026-07-09/10: Live dmesg captured — "Invalid rate 2147483647" at line 87. Rate constraint fix applied to kernel (0004 patch). Controller disconnect at ~193s is symptom of ES freeze (no input → 8BitDo disconnects), not a separate cause. v0.5.7 building overnight.

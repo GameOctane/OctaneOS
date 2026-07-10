@@ -1,0 +1,69 @@
+From: OctaneOS <octaneos@local>
+Date: Thu, 10 Jul 2026 00:00:00 +0000
+Subject: [PATCH] sound: fix PipeWire audio hang via hw_constraint_list in asoc_simple_startup
+
+PipeWire's SPA ALSA plugin probes the device using an open-ended rate
+interval (rate min=0, max=INT_MAX).  When snd_pcm_hw_params() is called
+with a rate that has not been constrained via snd_pcm_hw_params_set_rate*,
+params_rate(params) returns INT_MAX (2147483647).  This value falls
+through to the default case in the asoc_simple_hw_params() rate switch:
+
+  [22.816054] sunxi:sound-mach:[ERR]: 87 asoc_simple_hw_params(): Invalid rate 2147483647
+  sunxi-snd-plat-i2s-sunxi-snd-codec-av: ASoC: error at snd_soc_link_hw_params: -22
+  sunxi-snd-plat-i2s-sunxi-snd-codec-av: ASoC: error at __soc_pcm_hw_params: -22
+
+PipeWire's ALSA sink then enters an error state.  EmulationStation (which
+uses SDL2+PipeWire for audio) blocks indefinitely waiting for the sink to
+become ready, freezing the entire UI.  This manifests as a hard freeze
+whenever ES tries to play a sound (navigation, game launch, media preview).
+
+Fix by registering a rate constraint list in asoc_simple_startup() that
+exactly mirrors the cases handled by asoc_simple_hw_params().  This causes
+snd_pcm_hw_refine() to intersect PipeWire's open interval down to the
+valid rate set before hw_params is ever called, so params_rate() always
+returns a valid rate (e.g. 48000).
+
+Tested on Radxa Cubie A7S (Allwinner A733 / sun60iw2).
+---
+ bsp/drivers/sound/platform/snd_sunxi_mach.c | 22 ++++++++++++++++++--
+ 1 file changed, 20 insertions(+), 2 deletions(-)
+
+diff --git a/bsp/drivers/sound/platform/snd_sunxi_mach.c b/bsp/drivers/sound/platform/snd_sunxi_mach.c
+index XXXXXXX..XXXXXXX 100644
+--- a/bsp/drivers/sound/platform/snd_sunxi_mach.c
++++ b/bsp/drivers/sound/platform/snd_sunxi_mach.c
+@@ -30,10 +30,30 @@ static LIST_HEAD(extparam_list);
+
+ #define DRV_NAME	"sunxi-snd-mach"
+
++static const unsigned int sunxi_mach_rates[] = {
++	8000, 11025, 12000, 16000, 22050, 24000,
++	32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000,
++};
++
++static const struct snd_pcm_hw_constraint_list sunxi_mach_rate_constraints = {
++	.count	= ARRAY_SIZE(sunxi_mach_rates),
++	.list	= sunxi_mach_rates,
++};
++
+ static void asoc_simple_shutdown(struct snd_pcm_substream *substream)
+ {
+ }
+
+ static int asoc_simple_startup(struct snd_pcm_substream *substream)
+ {
+ 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+ 	struct asoc_simple_priv *priv = snd_soc_card_get_drvdata(rtd->card);
+-	if (priv->wait_time)
++	int ret;
++
++	ret = snd_pcm_hw_constraint_list(substream->runtime, 0,
++					  SNDRV_PCM_HW_PARAM_RATE,
++					  &sunxi_mach_rate_constraints);
++	if (ret < 0)
++		return ret;
++
++	if (priv->wait_time)
+ 		sunxi_adpt_wait_time_conv(substream, priv->wait_time);
+ 	return 0;
+ }
