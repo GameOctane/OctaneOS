@@ -40,6 +40,24 @@ case "$1" in
         fi
     done
 
+    # xpad auto_poweroff=Y (BSP default) causes the driver to send a poweroff
+    # command to 8BitDo controllers every ~30s, causing rapid USB disconnect/reconnect.
+    # The modprobe.d option (xpad-octane.conf) does not apply because xpad loads
+    # before the overlayfs modprobe.d is visible. Force it off at runtime.
+    echo N > /sys/module/xpad/parameters/auto_poweroff 2>/dev/null || true
+
+    # 8BitDo controllers have an internal idle timer (~2-4 min) that disconnects
+    # the controller when no buttons are pressed (most visible on the ES menu).
+    # Writing to the xpad LED sysfs sends a USB OUT packet that resets the timer.
+    (
+        while true; do
+            sleep 30
+            for led in /sys/class/leds/xpad*/brightness; do
+                [ -f "$led" ] && brightness=$(cat "$led") && echo "$brightness" > "$led" 2>/dev/null || true
+            done
+        done
+    ) &
+
     SSH_DIR=/userdata/system/.ssh
     AUTH_KEYS=$SSH_DIR/authorized_keys
     mkdir -p -m 0700 "$SSH_DIR"
