@@ -1,0 +1,43 @@
+From: OctaneOS <octaneos@local>
+Date: Fri, 11 Jul 2026 00:00:00 +0000
+Subject: [PATCH] drm: edp: force full link init to fix audio after warm reboot
+
+On warm reboot, sunxi_drm_check_if_need_sw_enable() returns true because
+U-Boot boot info is still in the connecting_head list. With sw_enable=true,
+the EDP encoder skips the full enable() path (which does link training and
+audio setup) and only runs enable_early_sw() (PHY + clock + DPCD/EDID).
+
+This leaves the DP main link in an unconfigured state on the first atomic
+commit, causing:
+  - Display black screen (sw_enable path produces sw en=0 in display engine)
+  - Audio dead after reboot (DP audio channel never initialized)
+
+The display recovers on the second commit (c->done=true flips sw_enable
+back to false), but audio never recovers because PipeWire already called
+audio_startup() against an uninitialized DP link.
+
+USB-C DisplayPort Alt Mode is never pre-initialized by U-Boot on this
+platform, so the sw_enable optimization provides no benefit. Force
+sw_enable=false to always take the full init path on every enable.
+
+Signed-off-by: OctaneOS <octaneos@local>
+---
+ bsp/drivers/drm/sunxi_drm_edp.c | 7 ++++---
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/bsp/drivers/drm/sunxi_drm_edp.c b/bsp/drivers/drm/sunxi_drm_edp.c
+--- a/bsp/drivers/drm/sunxi_drm_edp.c
++++ b/bsp/drivers/drm/sunxi_drm_edp.c
+@@ -3964,8 +3964,11 @@ int sunxi_edp_encoder_atomic_check(struct drm_encoder *encoder,
+ 	scrtc_state->output_dev_data = drm_edp;
+ 	if (conn_state->crtc) {
+-		drm_edp->sw_enable = sunxi_drm_check_if_need_sw_enable(conn_state->connector);
+-		scrtc_state->sw_enable = drm_edp->sw_enable;
++		/* Always do full link init for DP/EDP -- USB-C DP Alt Mode is never
++		 * pre-initialized by U-Boot, and the sw_enable path skips link
++		 * training + audio setup, leaving audio dead after warm reboot. */
++		drm_edp->sw_enable = false;
++		scrtc_state->sw_enable = false;
+ 	}
+
+ 	DRM_DEBUG_DRIVER("%s finish\n", __FUNCTION__);
