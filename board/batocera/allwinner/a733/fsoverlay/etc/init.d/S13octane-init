@@ -40,13 +40,6 @@ case "$1" in
         fi
     done
 
-    # xpad auto_poweroff=Y (BSP default) causes the driver to send a poweroff
-    # command to controllers after idle timeout. The modprobe.d option does not
-    # apply because xpad loads before the overlayfs modprobe.d is visible.
-    # NOTE: do NOT write to /sys/class/leds/xpad*/brightness as a keepalive —
-    # that LED OUT packet causes the 8BitDo to disconnect every ~35s.
-    echo N > /sys/module/xpad/parameters/auto_poweroff 2>/dev/null || true
-
     SSH_DIR=/userdata/system/.ssh
     AUTH_KEYS=$SSH_DIR/authorized_keys
     mkdir -p -m 0700 "$SSH_DIR"
