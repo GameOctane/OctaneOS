@@ -40,6 +40,15 @@ case "$1" in
         fi
     done
 
+    # Apply timezone from batocera.conf early — S26system calls batocera-config
+    # tz but something in its environment is not ready in time, leaving the
+    # system in the default Europe/Paris timezone until a manual fix.
+    TZ_SETTING=$(grep "^system.timezone=" "$BATOCERA_CONF" 2>/dev/null | cut -d= -f2)
+    if [ -n "$TZ_SETTING" ] && [ -f "/usr/share/zoneinfo/$TZ_SETTING" ]; then
+        ln -sf "/usr/share/zoneinfo/$TZ_SETTING" /etc/localtime
+        echo "$TZ_SETTING" > /etc/timezone
+    fi
+
     SSH_DIR=/userdata/system/.ssh
     AUTH_KEYS=$SSH_DIR/authorized_keys
     mkdir -p -m 0700 "$SSH_DIR"
