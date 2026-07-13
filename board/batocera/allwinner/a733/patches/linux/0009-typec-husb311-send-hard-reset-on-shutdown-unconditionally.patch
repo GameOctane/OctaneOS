@@ -1,0 +1,41 @@
+From: OctaneOS <octaneos@local>
+Date: Sat, 12 Jul 2026 00:00:00 +0000
+Subject: [PATCH] typec: husb311: send PD hard reset on shutdown unconditionally
+
+husb311_shutdown() previously skipped the PD hard reset when
+chip->battery_exist was false.  On the Cubie A7S (no battery), usb_psy
+is NULL so husb311_init_tcpci_data_late() returns before setting
+battery_exist, leaving it false.  The hard reset was therefore never
+sent during warm reboot.
+
+Without a hard reset, the monitor receives no signal to cleanly exit
+DP Alt Mode.  The HUSB311 chip stays powered through the SoC reset
+(it has its own I2C supply), so CC lines stay valid but the DP main
+link dies when the EDP PHY is reset.  The monitor enters a half-exited
+state with HPD de-asserted.  Combined with the phy_switcher deadlock
+fixed in patch 0008, this means the display stays dark on every warm
+reboot.
+
+Fix: remove the battery_exist guard in husb311_shutdown().  During an
+orderly reboot (warm or cold) the SoC remains powered, the I2C bus is
+up, and the TCPC_TRANSMIT write succeeds.  If it fails (late shutdown
+path with bus already clocked down), the error is logged and silently
+ignored -- this is already the behaviour for a failed write.
+
+Signed-off-by: OctaneOS <octaneos@local>
+---
+ bsp/drivers/power/typec/tcpci_husb311.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+--- a/bsp/drivers/power/typec/tcpci_husb311.c
++++ b/bsp/drivers/power/typec/tcpci_husb311.c
+@@ -832,9 +832,8 @@
+ 	disable_irq(chip->gpio_int_n_irq);
+-	if (!chip->battery_exist) {
+-		dev_dbg(chip->dev, "no battery, hardreset forbidden");
+-		return;
+-	}
++	/* Send hard reset unconditionally: on warm reboot the SoC stays powered
++	 * so the I2C write is safe.  This tells the monitor to cleanly exit
++	 * DP Alt Mode and cycle HPD, ensuring it re-detects the source when
++	 * the new kernel re-establishes Alt Mode. */

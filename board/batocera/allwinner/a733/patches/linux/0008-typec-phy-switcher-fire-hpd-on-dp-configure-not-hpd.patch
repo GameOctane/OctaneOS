@@ -1,0 +1,64 @@
+From: OctaneOS <octaneos@local>
+Date: Sat, 12 Jul 2026 00:00:00 +0000
+Subject: [PATCH] typec: phy-switcher: fire HPD-in on DP Configure, not on monitor HPD state
+
+After a warm reboot the monitor may be sleeping with HPD de-asserted.
+The phy_switcher's sunxi_phy_mux_set() previously required
+DP_STATUS_HPD_STATE=1 from the monitor's VDM Attention before setting
+hpd_status=true.  Since the sleeping monitor doesn't send VDM Attention
+until something wakes it, and the EDP driver won't attempt AUX until it
+sees hpd_status=true, neither side moves first.  The display stays dark
+until the user power-cycles the monitor.
+
+The fix: on a DP mode *transition* (Configure VDM completed, mode is
+changing), fire hpd_status=true immediately regardless of the monitor's
+HPD state.  The EDP driver's existing 30-second AUX retry loop then
+wakes the monitor -- the DP spec requires sinks to respond to AUX
+requests even in low-power (D3) state.
+
+On Attention messages (same mode, no transition), continue to respect
+DP_STATUS_HPD_STATE for correct live hot-plug/unplug detection at
+runtime.
+
+The passive cable path (data == NULL, dp_mode == true) already fired
+hpd_status=true unconditionally.  This patch makes active Alt Mode
+(VDMs present) consistent with that behavior while preserving runtime
+HPD signalling.
+
+Confirmed root cause via source analysis:
+  - sunxi_phy_mux_set() sets hpd_status=false when HPD=0 on Configure
+  - hpd_status != hpd_status_pre is false (both false) -> no extcon event
+  - edp_sink_extcon_evt() never fires -> hpd_state_now stays false
+  - drm_dp_output_enable() returns RET_FAIL at "sink device unconnect!"
+  - EDP driver never starts -> display dark permanently until monitor cycle
+
+Signed-off-by: OctaneOS <octaneos@local>
+---
+ bsp/drivers/usb/typec/mux/sunxi-phy-switcher.c | 14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
+
+--- a/bsp/drivers/usb/typec/mux/sunxi-phy-switcher.c
++++ b/bsp/drivers/usb/typec/mux/sunxi-phy-switcher.c
+@@ -282,9 +282,18 @@
+
+ 		/* altmode displayport plugin */
+-		if ((data->conf & DP_CONF_SIGNALING_DP) && (data->status & DP_STATUS_HPD_STATE))
+-			phy_switcher->hpd_status = true;
+-		else
+-			phy_switcher->hpd_status = false;
++		/* altmode displayport plugin.
++		 * On a mode transition (Configure VDM just completed), fire HPD-in
++		 * immediately even if the monitor's HPD is de-asserted -- it may be
++		 * sleeping after a warm reboot.  The EDP driver's AUX retry loop wakes
++		 * it (DP spec requires AUX response even in low-power D3 state).
++		 * On Attention messages (same mode, no transition), respect the monitor's
++		 * HPD state for live hot-plug/unplug detection at runtime. */
++		if (data->conf & DP_CONF_SIGNALING_DP) {
++			if ((data->status & DP_STATUS_HPD_STATE) ||
++			    (phy_switcher->mode != state->mode))
++				phy_switcher->hpd_status = true;
++			else
++				phy_switcher->hpd_status = false;
++		} else {
++			phy_switcher->hpd_status = false;
++		}
