@@ -28,14 +28,28 @@ case "$1" in
         echo "system.screensaver.behavior=black" >> "$BATOCERA_CONF"
     fi
 
-    # Disable USB autosuspend for the AIC8800 WiFi dongle (VID a69c, PID 8800/8801).
-    # The USB core parks the dongle after 2s idle by default; the aic8800 driver does
-    # not implement suspend/resume and the kernel hangs trying to communicate with it
-    # after it powers down. Force power/control=on so udev never suspends it.
+    # Disable xpad auto-poweroff. The built-in xpad driver defaults auto_poweroff=Y
+    # which sends an Xbox360 "power off" command to idle controllers. 8BitDo in
+    # Xbox360 mode (045e:028e) interprets this as a reset and drops the USB connection.
+    # The controller reconnects immediately but ES loses its input calibration state.
+    echo N > /sys/bus/usb/drivers/xpad/module/parameters/auto_poweroff 2>/dev/null || true
+
+    # Disable USB autosuspend for devices that must not drop.
+    #   a69c:8800/8801 — AIC8800 WiFi dongle: driver doesn't implement suspend/resume,
+    #                    kernel hangs on resume attempt.
+    #   1a86:8091      — QinHeng USB hub on Cubie A7S: if the hub autosuspends it
+    #                    drops every device under it (WiFi + controllers).
+    #   045e:*         — Microsoft/8BitDo Xbox360-mode controllers: reconnects during
+    #                    ES init cause the input axis calibration to be read wrong,
+    #                    inverting joystick2 volume hotkey direction.
     for dev in /sys/bus/usb/devices/*; do
         vid=$(cat "$dev/idVendor" 2>/dev/null)
         pid=$(cat "$dev/idProduct" 2>/dev/null)
         if [ "$vid" = "a69c" ] && { [ "$pid" = "8800" ] || [ "$pid" = "8801" ]; }; then
+            echo on > "$dev/power/control" 2>/dev/null || true
+        elif [ "$vid" = "1a86" ] && [ "$pid" = "8091" ]; then
+            echo on > "$dev/power/control" 2>/dev/null || true
+        elif [ "$vid" = "045e" ]; then
             echo on > "$dev/power/control" 2>/dev/null || true
         fi
     done
