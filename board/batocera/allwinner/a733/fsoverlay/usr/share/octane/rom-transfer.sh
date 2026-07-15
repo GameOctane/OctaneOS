@@ -7,7 +7,9 @@ clear
 IP=$(ip -4 addr show scope global | awk '/inet / {print $2}' | cut -d/ -f1 | head -1)
 [ -z "$IP" ] && IP="(not connected — check WiFi settings)"
 
-HOSTNAME=$(cat /etc/hostname 2>/dev/null || echo "BATOCERA")
+HOSTNAME=$(cat /etc/hostname 2>/dev/null || echo "OctaneOS")
+
+TIMEOUT=30
 
 printf '\n'
 printf '  ╔══════════════════════════════════════════════════════╗\n'
@@ -30,9 +32,11 @@ printf '\n'
 printf '  Drop ROMs into the folder for their system.\n'
 printf '  Restart EmulationStation when done to scan for new games.\n'
 printf '\n'
-printf '  Press any key to return...\n'
 
-# Read a single keypress (controller button or keyboard)
-stty -echo -icanon min 1 time 0 2>/dev/null
-dd bs=1 count=1 2>/dev/null
-stty echo icanon 2>/dev/null
+i=$TIMEOUT
+while [ $i -gt 0 ]; do
+    printf '\r  Closing in %2d seconds...' "$i"
+    sleep 1
+    i=$((i - 1))
+done
+printf '\n'
