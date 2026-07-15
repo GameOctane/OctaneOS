@@ -1,0 +1,14 @@
+#!/bin/sh
+# OctaneOS: play the GameOctane intro splash before EmulationStation.
+# labwc/autostart runs this hook after the Wayland compositor is confirmed ready
+# (wlr-randr has succeeded). The display is active at this point. Video plays
+# fullscreen via Wayland so it is actually visible — unlike the S28 mpv DRM
+# direct render which runs before the display activates.
+
+SPLASH=/usr/share/batocera/splash/splash.mp4
+[ -f "$SPLASH" ] || exit 0
+
+mpv --vo=gpu --gpu-context=wayland \
+    --fs --really-quiet --no-terminal --no-input-default-bindings \
+    --no-config --no-sub-auto \
+    "$SPLASH" 2>/dev/null || true
