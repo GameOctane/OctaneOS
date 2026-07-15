@@ -7,10 +7,13 @@ curl -s -X POST "http://localhost:1234/messagebox" \
     -H "Content-Type: text/plain" \
     -d "ROM Transfer
 
-Web:  http://${IP}
-SMB:  \\\\${HOSTNAME}
-SSH:  root@${IP}
-      password: linux
+Windows (File Explorer):
+  \\\\${HOSTNAME}
+  user: root   password: linux
+
+SSH / SFTP:
+  root@${IP}
+  password: linux
 
 Drop ROMs into their system folder,
 then restart EmulationStation." \
