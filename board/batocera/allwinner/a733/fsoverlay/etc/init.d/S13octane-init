@@ -19,6 +19,10 @@ case "$1" in
     if ! grep -q "^system.hostname=" "$BATOCERA_CONF" 2>/dev/null; then
         echo "system.hostname=OctaneOS" >> "$BATOCERA_CONF"
     fi
+    # S26's ba_hostname sets the runtime hostname but never writes /etc/hostname,
+    # so ES reads BATOCERA from the squashfs default. Set it here directly.
+    HOSTNAME_VAL=$(grep "^system.hostname=" "$BATOCERA_CONF" 2>/dev/null | cut -d= -f2)
+    [ -n "$HOSTNAME_VAL" ] && hostname "$HOSTNAME_VAL" && echo "$HOSTNAME_VAL" > /etc/hostname
 
     # Disable the ES screensaver. The default screensaver fires after 5 min idle and
     # attempts video playback which hangs the compositor on A733 (no HW video decode).
