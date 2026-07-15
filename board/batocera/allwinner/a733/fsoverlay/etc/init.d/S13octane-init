@@ -84,12 +84,18 @@ case "$1" in
         echo "global.retroachievements.hardcore=0" >> "$BATOCERA_CONF"
     fi
 
-    # Install ROM Transfer port entry. Copies from squashfs template so it
-    # survives OS upgrades — always reflects the current version of the script.
+    # Install ROM Transfer port entry. Writes a foot launcher so the display
+    # script runs inside a visible terminal under Wayland. The display script
+    # itself lives in /usr/share/octane/rom-transfer.sh (squashfs — versioned).
     PORTS_DIR=/userdata/roms/ports
     TRANSFER_SCRIPT="$PORTS_DIR/ROM Transfer.sh"
     mkdir -p "$PORTS_DIR"
-    cp /usr/share/octane/rom-transfer.sh "$TRANSFER_SCRIPT"
+    cat > "$TRANSFER_SCRIPT" << 'LAUNCHER'
+#!/bin/sh
+export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run}"
+foot -- /usr/share/octane/rom-transfer.sh
+LAUNCHER
     chmod +x "$TRANSFER_SCRIPT"
 
     SSH_DIR=/userdata/system/.ssh
