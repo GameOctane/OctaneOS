@@ -32,6 +32,9 @@ OctaneOS is the foundation everything else in GameOctane sits on. GPU hardware a
 - [ ] Suppress spurious DP-1 hotplug events from sunxi-drm BSP
 - [ ] Audio — aplay -l returns no soundcards; machine driver failing (simple_dai_link_of errors)
 
+## Ideas / Backlog
+- **Second-screen achievement companion** — pair OctaneOS over local WiFi with a running [Achievement Scavenger](https://github.com/batureren/achievement-scavenger) instance on the player's PC/console setup. Scavenger already knows what game just launched on Steam/PSN/Xbox and holds valid platform sessions; OctaneOS acts as a lightweight display client showing live missable-item warnings, hints, and progress while you play on another platform. RetroAchievements is already covered natively on-device — this extends the same idea to non-emulated platforms. Idea credit + concept borrowed with permission from Batu Ozdogan ([@batureren](https://github.com/batureren)), author of Achievement Scavenger. Needs: pairing/discovery protocol, a small local API on Scavenger's side (author receptive to adding one), and an OctaneOS-side display client.
+
 ## What just shipped (v0.5.6-alpha)
 **Freeze fix (20-min hard freeze)**: Four root causes identified and fixed — xpad auto_poweroff, ES screensaver, labwc idle DPMS, AIC8800 USB autosuspend.
 
