@@ -78,6 +78,12 @@ case "$1" in
         echo "$TZ_SETTING" > /etc/timezone
     fi
 
+    # Point ES update check at our GitHub OTA version file instead of updates.batocera.org
+    # (which has no entry for cubie-a7s and always returns "no update found").
+    if ! grep -q "^global.updates.url=" "$BATOCERA_CONF" 2>/dev/null; then
+        echo "global.updates.url=https://raw.githubusercontent.com/GameOctane/OctaneOS/main/ota" >> "$BATOCERA_CONF"
+    fi
+
     # Enable RetroAchievements by default. The user just needs to add their
     # retroachievements.org credentials via Game Settings in the ES menu.
     # Hardcore mode off by default — friendlier for first-time users.
