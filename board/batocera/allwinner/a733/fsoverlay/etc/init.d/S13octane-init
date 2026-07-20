@@ -16,11 +16,15 @@ case "$1" in
     if ! grep -q "^system.kblayout=" "$BATOCERA_CONF" 2>/dev/null; then
         echo "system.kblayout=us" >> "$BATOCERA_CONF"
     fi
-    if ! grep -q "^system.hostname=" "$BATOCERA_CONF" 2>/dev/null; then
+    # Set OctaneOS hostname. Override BATOCERA (Batocera's squashfs default and
+    # any value written by older builds) but preserve any name the user has set.
+    CUR_HOSTNAME=$(grep "^system.hostname=" "$BATOCERA_CONF" 2>/dev/null | cut -d= -f2)
+    if [ -z "$CUR_HOSTNAME" ] || [ "$CUR_HOSTNAME" = "BATOCERA" ]; then
+        sed -i '/^system.hostname=/d' "$BATOCERA_CONF" 2>/dev/null || true
         echo "system.hostname=OctaneOS" >> "$BATOCERA_CONF"
     fi
     # S26's ba_hostname sets the runtime hostname but never writes /etc/hostname,
-    # so ES reads BATOCERA from the squashfs default. Set it here directly.
+    # so ES reads the squashfs default. Write it here directly.
     HOSTNAME_VAL=$(grep "^system.hostname=" "$BATOCERA_CONF" 2>/dev/null | cut -d= -f2)
     [ -n "$HOSTNAME_VAL" ] && hostname "$HOSTNAME_VAL" && echo "$HOSTNAME_VAL" > /etc/hostname
 
