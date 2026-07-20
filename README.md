@@ -97,7 +97,7 @@ OctaneOS manages three distinct play modes automatically — no configuration re
 
 ## Download
 
-**[OctaneOS v0.5.16-alpha — Radxa Cubie A7S](https://github.com/GameOctane/OctaneOS/releases/tag/v0.5.16-alpha)**
+**[OctaneOS v0.5.17-alpha — Radxa Cubie A7S](https://github.com/GameOctane/OctaneOS/releases/tag/v0.5.17-alpha)**
 
 **Windows** — Use [Balena Etcher](https://etcher.balena.io). Flash the `.img.gz` directly — no need to decompress.
 
@@ -145,7 +145,7 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 | First ROM running | ✅ Complete |
 | RetroAchievements configured | ✅ Complete |
 | Three mode system | ⏳ Pending |
-| OTA update system | ⏳ Pending |
+| OTA update system | ✅ Complete |
 | GameOctane app | ⏳ Pending |
 
 ---
