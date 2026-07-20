@@ -91,3 +91,14 @@ fi
 echo "[post-build] Installed: ${KO_DEST}/pvrsrvkm.ko  (from ${KO_SRC})"
 
 echo "[post-build] pvrsrvkm.ko done."
+
+# =============================================================================
+# Stamp OctaneOS build version into batocera.version
+# ES compares this against ota/cubie-a7s/stable/last/batocera.version in our
+# GitHub repo to determine if an update is available. Bump OCTANE_BUILD_NUMBER
+# on each release and update that file to match.
+# =============================================================================
+OCTANE_BUILD_NUMBER=44
+printf "%d %s %s\n" "${OCTANE_BUILD_NUMBER}" "$(date +%Y/%m/%d)" "$(date +%H:%M)" \
+    > "${TARGET_DIR}/usr/share/batocera/batocera.version"
+echo "[post-build] batocera.version: $(cat ${TARGET_DIR}/usr/share/batocera/batocera.version)"
