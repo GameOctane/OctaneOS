@@ -80,8 +80,8 @@ case "$1" in
 
     # Point ES update check at our GitHub OTA version file instead of updates.batocera.org
     # (which has no entry for cubie-a7s and always returns "no update found").
-    if ! grep -q "^global.updates.url=" "$BATOCERA_CONF" 2>/dev/null; then
-        echo "global.updates.url=https://raw.githubusercontent.com/GameOctane/OctaneOS/main/ota" >> "$BATOCERA_CONF"
+    if ! grep -q "^updates.url=" "$BATOCERA_CONF" 2>/dev/null; then
+        echo "updates.url=https://raw.githubusercontent.com/GameOctane/OctaneOS/main/ota" >> "$BATOCERA_CONF"
     fi
 
     # Enable RetroAchievements by default. The user just needs to add their
