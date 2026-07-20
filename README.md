@@ -97,14 +97,14 @@ OctaneOS manages three distinct play modes automatically — no configuration re
 
 ## Download
 
-**[OctaneOS v0.5.15-alpha — Radxa Cubie A7S](https://github.com/GameOctane/OctaneOS/releases/tag/v0.5.15-alpha)**
+**[OctaneOS v0.5.16-alpha — Radxa Cubie A7S](https://github.com/GameOctane/OctaneOS/releases/tag/v0.5.16-alpha)**
 
 **Windows** — Use [Balena Etcher](https://etcher.balena.io). Flash the `.img.gz` directly — no need to decompress.
 
 **Linux / Mac**
 ```
-gunzip OctaneOS-a733-cubie-a7s-43-20260715.img.gz
-dd if=OctaneOS-a733-cubie-a7s-43-20260715.img of=/dev/sdX bs=4M status=progress
+gunzip OctaneOS-a733-cubie-a7s-43-20260719.img.gz
+dd if=OctaneOS-a733-cubie-a7s-43-20260719.img of=/dev/sdX bs=4M status=progress
 ```
 
 Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or `.sha256` file before flashing.
