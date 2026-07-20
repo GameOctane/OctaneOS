@@ -1,0 +1,222 @@
+#!/bin/bash
+
+do_clean() {
+    test -n "${GETPERPID}" && kill -9 "${GETPERPID}"
+    rm -f "/userdata/system/upgrade/upgrade_message.txt"
+    rm -f "/userdata/system/upgrade/boot.tar.xz"
+    rm -f "/userdata/system/upgrade/boot.tar.xz.md5"
+    if test $# -eq 1; then
+        [ "$1" = "0" ] && echo "Finally syncing of disk ...>>>100"
+        [ "$1" = "1" ] && echo "removed downloaded files, sync disk now"
+    fi
+}
+trap do_clean EXIT
+
+do_upgmsg() {
+    if [ $TERMINAL -eq 0 ]; then
+        echo "$1" > /userdata/system/upgrade/upgrade_message.txt
+        [ -n "$2" ] && sleep $2
+    else
+        echo "$1"
+    fi
+}
+
+do_badgeines() {
+    TARVAL=$1
+    COUNT=0
+    while true
+    do
+        if [ -f "/userdata/system/upgrade/upgrade_message.txt" ]; then
+            [ $COUNT -gt 100 ] && COUNT=0
+            MSG_STRING="$(cat /userdata/system/upgrade/upgrade_message.txt)"
+            echo "$MSG_STRING>>>$COUNT"
+            COUNT=$((COUNT+5))
+            sleep 0.1
+        else
+            CURVAL=$(stat --printf="%s" "/userdata/system/upgrade/boot.tar.xz")
+            CURVAL=$((CURVAL / 1024 / 1024))
+            PER=$((CURVAL * 100 / TARVAL))
+            echo "$CURVAL of $TARVAL MB downloaded ... >>> ${PER}%"
+            sleep 5
+        fi
+    done
+}
+
+# ---- MAIN ----
+echo "Starting OctaneOS upgrade..."
+
+board=$(cat /boot/boot/batocera.board)
+oldboard="$board"
+
+updatetype="$(/usr/bin/batocera-settings-get updates.type)"
+test "${updatetype}" != "stable" -a "${updatetype}" != "unstable" && updatetype="stable"
+
+# OctaneOS: binary always comes directly from GitHub Releases (no redirect needed)
+BINARY_URL="https://github.com/GameOctane/OctaneOS/releases/latest/download/boot.tar.xz"
+
+# MD5 comes from gameoctane.com — tiny file, served directly
+updateurl="https://gameoctane.com/ota"
+settingsupdateurl="$(/usr/bin/batocera-settings-get updates.url)"
+test -n "${settingsupdateurl}" && updateurl="${settingsupdateurl}"
+MD5_URL="${updateurl}/${board}/${updatetype}/last/boot.tar.xz.md5"
+
+# CLI override: batocera-upgrade <url> uses that URL directly for the binary
+test $# -eq 1 && [ "$1" != "manual" ] && BINARY_URL="$1"
+
+[ -t 1 ] && TERMINAL=1 || TERMINAL=0
+
+# ---- DOWNLOAD ----
+
+if [ "$1" == "manual" ]; then
+    if [ -f "/userdata/system/upgrade/boot.tar.xz" ]; then
+        size=$(xz --robot -l "/userdata/system/upgrade/boot.tar.xz" | tail -1 | awk '{print $5}')
+        size=$((size / 1024 / 1024))
+        echo "Using local file: /userdata/system/upgrade/boot.tar.xz (${size}MB uncompressed)"
+    else
+        echo "Error: Local file /userdata/system/upgrade/boot.tar.xz not found."
+        exit 1
+    fi
+else
+    mkdir -p /userdata/system/upgrade || exit 1
+
+    echo "url: ${BINARY_URL}"
+    headers=$(curl -A "OctaneOS-upgrade/1.0" -sfIL "${BINARY_URL}")
+    test $? -eq 0 || exit 1
+    size=$(echo "$headers" | grep -i "Content-Length: " | tail -1 | sed -e s+'^Content-Length: \([0-9]*\).*$'+'\1'+I)
+    size=$((size / 1024 / 1024))
+    size=$((size * 105 / 100))
+    test $? -eq 0 || exit 1
+    echo "need to download and extract ~${size}mb"
+fi
+
+# ---- FREE SPACE CHECK ----
+
+if [ "$1" != "manual" ]; then
+    filesystems="/userdata/system /boot"
+else
+    filesystems="/boot"
+fi
+
+for fs in $filesystems
+do
+    freespace=$(df -m "${fs}" | tail -1 | awk '{print $4}')
+    test $? -eq 0 || exit 1
+    if test $((size + 10)) -gt "${freespace}"
+    then
+        echo "Not enough space on ${fs} to perform the update"
+        echo "Required: $((size + 10))MB | Available: ${freespace}MB"
+        exit 1
+    fi
+done
+
+# ---- DOWNLOAD BINARY ----
+
+if [ "$1" != "manual" ]; then
+    if [ $TERMINAL -eq 0 ]; then
+        touch "/userdata/system/upgrade/boot.tar.xz"
+        do_badgeines "${size}" &
+        GETPERPID=$!
+        curl -A "OctaneOS-upgrade/1.0" -sfL "${BINARY_URL}" -o "/userdata/system/upgrade/boot.tar.xz" || exit 1
+        do_upgmsg "Calculating md5 checksum ..."
+    else
+        curl -A "OctaneOS-upgrade/1.0" -fL "${BINARY_URL}" -o "/userdata/system/upgrade/boot.tar.xz" || exit 1
+        echo "Check proper file download, checking md5sum - please wait"
+    fi
+fi
+
+# ---- MD5 VALIDATION ----
+
+if [ "$1" != "manual" ]; then
+    curl -A "OctaneOS-upgrade/1.0" -sfL "${MD5_URL}" -o "/userdata/system/upgrade/boot.tar.xz.md5"
+fi
+if test -e "/userdata/system/upgrade/boot.tar.xz.md5"
+then
+    DISTMD5=$(cat "/userdata/system/upgrade/boot.tar.xz.md5")
+    CURRMD5=$(md5sum "/userdata/system/upgrade/boot.tar.xz" | sed -e s+' .*$'++)
+    if test "${DISTMD5}" = "${CURRMD5}"
+    then
+        do_upgmsg "Checksum validated ..." 2
+    else
+        do_upgmsg "Checksum error ..." 5
+        exit 1
+    fi
+else
+    do_upgmsg "Missing md5 file - proceed ..." 3
+fi
+
+# ---- EXTRACT TO /boot ----
+
+echo "remounting /boot in rw"
+if ! mount -o remount,rw /boot
+then
+    exit 1
+fi
+
+do_upgmsg "Backing up config files ..." 0.5
+BOOTFILES="config.txt batocera-boot.conf"
+for BOOTFILE in ${BOOTFILES}
+do
+    if test -e "/boot/${BOOTFILE}"
+    then
+        if ! cp "/boot/${BOOTFILE}" "/boot/${BOOTFILE}.upgrade"
+        then
+            exit 1
+        fi
+    fi
+done
+
+BOOT_BEFORE=$(find /boot -mindepth 1 | sed 's|^/boot/||' | grep -vE '^(boot/batocera|boot/batocera\.update|boot/rufomaculata|boot/rufomaculata\.update|boot/overlay|boot/overlay\.old|[^/]+\.upgrade|boot\.stale|.*ldlinux.*)$' | sort)
+
+do_upgmsg "Extracting files ..."
+if ! (cd /boot && xz -dc < "/userdata/system/upgrade/boot.tar.xz" | tar xvf - --no-same-owner)
+then
+    exit 1
+fi
+
+do_upgmsg "Generating stale file list ..."
+TARBALL_CONTENTS=$(xz -dc < "/userdata/system/upgrade/boot.tar.xz" | tar tf - | sed -e 's|^\./||' -e 's|/$||' | sort -u)
+comm -23 \
+    <(echo "$BOOT_BEFORE") \
+    <(echo "$TARBALL_CONTENTS") \
+    > /boot/boot.stale
+
+STALE_COUNT=$(wc -l < /boot/boot.stale)
+if [ "$STALE_COUNT" -eq 0 ]; then
+    echo "No stale files detected"
+    rm -f /boot/boot.stale
+else
+    echo "Stale files to be removed on next boot (${STALE_COUNT}):"
+    cat /boot/boot.stale
+fi
+
+do_upgmsg "Restoring config files ..." 0.5
+for BOOTFILE in ${BOOTFILES}
+do
+    if test -e "/boot/${BOOTFILE}.upgrade"
+    then
+        if ! mv "/boot/${BOOTFILE}.upgrade" "/boot/${BOOTFILE}"
+        then
+            echo "Outch" >&2
+        fi
+    fi
+done
+
+do_upgmsg "Doing final cleanups ..." 0.5
+if ! mount -o remount,ro /boot
+then
+    exit 1
+fi
+
+do_clean $TERMINAL
+sync
+
+[ $TERMINAL -eq 0 ] && exit 0
+
+newboard=$(cat /boot/boot/batocera.board)
+if [ "$oldboard" != "$newboard" ]
+then
+    echo; echo "WARNING: Current board is ${oldboard}, applied update is for ${newboard}"
+fi
+
+echo; echo "Done. Please reboot so the changes take effect!"
+exit 0

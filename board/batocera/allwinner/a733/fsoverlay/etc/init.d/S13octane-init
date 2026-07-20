@@ -78,6 +78,12 @@ case "$1" in
         echo "$TZ_SETTING" > /etc/timezone
     fi
 
+    # OTA updates: point at gameoctane.com. Our custom batocera-upgrade uses this
+    # for the md5 check and downloads the binary directly from GitHub Releases.
+    if ! grep -q "^updates.url=" "$BATOCERA_CONF" 2>/dev/null; then
+        echo "updates.url=https://gameoctane.com/ota" >> "$BATOCERA_CONF"
+    fi
+
     # Enable RetroAchievements by default. The user just needs to add their
     # retroachievements.org credentials via Game Settings in the ES menu.
     # Hardcore mode off by default — friendlier for first-time users.
