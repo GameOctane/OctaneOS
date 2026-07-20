@@ -51,14 +51,9 @@ oldboard="$board"
 updatetype="$(/usr/bin/batocera-settings-get updates.type)"
 test "${updatetype}" != "stable" -a "${updatetype}" != "unstable" && updatetype="stable"
 
-# OctaneOS: binary always comes directly from GitHub Releases (no redirect needed)
+# OctaneOS: both files come directly from GitHub Releases
 BINARY_URL="https://github.com/GameOctane/OctaneOS/releases/latest/download/boot.tar.xz"
-
-# MD5 comes from gameoctane.com — tiny file, served directly
-updateurl="https://gameoctane.com/ota"
-settingsupdateurl="$(/usr/bin/batocera-settings-get updates.url)"
-test -n "${settingsupdateurl}" && updateurl="${settingsupdateurl}"
-MD5_URL="${updateurl}/${board}/${updatetype}/last/boot.tar.xz.md5"
+MD5_URL="https://github.com/GameOctane/OctaneOS/releases/latest/download/boot.tar.xz.md5"
 
 # CLI override: batocera-upgrade <url> uses that URL directly for the binary
 test $# -eq 1 && [ "$1" != "manual" ] && BINARY_URL="$1"
