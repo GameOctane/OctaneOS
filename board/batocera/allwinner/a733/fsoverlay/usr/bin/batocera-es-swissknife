@@ -1,0 +1,214 @@
+#!/bin/bash
+#
+# Script for BATOCERA to terminate every emulator instance, some more info see --help
+# by cyperghost aka crcerror // 18.03.2019
+# Batocera version created, update check added                                     // 04.06.2019
+# Added --reset-ra to reset all settings from RetroArch cores                      // 27.06.2021
+# Small rewrite, rather use hotkeygen --send exit, errorcode emulator was finished // cyperghost
+# ec: 20-hotkeygen, 25-wine based emu, 22-cpid SIGKILL, 21-no emulator found       // 13.06.2025
+# ec: 10-poweroff, 11-reboot, 1-general error, 0-okay
+# OctaneOS: --update checks GitHub releases instead of updates.batocera.org
+
+# first argument is action, second is timeout or branch, default waitTimer=5, fractions allowed
+waitTimer=5
+
+# Get all childpids from calling process
+function getcpid() {
+local cpids="$(pgrep -P $1)"
+    for cpid in $cpids; do
+        pidarray+=($cpid)
+        getcpid $cpid
+    done
+}
+
+# Emulator currently running?
+function check_emurun() {
+    echo $(pgrep -f -n emulatorlauncher || echo 0)
+}
+
+# Emulationstation currently running?
+function check_esrun() {
+    echo $(pidof /usr/bin/emulationstation || echo 0)
+}
+
+# Kill emulators running in a proper way! (SAVE SRM STATE!), timeout is 5s per default
+function emu_kill() {
+    RC_PID=$(check_emurun)
+    if [[ $RC_PID -ne 0 ]]; then
+        # 1. try, regular exit with hotkeygen command, after 5s (default) use 2nd method
+        hotkeygen --send exit &
+        # Detect WINE process and let hotkeygen with batocera-wine windows stop do it's pretty good job, reason is that WINE can took longer to finish
+        # timeout reports 0 if process is finished before t/o
+        pgrep -f -n wineserver >/dev/null && return 25 || ret=20
+        timeout ${waitTimer} tail -q --pid=${RC_PID} -f /dev/null 2>/dev/null && return $ret
+        # 2. try, crawl PIDs recursiv and SIGKILL
+        getcpid $RC_PID
+        for ((z=${#pidarray[*]}-1; z>-1; z--)); do
+            kill -9 ${pidarray[z]}; sleep 1
+        done
+        unset pidarray
+        ret=22
+    else
+        ret=21
+    fi
+    return $ret
+}
+
+# Future proof update check, depends just on build-date and build-time
+function version_update() {
+    echo "$1" | awk '{ $0=$(NF-1)$NF; gsub(/[^0-9]/,""); print }'
+}
+
+# ---- MAINS ----
+
+case ${1,,} in
+    --restart)
+        ES_PID=$(check_esrun)
+        [[ ${ES_PID} -ne 0 ]] && kill -9 ${ES_PID} && ret=0 || ret=1
+    ;;
+
+    --espid)
+        # Display ES PID to stdout
+        ES_PID=$(check_esrun); echo ${ES_PID}
+        [[ ${ES_PID} -ne 0 ]] && ret=0 || ret=1
+    ;;
+
+    --emupid)
+        # This helps to detect emulator is running or not
+        RC_PID=$(check_emurun); echo ${RC_PID}
+        if [[ ${RC_PID} -ne 0 ]]; then
+            getcpid ${RC_PID}; echo ${pidarray[@]}
+            unset pidarray
+            ret=0
+        else
+            ret=21
+        fi
+    ;;
+
+    --emukill|--shutdown|--reboot)
+        [[ $2 =~ ^[0-9]*[.]?[0-9]+$ ]] && waitTimer="$2"
+        emu_kill; ret=$?
+
+        ES_PID=$(check_esrun)
+        if [[ "${1,,}" == "--shutdown" && $ES_PID -ne 0 ]]; then
+            /etc/init.d/S31emulationstation stop
+            shutdown -P -h now; ret=11
+        elif [[ "${1,,}" == "--reboot" && $ES_PID -ne 0 ]]; then
+            /etc/init.d/S31emulationstation stop
+            shutdown -r now; ret=10
+        fi
+    ;;
+
+    --kodi)
+        [[ $(check_emurun) -ne 0 ]] && emu_kill
+
+        /etc/init.d/S31emulationstation suspend
+        batocera-kodilauncher &
+        wait $!
+        ret=$?
+        [[ $ret -eq 0 ]] && /etc/init.d/S31emulationstation resume
+        [[ $ret -eq 10 ]] && shutdown -r now
+        [[ $ret -eq 11 ]] && shutdown -P -h now
+    ;;
+
+    --version|--arch|--update)
+        [[ -f /usr/share/batocera/batocera.version ]] && { VER=$(cat /usr/share/batocera/batocera.version); ret=$?; } || { VER="UNKNOWN"; ret=1; }
+        [[ -f /boot/boot/batocera.board ]] &&            { BOARD=$(cat /boot/boot/batocera.board); ret=$(($?+ret)); } || { BOARD="UNKNOWN"; ret=1; }
+
+        if [[ "${1,,}" == "--update" && $ret -eq 0 ]]; then
+            LOCAL_VER=$(cat /usr/share/batocera/octaneos.version 2>/dev/null || echo "unknown")
+            NET_VER=$(curl -sfL "https://api.github.com/repos/GameOctane/OctaneOS/releases/latest" \
+                | grep '"tag_name"' | head -1 \
+                | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')
+            [[ -n "$NET_VER" ]] || NET_VER="Connection failed!"
+            echo "Installed:   $LOCAL_VER"
+            echo "Latest:      $NET_VER"
+            if [[ "$LOCAL_VER" != "$NET_VER" && "$NET_VER" != "Connection failed!" ]]; then
+                echo "Status:      Possible Update found!"
+                ret=0
+            else
+                echo "Status:      No Update found!"
+                ret=1
+            fi
+        else
+            [[ ${1,,} == "--version" ]] && batocera-version
+            [[ ${1,,} == "--arch" ]] && echo "$BOARD"
+        fi
+    ;;
+
+    --remount)
+        mount_dir="$2"
+        [[ -z "$mount_dir" ]] && mount_dir="/boot"
+        ! [[ -d "$mount_dir" ]] && echo "Error: directory '$mount_dir' not found!" && exit 1
+        if ! [[ -w "$mount_dir" ]]; then
+            echo "Directory '$mount_dir' is locked... Set it as writeable now!"
+            mount -o remount,rw "$mount_dir" || echo "Error! Directory state not changed!"
+        else
+            echo "Directory '$mount_dir' is writeable... Set it to lock!"
+            mount -o remount,ro "$mount_dir" || echo "Error! Directory state not changed!"
+        fi
+    ;;
+    --overlay)
+        [[ -f /boot/boot/overlay ]] && echo "Overlay available in /boot/boot/overlay" || { echo "Overlay file not found!"; exit 1; }
+        read -p "Do you want to backup overlay file (y/n)? " yn
+        case ${yn:0:1} in
+            y|Y)
+                BA_OVERLAY="$HOME/$(date +%y%m%d-%s)-overlay.zip"
+                zip -j "$BA_OVERLAY" /boot/boot/overlay || exit 1
+                echo "Created backup to: $BA_OVERLAY"
+                echo "To restore: 'unzip $BA_OVERLAY -d /boot/boot'"
+           ;;
+            *)
+               echo "Nothing done!"
+        esac
+    ;;
+    --reset-ra)
+        if [[ -d "$HOME/configs/retroarch" ]]; then
+            rm -rf $HOME/configs/retroarch
+            echo "Deleted: dir $HOME/configs/retroarch"
+        fi
+        if [[ -d "$HOME/.config/retroarch" ]]; then
+            rm -rf $HOME/.config/retroarch
+            echo "Deleted: dir $HOME/.config/retroarch"
+        fi
+        read -p "Do you want to reset RetroArch parameters for 'batocera.conf' file (y/n)? " yn
+        case ${yn:0:1} in
+            y|Y)
+                echo "Reseting RetroArch parameter in 'batocera.conf'"
+                sed -i '/^global.retroarch.*/d' $HOME/batocera.conf
+            ;;
+        esac
+        echo "All done! -- Please reboot"
+    ;;
+    *)
+        cat <<-_EOF_
+	BATOCERA SWISS KNIFE FOR EmulationStation
+	  usage: $(basename ${0}) [Option] <Timeout in s> <butterfly>
+	  --restart       will RESTART EmulationStation only
+	  --kodi          will startup KODI Media Center stopping ES
+	  --reboot   <s>  will REBOOT whole system
+	  --shutdown <s>  will SHUTDOWN whole system
+	  --emukill  <s>  will exit any running EMULATORS
+	  --espid         checks if EmulationStation is currently active
+	             This number is the real PID of the binary!
+	             If the ouput is 0 or return 1 then ES isn't active
+	  --emupid        to check if an Emulator is running
+	             The output is the full process-list till emulator
+	             If output is 0 or return not eq 0 no emulator active!
+
+	  --arch     Shows current architecture running
+	  --version  Shows current version of BATOCERA running
+	  --update   Shows possible update for your install opt. <butterfly>
+
+	  --overlay  will try to backup your overlay file
+	  --remount  toggle write access to <dir>, default is /boot
+	  --reset-ra will set all RA settings to default
+
+	EC: 20-hotkeygen, 25-wine based emu, 22-cpid SIGKILL, 21-no emulator found
+	    10-poweroff, 11-reboot, 1-general error, 0-okay
+
+	_EOF_
+    ;;
+
+esac
+exit $ret
