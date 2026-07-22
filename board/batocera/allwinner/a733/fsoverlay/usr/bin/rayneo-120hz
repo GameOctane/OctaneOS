@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+# Send USB HID command to TCL/RayNeo NXTWEAR glasses to enable 120Hz panel mode.
+# Must run as root. Glasses must be connected via USB-C.
+import sys, os, glob, select, struct
+
+VID = 0x1bbb
+PID = 0xaf50
+SEND_MAGIC = 0x66
+ACK_MAGIC  = 0x99
+CMD_120FPS = 0x21
+CMD_60FPS  = 0x20
+
+def find_hidraw_devices():
+    devs = []
+    for hid_dir in glob.glob('/sys/bus/hid/devices/*'):
+        try:
+            modalias = open(os.path.join(hid_dir, 'modalias')).read().upper()
+            if f'V0000{VID:04X}P0000{PID:04X}' in modalias:
+                for hr in glob.glob(os.path.join(hid_dir, 'hidraw', 'hidraw*')):
+                    devs.append(f'/dev/{os.path.basename(hr)}')
+        except Exception:
+            pass
+    return sorted(devs)
+
+def send_cmd(path, cmd):
+    pkt = bytearray(64)
+    pkt[0] = SEND_MAGIC
+    pkt[1] = cmd
+    pkt[2] = 0x00
+    try:
+        fd = os.open(path, os.O_RDWR | os.O_NONBLOCK)
+        os.write(fd, bytes(pkt))
+        r, _, _ = select.select([fd], [], [], 2.0)
+        if r:
+            ack = os.read(fd, 64)
+            if len(ack) >= 2 and ack[0] == ACK_MAGIC:
+                os.close(fd)
+                return True, ack[1]
+        os.close(fd)
+        return False, None
+    except Exception as e:
+        return False, str(e)
+
+def main():
+    fps = 120
+    if len(sys.argv) > 1 and sys.argv[1] == '60':
+        fps = 60
+    cmd = CMD_120FPS if fps == 120 else CMD_60FPS
+
+    devs = find_hidraw_devices()
+    if not devs:
+        print(f'ERROR: no HID device found for {VID:04x}:{PID:04x}', file=sys.stderr)
+        sys.exit(1)
+
+    print(f'Found {len(devs)} HID interface(s): {devs}')
+    success = False
+    for dev in devs:
+        ok, result = send_cmd(dev, cmd)
+        if ok:
+            print(f'OK: {dev} → {fps}Hz (ACK cmd=0x{result:02x})')
+            success = True
+            break
+        else:
+            print(f'  {dev}: no ACK ({result})')
+
+    sys.exit(0 if success else 1)
+
+if __name__ == '__main__':
+    main()
