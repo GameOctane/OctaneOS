@@ -1,69 +1,153 @@
 #!/usr/bin/env python3
 # Send USB HID command to TCL/RayNeo NXTWEAR glasses to enable 120Hz panel mode.
+# Works without hidraw or pyusb — uses raw USBDEVFS kernel interface.
 # Must run as root. Glasses must be connected via USB-C.
-import sys, os, glob, select, struct
+import os, sys, struct, glob, ctypes, fcntl
 
-VID = 0x1bbb
-PID = 0xaf50
-SEND_MAGIC = 0x66
-ACK_MAGIC  = 0x99
-CMD_120FPS = 0x21
-CMD_60FPS  = 0x20
+VID, PID    = 0x1bbb, 0xaf50
+SEND_MAGIC  = 0x66
+CMD_120FPS  = 0x21
+CMD_60FPS   = 0x20
 
-def find_hidraw_devices():
+# ioctl numbers from linux/usbdevice_fs.h (x86_64 / aarch64)
+USBDEVFS_CONTROL          = 0xC0185500
+USBDEVFS_CLAIMINTERFACE   = 0x8004550F
+USBDEVFS_RELEASEINTERFACE = 0x80045510
+USBDEVFS_IOCTL            = 0xC0105512
+USBDEVFS_DISCONNECT       = 0x5516   # used as ioctl_code inside USBDEVFS_IOCTL
+
+class UsbCtrl(ctypes.Structure):
+    _fields_ = [
+        ('bRequestType', ctypes.c_uint8),
+        ('bRequest',     ctypes.c_uint8),
+        ('wValue',       ctypes.c_uint16),
+        ('wIndex',       ctypes.c_uint16),
+        ('wLength',      ctypes.c_uint16),
+        ('timeout',      ctypes.c_uint32),
+        ('data',         ctypes.c_void_p),
+    ]
+
+class UsbIoctl(ctypes.Structure):
+    _fields_ = [
+        ('ifno',       ctypes.c_int),
+        ('ioctl_code', ctypes.c_int),
+        ('data',       ctypes.c_void_p),
+    ]
+
+def find_device(vid, pid):
+    for path in sorted(glob.glob('/dev/bus/usb/*/*')):
+        try:
+            with open(path, 'rb') as f:
+                d = f.read(18)
+            if len(d) >= 12:
+                v, p = struct.unpack_from('<HH', d, 8)
+                if v == vid and p == pid:
+                    return path
+        except Exception:
+            pass
+    return None
+
+def try_hidraw(cmd):
     devs = []
     for hid_dir in glob.glob('/sys/bus/hid/devices/*'):
         try:
-            modalias = open(os.path.join(hid_dir, 'modalias')).read().upper()
-            if f'V0000{VID:04X}P0000{PID:04X}' in modalias:
+            m = open(os.path.join(hid_dir, 'modalias')).read().upper()
+            if f'V0000{VID:04X}P0000{PID:04X}' in m:
                 for hr in glob.glob(os.path.join(hid_dir, 'hidraw', 'hidraw*')):
                     devs.append(f'/dev/{os.path.basename(hr)}')
         except Exception:
             pass
-    return sorted(devs)
-
-def send_cmd(path, cmd):
+    if not devs:
+        return False
     pkt = bytearray(64)
     pkt[0] = SEND_MAGIC
     pkt[1] = cmd
-    pkt[2] = 0x00
+    import select
+    for dev in sorted(devs):
+        try:
+            fd = os.open(dev, os.O_RDWR | os.O_NONBLOCK)
+            os.write(fd, bytes(pkt))
+            r, _, _ = select.select([fd], [], [], 2.0)
+            if r:
+                ack = os.read(fd, 64)
+                if len(ack) >= 1 and ack[0] == 0x99:
+                    print(f'hidraw OK: {dev} → ACK 0x{ack[1]:02x}')
+                    os.close(fd)
+                    return True
+            os.close(fd)
+        except Exception as e:
+            print(f'  hidraw {dev}: {e}')
+    return False
+
+def try_usbdevfs(dev_path, cmd, iface=0):
+    pkt = (ctypes.c_uint8 * 64)()
+    pkt[0] = SEND_MAGIC
+    pkt[1] = cmd
+
+    ctrl = UsbCtrl()
+    ctrl.bRequestType = 0x21    # Host→Device, Class, Interface
+    ctrl.bRequest     = 0x09    # SET_REPORT
+    ctrl.wValue       = 0x0200  # Output report, ID=0
+    ctrl.wIndex       = iface
+    ctrl.wLength      = 64
+    ctrl.timeout      = 2000
+    ctrl.data         = ctypes.cast(pkt, ctypes.c_void_p)
+
+    fd = os.open(dev_path, os.O_RDWR)
     try:
-        fd = os.open(path, os.O_RDWR | os.O_NONBLOCK)
-        os.write(fd, bytes(pkt))
-        r, _, _ = select.select([fd], [], [], 2.0)
-        if r:
-            ack = os.read(fd, 64)
-            if len(ack) >= 2 and ack[0] == ACK_MAGIC:
-                os.close(fd)
-                return True, ack[1]
+        # Detach kernel HID driver from this interface
+        uioc = UsbIoctl()
+        uioc.ifno       = iface
+        uioc.ioctl_code = USBDEVFS_DISCONNECT
+        uioc.data       = None
+        try:
+            fcntl.ioctl(fd, USBDEVFS_IOCTL, uioc)
+        except OSError:
+            pass  # may already be detached
+
+        # Claim interface
+        ifarg = ctypes.c_uint32(iface)
+        try:
+            fcntl.ioctl(fd, USBDEVFS_CLAIMINTERFACE, ifarg)
+        except OSError as e:
+            print(f'  claim iface {iface}: {e}')
+
+        # Send SET_REPORT control transfer
+        fcntl.ioctl(fd, USBDEVFS_CONTROL, ctrl)
+        return True
+
+    except OSError as e:
+        print(f'  usbdevfs iface {iface}: {e}')
+        return False
+    finally:
+        try:
+            ifarg = ctypes.c_uint32(iface)
+            fcntl.ioctl(fd, USBDEVFS_RELEASEINTERFACE, ifarg)
+        except Exception:
+            pass
         os.close(fd)
-        return False, None
-    except Exception as e:
-        return False, str(e)
 
 def main():
-    fps = 120
-    if len(sys.argv) > 1 and sys.argv[1] == '60':
-        fps = 60
-    cmd = CMD_120FPS if fps == 120 else CMD_60FPS
+    cmd = CMD_60FPS if (len(sys.argv) > 1 and sys.argv[1] == '60') else CMD_120FPS
+    fps = 60 if cmd == CMD_60FPS else 120
+    print(f'rayneo-120hz: sending {fps}Hz command')
 
-    devs = find_hidraw_devices()
-    if not devs:
-        print(f'ERROR: no HID device found for {VID:04x}:{PID:04x}', file=sys.stderr)
-        sys.exit(1)
+    if try_hidraw(cmd):
+        return 0
 
-    print(f'Found {len(devs)} HID interface(s): {devs}')
-    success = False
-    for dev in devs:
-        ok, result = send_cmd(dev, cmd)
-        if ok:
-            print(f'OK: {dev} → {fps}Hz (ACK cmd=0x{result:02x})')
-            success = True
-            break
-        else:
-            print(f'  {dev}: no ACK ({result})')
+    dev = find_device(VID, PID)
+    if not dev:
+        print(f'ERROR: device {VID:04x}:{PID:04x} not found', file=sys.stderr)
+        return 1
 
-    sys.exit(0 if success else 1)
+    print(f'Device: {dev} (using USBDEVFS)')
+    for iface in range(3):
+        if try_usbdevfs(dev, cmd, iface):
+            print(f'OK: sent on interface {iface}')
+            return 0
+
+    print('FAILED: no interface accepted the command', file=sys.stderr)
+    return 1
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
