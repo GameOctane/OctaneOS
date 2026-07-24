@@ -93,7 +93,7 @@ echo "[post-build] pvrsrvkm.ko done."
 # GitHub repo to determine if an update is available. Bump OCTANE_BUILD_NUMBER
 # on each release and update that file to match.
 # =============================================================================
-OCTANE_BUILD_NUMBER=44
+OCTANE_BUILD_NUMBER=45
 printf "%d %s %s\n" "${OCTANE_BUILD_NUMBER}" "$(date +%Y/%m/%d)" "$(date +%H:%M)" \
     > "${TARGET_DIR}/usr/share/batocera/batocera.version"
 echo "[post-build] batocera.version: $(cat ${TARGET_DIR}/usr/share/batocera/batocera.version)"
