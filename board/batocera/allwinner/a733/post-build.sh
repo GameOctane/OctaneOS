@@ -59,17 +59,12 @@ export ARCH=arm64
 export LICHEE_TOOLCHAIN_PATH="${HOST_DIR}"
 export LICHEE_CROSS_COMPILER="aarch64-buildroot-linux-gnu"
 make -C "${GPU_MODULE_DIR}" build \
-    KERNEL_SRC_DIR="${KERNEL_BUILD}" \
-    KERNEL_OUT_DIR="${KERNEL_BUILD}" \
     KERNELDIR="${KERNEL_BUILD}" \
-    KDIR="${KERNEL_BUILD}" \
     ARCH=arm64 \
     CROSS_COMPILE="${CROSS}" \
     LICHEE_TOOLCHAIN_PATH="${HOST_DIR}" \
     LICHEE_CROSS_COMPILER="aarch64-buildroot-linux-gnu" \
-    CPU_ARCH=arm64 \
     GPU_TYPE=bxm \
-    CONFIG_OS_TYPE=linux \
     GPU_BUILD_TYPE=release \
     -j$(nproc)
 
