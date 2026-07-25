@@ -93,12 +93,16 @@ echo "[post-build] Installed: ${KO_DEST}/pvrsrvkm.ko  (from ${KO_SRC})"
 echo "[post-build] pvrsrvkm.ko done."
 
 # =============================================================================
-# Stamp OctaneOS build version into batocera.version
-# ES compares this against ota/cubie-a7s/stable/last/batocera.version in our
-# GitHub repo to determine if an update is available. Bump OCTANE_BUILD_NUMBER
-# on each release and update that file to match.
+# Stamp OctaneOS build version into batocera.version and octaneos.version.
+# Bump OCTANE_BUILD_NUMBER and OCTANE_RELEASE_TAG on each release.
+# batocera.version: compared against ota/cubie-a7s/stable/last/batocera.version
+# octaneos.version: compared against GitHub latest release tag by ES swissknife
 # =============================================================================
 OCTANE_BUILD_NUMBER=45
+OCTANE_RELEASE_TAG="v0.5.21-alpha"
 printf "%d %s %s\n" "${OCTANE_BUILD_NUMBER}" "$(date +%Y/%m/%d)" "$(date +%H:%M)" \
     > "${TARGET_DIR}/usr/share/batocera/batocera.version"
+echo "${OCTANE_RELEASE_TAG}" \
+    > "${TARGET_DIR}/usr/share/batocera/octaneos.version"
 echo "[post-build] batocera.version: $(cat ${TARGET_DIR}/usr/share/batocera/batocera.version)"
+echo "[post-build] octaneos.version: ${OCTANE_RELEASE_TAG}"
