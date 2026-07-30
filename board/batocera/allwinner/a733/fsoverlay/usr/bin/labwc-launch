@@ -99,16 +99,27 @@ apply_edid_quirks() {
     echo "EDID quirk: manufacturer id=$mfr" >> "$LOG_FILE"
     case "$mfr" in
         506c)
-            # TCL / Technical Concepts Ltd SmartGlasses: EDID monitor range caps
-            # at 65Hz/70kHz but the two base-block DTDs correctly encode 120Hz
-            # (293.6MHz, h_freq=133kHz). Fix: override with corrected range
-            # (130Hz/160kHz) so the kernel exposes the 120Hz DTD modes.
+            # TCL / Technical Concepts Ltd SmartGlasses: native EDID only
+            # advertises 60Hz modes. smartglasses-120hz.bin provides a corrected
+            # EDID with two 1920x1080@120Hz DTDs (293.6MHz, 133kHz H) and an
+            # extended monitor range (55-130Hz V, 50-160kHz H, 300MHz dotclock).
+            # After writing the override, force a connector re-probe so the kernel
+            # re-reads the EDID before labwc enumerates modes.
             local quirk_edid="/lib/firmware/edid/smartglasses-120hz.bin"
             if [ -f "$quirk_edid" ]; then
-                cat "$quirk_edid" > "$edid_override" 2>/dev/null \
-                    && serial "EDID quirk: SmartGlasses 120Hz override applied" \
-                    && echo "EDID quirk: SmartGlasses 120Hz override applied" >> "$LOG_FILE" \
-                    || { serial "EDID quirk: SmartGlasses override write failed"; echo "EDID quirk: override write failed" >> "$LOG_FILE"; }
+                if cat "$quirk_edid" > "$edid_override" 2>/dev/null; then
+                    serial "EDID quirk: SmartGlasses 120Hz override applied"
+                    echo "EDID quirk: SmartGlasses 120Hz override applied" >> "$LOG_FILE"
+                    # Force connector re-probe so the kernel re-reads the EDID
+                    # from the override before labwc enumerates modes.
+                    echo detect > "/sys/class/drm/${DISPLAY_CONN}/status" 2>/dev/null \
+                        && serial "EDID quirk: connector re-probe triggered" \
+                        || serial "EDID quirk: re-probe write not supported (modes may be stale)"
+                    sleep 1
+                else
+                    serial "EDID quirk: SmartGlasses override write failed"
+                    echo "EDID quirk: override write failed" >> "$LOG_FILE"
+                fi
             else
                 serial "EDID quirk: SmartGlasses firmware file missing: $quirk_edid"
                 echo "EDID quirk: firmware file missing: $quirk_edid" >> "$LOG_FILE"
