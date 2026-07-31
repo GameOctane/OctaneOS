@@ -103,6 +103,11 @@ case "$1" in
     cp /usr/share/octane/rom-transfer.sh "$TRANSFER_SCRIPT"
     chmod +x "$TRANSFER_SCRIPT"
 
+    # Install Moonlight Setup port entry.
+    MOONLIGHT_SCRIPT="$PORTS_DIR/Moonlight Setup.sh"
+    cp /usr/share/octane/moonlight-setup.sh "$MOONLIGHT_SCRIPT"
+    chmod +x "$MOONLIGHT_SCRIPT"
+
     SSH_DIR=/userdata/system/.ssh
     AUTH_KEYS=$SSH_DIR/authorized_keys
     mkdir -p -m 0700 "$SSH_DIR"
