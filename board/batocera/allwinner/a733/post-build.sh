@@ -100,7 +100,7 @@ echo "[post-build] pvrsrvkm.ko done."
 # =============================================================================
 OCTANE_BUILD_NUMBER=47
 OCTANE_RELEASE_TAG="v0.5.23-alpha"
-printf "%d %s\n" "${OCTANE_BUILD_NUMBER}" "$(date +%Y/%m/%d)" \
+printf "%d\n" "${OCTANE_BUILD_NUMBER}" \
     > "${TARGET_DIR}/usr/share/batocera/batocera.version"
 echo "${OCTANE_RELEASE_TAG}" \
     > "${TARGET_DIR}/usr/share/batocera/octaneos.version"
