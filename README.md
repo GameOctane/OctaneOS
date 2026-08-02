@@ -27,28 +27,35 @@ Octane is an open source retro gaming handheld you build yourself. Not just a de
 
 Batocera is an incredible foundation. OctaneOS builds on top of it with features that will never exist in generic Batocera — because they only make sense on Octane hardware.
 
+**Working today:**
+
 | Feature | Batocera | OctaneOS |
 |---|---|---|
 | Allwinner A733 support | ❌ | ✅ |
-| Three mode system | ❌ | ✅ |
-| Dual-radio WiFi — internet + streaming simultaneously | ❌ | ✅ |
-| Cover art dock mode | ❌ | ✅ |
-| Achievement overlay on device screen | ❌ | ✅ |
-| Wireless streaming stack | ❌ | ✅ |
-| Streetpass daemon | ❌ | ✅ |
-| GameOctane companion app | ❌ | ✅ |
 | OTA updates from GameOctane.com | ❌ | ✅ |
-| Cart reader support (Phase 3) | ❌ | ✅ |
+| PC streaming via Moonlight (Big Picture) | ❌ | ✅ |
 | RetroAchievements | ✅ | ✅ |
 | EmulationStation frontend | ✅ | ✅ |
 | RetroArch + cores | ✅ | ✅ |
 | Controller auto-detection | ✅ | ✅ |
 
+**Coming in Phase 2 (handheld hardware):**
+
+| Feature |
+|---|
+| Three mode system — handheld, docked, wireless streaming |
+| Dual-radio WiFi — internet + streaming simultaneously |
+| Cover art dock mode |
+| Achievement overlay on device screen |
+| Streetpass daemon |
+| GameOctane companion app |
+| Cart reader support (Phase 3) |
+
 ---
 
 ## Target Hardware
 
-OctaneOS is built for the **Radxa Cubie A7S** with the Allwinner A733 SoC.
+OctaneOS currently runs on the **Radxa Cubie A7S** with the Allwinner A733 SoC. This is the Phase 1 development board — the board works standalone, no handheld hardware required.
 
 | Component | Spec |
 |---|---|
@@ -65,21 +72,9 @@ Full hardware specification available in the [Octane Platform Spec v1.3](docs/Oc
 
 ---
 
-## Three Play Modes
-
-OctaneOS manages three distinct play modes automatically — no configuration required.
-
-**Handheld** — battery powered, screen shows the game, full controls active.
-
-**Docked** — single USB-C cable carries DisplayPort video to TV and charges simultaneously. Octane screen switches to cover art and achievement notification mode.
-
-**Wireless Streaming** — Octane stays in your hands. Game streams over a dedicated WiFi 6 radio (wlan1) to the dock. A second independent radio (wlan0) keeps the home network connection live — RetroAchievements, OTA updates, and netplay all work during streaming. Octane screen becomes a companion display.
-
----
-
 ## Emulation Targets
 
-**Phase 1 (launch):**
+**Phase 1 (current):**
 - NES / Famicom
 - SNES / Super Famicom
 - Sega Genesis / Mega Drive
@@ -97,14 +92,14 @@ OctaneOS manages three distinct play modes automatically — no configuration re
 
 ## Download
 
-**[OctaneOS v0.5.19-alpha — Radxa Cubie A7S](https://github.com/GameOctane/OctaneOS/releases/tag/v0.5.19-alpha)**
+**[Latest Release — Radxa Cubie A7S](https://github.com/GameOctane/OctaneOS/releases/latest)**
 
 **Windows** — Use [Balena Etcher](https://etcher.balena.io). Flash the `.img.gz` directly — no need to decompress.
 
 **Linux / Mac**
-```
-gunzip OctaneOS-a733-cubie-a7s-44-20260720.img.gz
-dd if=OctaneOS-a733-cubie-a7s-44-20260720.img of=/dev/sdX bs=4M status=progress
+```bash
+gunzip OctaneOS-a733-cubie-a7s-*.img.gz
+dd if=OctaneOS-a733-cubie-a7s-*.img of=/dev/sdX bs=4M status=progress
 ```
 
 Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or `.sha256` file before flashing.
@@ -117,7 +112,7 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 
 [![Release](https://img.shields.io/github/v/release/GameOctane/OctaneOS?include_prereleases&label=latest)](https://github.com/GameOctane/OctaneOS/releases/latest)
 
-> OctaneOS is in active early development. GPU hardware acceleration just shipped — EmulationStation is running smooth and ROMs are playing. We are building in public from day one — including the failures. Follow along.
+> OctaneOS is in active early development. GPU hardware acceleration is running, EmulationStation is smooth, ROMs are playing, OTA updates are live. We are building in public from day one — including the failures. Follow along.
 
 | Milestone | Status |
 |---|---|
@@ -126,7 +121,7 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 | A733 kernel + Cubie A7S device tree | ✅ Complete |
 | aic8800 WiFi 6 — connects to SSIDs | ✅ Complete |
 | SSH access (root/linux, or dev key) | ✅ Complete |
-| Bash shell for root (no more "Bad substitution") | ✅ Complete |
+| Bash shell for root | ✅ Complete |
 | US keyboard layout set by default | ✅ Complete |
 | Clean shutdown (AXP8191 PMIC poweroff) | ✅ Complete |
 | Boot blobs (boot0 + U-Boot) staged into image | ✅ Complete |
@@ -135,18 +130,20 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 | USB-C DisplayPort Alt Mode display output | ✅ Complete |
 | USB-A host ports (controllers, keyboards, mice) | ✅ Complete |
 | Gigabit Ethernet | ✅ Complete |
-| CPU frequency scaling (A55 up to 1.8GHz, A76 up to 2.0GHz) | ✅ Complete |
-| 120Hz DisplayPort output | ✅ Complete |
+| CPU frequency scaling | ✅ Complete |
 | PowerVR BXM-4-64 GPU kernel module loading | ✅ Complete |
-| Batocera userspace + overlayfs booting | ✅ Complete |
 | PowerVR GPU hardware acceleration (GLES2) | ✅ Complete |
+| Batocera userspace + overlayfs booting | ✅ Complete |
 | EmulationStation launching | ✅ Complete |
 | Wired controller input (USB HID + xpad) | ✅ Complete |
 | First ROM running | ✅ Complete |
-| RetroAchievements configured | ✅ Complete |
-| Three mode system | ⏳ Pending |
+| RetroAchievements configured out of the box | ✅ Complete |
 | OTA update system | ✅ Complete |
-| GameOctane app | ⏳ Pending |
+| PC streaming via Moonlight | ✅ Complete |
+| Box art scraping (TheGamesDB + ScreenScraper) | ✅ Complete |
+| 120Hz DisplayPort output | ⏳ In Progress |
+| Three mode system | ⏳ Phase 2 |
+| GameOctane app | ⏳ Phase 2 |
 
 ---
 
@@ -159,8 +156,6 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 ---
 
 ## Development References
-
-These resources are the foundation OctaneOS is built on:
 
 - [Batocera Linux](https://github.com/batocera-linux/batocera.linux) — upstream fork base
 - [Orange Pi BSP Kernel](https://github.com/orangepi-xunlong/linux-orangepi/tree/orange-pi-5.15-sun60iw2) — A733 kernel with full CCU, display, USB-C DP Alt Mode, and Cadence combo PHY support
@@ -183,8 +178,8 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a PR.
 ## Community
 
 - 🌐 [GameOctane.com](https://gameoctane.com)
-- 💬 Discord — (https://discord.gg/pnuamjT)
-- 🐦 (https://x.com/gameoctane)
+- 💬 [Discord](https://discord.gg/pnuamjT)
+- 🐦 [X / Twitter](https://x.com/gameoctane)
 
 ---
 
