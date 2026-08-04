@@ -11,7 +11,7 @@ curl -s -X POST "http://localhost:1234/messagebox" \
 Stream games from your PC to OctaneOS.
 
 Step 1: Install Sunshine on your PC
-  sunshine.app (free, works with any GPU)
+  github.com/LizardByte/Sunshine (free, works with any GPU)
   Open Sunshine web UI at https://localhost:47990
 
 Step 2: Pair from OctaneOS

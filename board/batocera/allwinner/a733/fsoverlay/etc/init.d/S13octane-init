@@ -94,10 +94,18 @@ case "$1" in
         echo "global.retroachievements.hardcore=0" >> "$BATOCERA_CONF"
     fi
 
-    # Prefer box art over screenshots as the main game image. Batocera's compiled
-    # default starts with 's' (screenshot) which looks wrong in the ES grid view.
-    if ! grep -q "^scrapper.style=" "$BATOCERA_CONF" 2>/dev/null; then
-        echo "scrapper.style=b,s,f,a,l,3b" >> "$BATOCERA_CONF"
+    # Prefer box art over screenshots as the main game image. ES reads this from
+    # es_settings.cfg (XML), not batocera.conf. Default compiled-in value is "ss"
+    # (screenshot). We set "box-2D" here; TheGamesDB and ScreenScraper both use it.
+    ES_SETTINGS="/userdata/system/configs/emulationstation/es_settings.cfg"
+    if [ -f "$ES_SETTINGS" ]; then
+        if ! grep -q 'name="ScrapperImageSrc"' "$ES_SETTINGS" 2>/dev/null; then
+            sed -i 's|</config>|  <string name="ScrapperImageSrc" value="box-2D" />\n</config>|' "$ES_SETTINGS"
+        fi
+    else
+        mkdir -p "$(dirname "$ES_SETTINGS")"
+        printf '<?xml version="1.0"?>\n<config>\n  <string name="ScrapperImageSrc" value="box-2D" />\n</config>\n' \
+            > "$ES_SETTINGS"
     fi
 
     # Install ROM Transfer port entry. Copies from squashfs so it always
