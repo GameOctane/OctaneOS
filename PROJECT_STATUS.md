@@ -31,6 +31,40 @@ OctaneOS is the foundation everything else in GameOctane sits on. GPU hardware a
 - [ ] 8BitDo controller disconnect fix (intermittent, ~130s interval — likely controller sleep timer)
 - [ ] Suppress spurious DP-1 hotplug events from sunxi-drm BSP
 - [ ] Audio — aplay -l returns no soundcards; machine driver failing (simple_dai_link_of errors)
+- [ ] Global RA activity ticker + Discord channel bot (design approved, build paused — see below)
+
+## In progress — paused mid-build (2026-08-05)
+**Global RA activity ticker + Discord channel bot** — grew out of issue #6
+("social presence"). Landed on the backend-only version after ruling out
+live player counts (RA API has no real-time presence endpoint, verified
+against `api-docs.retroachievements.org`) and true Discord Rich Presence
+(requires a locally-running Discord client via IPC — OctaneOS can't provide
+that without a whole new companion app, which we decided was too much
+friction to ask of users).
+
+**Approach:** a new standalone Node.js service (`GameOctane/octane-ticker`,
+hosted on the user's existing Railway Hobby plan) polls RA's
+`API_GetRecentGameAwards` (site-wide feed, one API key, no per-user auth)
+every 2 minutes, caches it, and (a) serves it to OctaneOS devices at
+`/ticker.txt` for on-device toast notifications via the existing ES
+`messagebox` API (same mechanism ROM Transfer/Moonlight Setup already use),
+and (b) posts `completed`/`mastered` events to a GameOctane Discord channel
+via an Incoming Webhook (not a full bot — simpler, smaller blast radius).
+On-device: new `usr/bin/octane-ticker` script + `S90octane-ticker` init.d
+service, following the `labwc-launch`/`S13octane-init` patterns exactly.
+Full design doc: plan was approved and saved at
+`/root/.claude/plans/radiant-inventing-honey.md` (session-local path — copy
+the plan content somewhere durable if this needs to survive past this
+session).
+
+**Where it's at:** plan approved, `octane-ticker` service code partway
+written (package.json + state.js done, in the session scratchpad, not yet
+in a repo). **Blocked:** GitHub App integration lacks org-level
+repo-creation permission (403) — `GameOctane/octane-ticker` needs to be
+created manually before code can be pushed. Also still open: DNS access for
+`api.gameoctane.com` (unconfirmed), Discord webhook needs to be created by
+hand (needs "Manage Webhooks" on the GameOctane server), RA API key needs
+generating from the existing GameOctane RA account.
 
 ## Ideas / Backlog
 - **Chiaki — PS4/PS5 Remote Play** — Chiaki is an open-source Remote Play client for Linux with ARM support. Would let Octane stream PS4/PS5 games directly from a console on the local network. Touch screen on the Octane could map to PS4/PS5 touchpad input. Batocera has a chiaki package worth evaluating for aarch64 compatibility.
@@ -44,7 +78,20 @@ OctaneOS is the foundation everything else in GameOctane sits on. GPU hardware a
 **Audio fix + UI freeze fix**: Root cause of audio -22 error identified via live dmesg. PipeWire probes ALSA with unconstrained rate (INT_MAX = 2,147,483,647). Without hw_constraint_list, asoc_simple_hw_params hits default → -EINVAL → PipeWire sink fails → ES blocks on audio init → UI freeze. Fix: snd_pcm_hw_constraint_list() in asoc_simple_startup() (0004 patch). Also: A76 OPP table extended to 2000MHz @ 1050mV (requires next linux-rebuild to take effect in image — DTS committed, image not yet rebuilt).
 
 ## Resume here
-v0.5.7-alpha released. Next: flash v0.5.7, test audio. A76 2000MHz OPP needs linux-rebuild + image build for v0.5.8.
+Paused mid-build on the RA ticker + Discord bot (see "In progress" above) to
+brainstorm further before continuing. First things to do when picking this
+back up: (1) create the empty `GameOctane/octane-ticker` repo by hand, (2)
+resume writing `src/ra.js`, `src/discord.js`, `src/poll.js`, `src/server.js`
+per the plan, (3) then the on-device `usr/bin/octane-ticker` +
+`S90octane-ticker` in this repo.
+
+Separately, v0.5.7-alpha's audio/OPP items below are still the
+hardware-track backlog — flash v0.5.7, test audio; A76 2000MHz OPP needs
+linux-rebuild + image build for v0.5.8.
 
 ## Last session
+2026-08-05: Scoped and got plan approval for a global RetroAchievements
+activity ticker + Discord channel bot (issue #6 follow-through). Started
+building the backend service, paused before finishing to brainstorm more.
+
 2026-07-10: v0.5.7-alpha released. Audio -22 root cause: PipeWire INT_MAX rate, fixed with hw_constraint_list in asoc_simple_startup. A76 2000MHz OPP added to DTS but needs rebuild. Controller disconnect was symptom of audio freeze, not separate cause.
