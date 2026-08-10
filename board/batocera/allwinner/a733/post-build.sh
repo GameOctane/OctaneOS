@@ -98,8 +98,8 @@ echo "[post-build] pvrsrvkm.ko done."
 # batocera.version: compared against ota/cubie-a7s/stable/last/batocera.version
 # octaneos.version: compared against GitHub latest release tag by ES swissknife
 # =============================================================================
-OCTANE_BUILD_NUMBER=49
-OCTANE_RELEASE_TAG="v0.5.25-alpha"
+OCTANE_BUILD_NUMBER=50
+OCTANE_RELEASE_TAG="v0.5.26-alpha"
 echo "${OCTANE_RELEASE_TAG}" \
     > "${TARGET_DIR}/usr/share/batocera/batocera.version"
 echo "${OCTANE_RELEASE_TAG}" \
