@@ -34,6 +34,11 @@ Batocera is an incredible foundation. OctaneOS builds on top of it with features
 | Allwinner A733 support | ❌ | ✅ |
 | OTA updates from GameOctane.com | ❌ | ✅ |
 | PC streaming via Moonlight (Big Picture) | ❌ | ✅ |
+| ROM transfer over WiFi (no PC software needed) | ❌ | ✅ |
+| RetroAchievements friends activity feed | ❌ | ✅ |
+| Site-wide RA completions & masteries feed | ❌ | ✅ |
+| Speedrun world records in game library | ❌ | ✅ |
+| Box art default (TheGamesDB + ScreenScraper) | ❌ | ✅ |
 | RetroAchievements | ✅ | ✅ |
 | EmulationStation frontend | ✅ | ✅ |
 | RetroArch + cores | ✅ | ✅ |
@@ -141,6 +146,10 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 | OTA update system | ✅ Complete |
 | PC streaming via Moonlight | ✅ Complete |
 | Box art scraping (TheGamesDB + ScreenScraper) | ✅ Complete |
+| ROM transfer over WiFi | ✅ Complete |
+| RetroAchievements friends activity feed | ✅ Complete |
+| Site-wide RA completions & masteries feed | ✅ Complete |
+| Speedrun world records in game library | ✅ Complete |
 | 120Hz DisplayPort output | ⏳ In Progress |
 | Three mode system | ⏳ Phase 2 |
 | GameOctane app | ⏳ Phase 2 |
