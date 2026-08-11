@@ -122,8 +122,10 @@ case "$1" in
     cp /usr/share/octane/moonlight-setup.sh "$MOONLIGHT_SCRIPT"
     chmod +x "$MOONLIGHT_SCRIPT"
 
-    # RA social ports (Friends Activity, Today's Completions, Speedrun WR Update)
-    # are pending proper ES UI integration and will be re-added in a future build.
+    # RA social ports removed — pending proper ES UI integration.
+    rm -f "$PORTS_DIR/Friends Activity.sh" \
+          "$PORTS_DIR/Today's Completions.sh" \
+          "$PORTS_DIR/Speedrun WR Update.sh" 2>/dev/null || true
 
     SSH_DIR=/userdata/system/.ssh
     AUTH_KEYS=$SSH_DIR/authorized_keys
