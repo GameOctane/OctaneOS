@@ -13,7 +13,9 @@ show_msg() {
 }
 
 RA_USER=$(get_conf "global.retroachievements.username")
-RA_KEY=$(get_conf "global.retroachievements.apikey")
+RA_KEY=$(cat /userdata/system/ra-webapi.key 2>/dev/null | tr -d '[:space:]')
+[ -z "$RA_KEY" ] && RA_KEY=$(get_conf "global.retroachievements.token")
+[ -z "$RA_KEY" ] && RA_KEY=$(get_conf "global.retroachievements.apikey")
 [ -z "$RA_KEY" ] && RA_KEY=$(get_conf "global.retroachievements.password")
 
 if [ -z "$RA_USER" ] || [ -z "$RA_KEY" ]; then
@@ -38,8 +40,9 @@ def get(url):
 
 try:
     following = get(base + '/API_GetUsersIFollow.php?y=' + key + '&c=50')
-except Exception:
-    print('Could not reach RetroAchievements.\nCheck your internet connection.')
+except Exception as e:
+    msg = 'Invalid credentials.' if '401' in str(e) or '403' in str(e) else 'Could not reach RetroAchievements.\nCheck your internet connection.'
+    print(msg)
     sys.exit(0)
 
 if not isinstance(following, list) or not following:

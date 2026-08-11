@@ -11,7 +11,9 @@ show_msg() {
         -H "Content-Type: text/plain" -d "$1" 2>/dev/null || true
 }
 
-RA_KEY=$(get_conf "global.retroachievements.apikey")
+RA_KEY=$(cat /userdata/system/ra-webapi.key 2>/dev/null | tr -d '[:space:]')
+[ -z "$RA_KEY" ] && RA_KEY=$(get_conf "global.retroachievements.token")
+[ -z "$RA_KEY" ] && RA_KEY=$(get_conf "global.retroachievements.apikey")
 [ -z "$RA_KEY" ] && RA_KEY=$(get_conf "global.retroachievements.password")
 
 if [ -z "$RA_KEY" ]; then

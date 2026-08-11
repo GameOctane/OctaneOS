@@ -1884,6 +1884,7 @@
 	edp_lane_rate = <1>;
 	edp_lane_cnt = <4>;
 	extcon = <&serdes>;
+	fps_limit_60 = <0>;
 
 	status = "okay";
 	ports {
