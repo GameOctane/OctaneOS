@@ -14,12 +14,16 @@ while [ "$i" -lt "$TIMEOUT" ]; do
     for f in /sys/class/drm/card*-DP-1/status; do
         [ -f "$f" ] || continue
         if [ "$(cat "$f" 2>/dev/null)" = "connected" ]; then
-            # DP-1 sysfs shows connected at CC detection time, but DP link
-            # training + EDID read take another ~5s. Without this wait, S28
-            # plays while the monitor is still dark and the ES Checker fires
-            # a hotplug restart mid-load. Sleep here so the display is fully
-            # negotiated before any video or compositor starts.
-            sleep 5
+            # sysfs "connected" fires at CC detection, but DP link training
+            # + EDID read take additional time. Poll for modes to appear
+            # (means EDID has been read and link is trained) rather than
+            # sleeping a fixed 5s. 7s ceiling so we never regress.
+            j=0
+            while [ $j -lt 7 ]; do
+                [ -n "$(cat /sys/class/drm/card*-DP-1/modes 2>/dev/null)" ] && exit 0
+                sleep 1
+                j=$((j + 1))
+            done
             exit 0
         fi
     done
