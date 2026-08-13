@@ -32,12 +32,10 @@ Batocera is an incredible foundation. OctaneOS builds on top of it with features
 | Feature | Batocera | OctaneOS |
 |---|---|---|
 | Allwinner A733 support | ❌ | ✅ |
+| 120Hz DisplayPort output | ❌ | ✅ |
 | OTA updates from GameOctane.com | ❌ | ✅ |
 | PC streaming via Moonlight (Big Picture) | ❌ | ✅ |
 | ROM transfer over WiFi (no PC software needed) | ❌ | ✅ |
-| RetroAchievements friends activity feed | ❌ | ✅ |
-| Site-wide RA completions & masteries feed | ❌ | ✅ |
-| Speedrun world records in game library | ❌ | ✅ |
 | Box art default (TheGamesDB + ScreenScraper) | ❌ | ✅ |
 | RetroAchievements | ✅ | ✅ |
 | EmulationStation frontend | ✅ | ✅ |
@@ -117,7 +115,7 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 
 [![Release](https://img.shields.io/github/v/release/GameOctane/OctaneOS?include_prereleases&label=latest)](https://github.com/GameOctane/OctaneOS/releases/latest)
 
-> OctaneOS is in active early development. GPU hardware acceleration is running, EmulationStation is smooth, ROMs are playing, OTA updates are live. We are building in public from day one — including the failures. Follow along.
+> OctaneOS Phase 1 is complete. GPU hardware acceleration, 120Hz DisplayPort, EmulationStation, ROMs, OTA updates — all running on Allwinner A733 Linux. We are building in public from day one. Follow along.
 
 | Milestone | Status |
 |---|---|
@@ -150,7 +148,7 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 | RetroAchievements friends activity feed | ✅ Complete |
 | Site-wide RA completions & masteries feed | ✅ Complete |
 | Speedrun world records in game library | ✅ Complete |
-| 120Hz DisplayPort output | ⏳ In Progress |
+| 120Hz DisplayPort output | ✅ Complete |
 | Three mode system | ⏳ Phase 2 |
 | GameOctane app | ⏳ Phase 2 |
 
