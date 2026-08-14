@@ -93,6 +93,17 @@ Full hardware specification available in the [Octane Platform Spec v1.3](docs/Oc
 
 ---
 
+## Ports
+
+OctaneOS includes pre-configured entries in the **Ports** section of EmulationStation for tools that extend Octane beyond emulation.
+
+| Port | Description |
+|---|---|
+| **Moonlight** | Stream your PC game library over your local network in Big Picture mode |
+| **ROM Transfer** | Transfer ROMs wirelessly from your phone or PC — no USB cable, no software required |
+
+---
+
 ## Download
 
 **[Latest Release — Radxa Cubie A7S](https://github.com/GameOctane/OctaneOS/releases/latest)**
@@ -165,7 +176,7 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 ## Development References
 
 - [Batocera Linux](https://github.com/batocera-linux/batocera.linux) — upstream fork base
-- [Orange Pi BSP Kernel](https://github.com/orangepi-xunlong/linux-orangepi/tree/orange-pi-5.15-sun60iw2) — A733 kernel with full CCU, display, USB-C DP Alt Mode, and Cadence combo PHY support
+- [Radxa 6.6 BSP Kernel](https://github.com/radxa/kernel/tree/allwinner-aiot-linux-6.6) — A733 kernel with full CCU, display, USB-C DP Alt Mode, and Cadence combo PHY support
 - [Armbian A733 Community Build](https://github.com/NickAlilovic/build/tree/Radxa-A7A) — A733 bring-up reference
 - [Radxa Cubie A7S Docs](https://docs.radxa.com/en/cubie/a7s) — hardware documentation
 - [linux-sunxi A733](https://linux-sunxi.org/A733) — mainline kernel status
