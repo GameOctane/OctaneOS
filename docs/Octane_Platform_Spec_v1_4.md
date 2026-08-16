@@ -7,6 +7,7 @@ GameOctane.com — Open Source Retro Gaming Platform — *Build It. Play It. Own
 > - Section 5.2 / 5.3: Replaced Raspberry Pi Zero 2W with Orange Pi Zero 2W 2GB + expansion board. Pi Zero 2W now $25–35 street with supply issues. Orange Pi Zero 2W is in stock, same price, composite native via expansion board.
 > - Section 8: Updated risk table for MT7921K sourcing.
 > - Section 4.1: Updated kernel reference to Linux 6.6 (Radxa BSP).
+> - **Section 3.1 / 3.10 / 9: Updated Cubie A7S pricing.** Amazon now lists the 4GB model at ~$80 and the 6GB model at ~$100 (August 2026). Original spec cited ~$30 from Arace (March 2026). Total handheld build cost revised accordingly.
 > - Full research backing: `docs/wireless-dock-hardware-research.md`
 
 ---
@@ -15,7 +16,7 @@ GameOctane.com — Open Source Retro Gaming Platform — *Build It. Play It. Own
 
 Octane is an open source retro gaming handheld platform. Not just a device — a platform. Every Octane runs OctaneOS, connects to the Octane community, earns RetroAchievements, and lives in an ecosystem that grows with its builders.
 
-The goal is simple: a $150 weekend build that competes with $300 commercial handhelds, fully documented, fully open, and fully yours.
+The goal is simple: a ~$220 weekend build that competes with $300–400 commercial handhelds, fully documented, fully open, and fully yours. *(Note: original $150 target was based on Cubie A7S at $30; August 2026 Amazon pricing is $100/6GB. Board cost dominates the BOM.)*
 
 Everything is open sourced on GitHub. Build guides, STL files, wiring diagrams, BOMs, and OctaneOS source code are all free. GameOctane.com is the home base. Discord is the community. Claude Code is the development engine.
 
@@ -97,7 +98,7 @@ The Cubie A7S was selected after exhaustive evaluation of available SBCs. It is 
 | PCIe | 16-pin PCIe Gen3 x1 FFC connector — Pi 5 compatible |
 | GPIO | 30-pin + 15-pin headers |
 | Display out | USB-C DisplayPort Alt Mode up to 4K@60fps |
-| Price | ~$30 (Arace, in stock March 2026) |
+| Price | ~$100 / 6GB, ~$80 / 4GB (Amazon, August 2026) — was $30 at Arace March 2026 |
 | Size | 51 × 51 mm |
 
 ### 3.2 GPIO Pin Allocation
@@ -222,7 +223,7 @@ The streaming link uses Octane as the WiFi Access Point and the dock as the clie
 
 | Part | Notes | Est. Cost |
 |---|---|---|
-| Radxa Cubie A7S 6GB | Brain — A733, WiFi 6, BT 5.4, USB-C DP, PCIe FFC | ~$30 |
+| Radxa Cubie A7S 6GB | Brain — A733, WiFi 6, BT 5.4, USB-C DP, PCIe FFC | ~$100 (Amazon) |
 | DPI IPS Touchscreen | 3.5"–4.0" LCD0 GPIO, I2C touch, TBD model | ~$25–40 |
 | TP4056 USB-C charge board | LiPo charging | ~$2 |
 | MT3608 boost converter | 5V boost from LiPo | ~$2 |
@@ -238,7 +239,7 @@ The streaming link uses Octane as the WiFi Access Point and the dock as the clie
 | FFC-to-M.2 PCIe adapter | Pi 5 FFC compatible, opposite-side cable | ~$12 *(updated)* |
 | Misc wiring, connectors | Tactile switches, FFC cables, etc. | ~$8 |
 | 3D printed shell (filament) | Open sourced STL files | ~$8 |
-| **TOTAL** | | **~$140–168** |
+| **TOTAL** | | **~$210–230** |
 
 ---
 
@@ -454,7 +455,7 @@ Everything is open. No exceptions.
 |---|---|
 | A733 DPI screen bring-up difficult *Medium* | LCD0 lines confirmed in pinout. Allwinner BSP kernel has LCD0 driver. Community Armbian build is reference. Claude Code assists with device tree. |
 | Batocera fork takes longer than expected *Medium* | Debian + RetroArch is a viable interim. OctaneOS can ship incrementally. Phase 1 just needs to play games. |
-| Cubie A7S goes out of stock *Low–Medium* | Buy 2–3 units now. A733 chip also on Cubie A7A and A7Z. Platform designed to be board-agnostic long term. |
+| Cubie A7S goes out of stock *Low–Medium* | Price now ~$100 — stock one spare unit. A733 chip also on Cubie A7A and A7Z. Platform designed to be board-agnostic long term. |
 | PCIe FFC lane non-functional on sample unit *Low* | Confirmed active in BSP device tree. Pimoroni NVMe Base working on A7A (same SoC). Fallback: Bluetooth PAN for internet-in-streaming-mode covers achievements and OTA. |
 | MT7921K sourcing difficulty *Low* *(updated v1.4)* | Buy AMD RZ608 (OEM name for MT7921K) as pulled M.2 2230 card on eBay (~$10–15). AzureWave AW-XB468NF also confirmed compatible at ~$5–9 from Impact Computers. **Note: Lenovo FRU 04X6020 is a BCM94352Z — wrong chip, do not order.** CONFIG_MWIFIEX_PCIE=m in BSP defconfig also allows NXP-chipset M.2 as fallback. |
 | WiFi streaming latency unacceptable *Low* | Measured ~12–20ms total on local WiFi. Retro games at 60fps have 16ms frame budget — tested and acceptable. Worst case: wired dock still works perfectly. |
@@ -469,7 +470,7 @@ Everything is open. No exceptions.
 
 | What | Octane |
 |---|---|
-| Brain | Radxa Cubie A7S — Allwinner A733, 6GB LPDDR5, ~$30 |
+| Brain | Radxa Cubie A7S — Allwinner A733, 6GB LPDDR5, ~$100 (Amazon) |
 | OS | OctaneOS — custom Batocera fork with A733 support, Linux 6.6 |
 | Display | 3.5"–4.0" DPI IPS screen via GPIO LCD0 |
 | WiFi — internet | wlan0: Quectel FCU760K (AIC8800D80) — home network STA client |
@@ -482,7 +483,7 @@ Everything is open. No exceptions.
 | Controls | Full Switch layout, MCP23017 expander, dual analog sticks |
 | Rumble | Dual coin motors, one per grip — GPIO PWM driven |
 | Audio | USB DAC, stereo speakers |
-| Target handheld build cost | ~$140–168 |
+| Target handheld build cost | ~$210–230 |
 | Open source | 100% — hardware, software, STL files, everything |
 | Home | GameOctane.com |
 | Dev engine | Claude Code |

@@ -12,7 +12,7 @@ Every Octane runs OctaneOS. Every OctaneOS is open source. Every update ships to
 
 Octane is an open source retro gaming handheld you build yourself. Not just a device — a platform.
 
-- **$150 weekend build** that competes with $300 commercial handhelds
+- **~$220 weekend build** that competes with $300–400 commercial handhelds
 - **Three play modes** — handheld, docked, and wireless streaming
 - **Universal dock** — HDMI, Component, and Composite outputs simultaneously
 - **RetroAchievements** baked in and configured out of the box
@@ -42,10 +42,13 @@ Batocera is an incredible foundation. OctaneOS builds on top of it with features
 | RetroArch + cores | ✅ | ✅ |
 | Controller auto-detection | ✅ | ✅ |
 
-**Coming in Phase 2 (handheld hardware):**
+**Phase 1 complete.** The software platform is done — GPU acceleration, EmulationStation, RetroArch, OTA updates, social features, and streaming all running on Allwinner A733 Linux.
+
+**Phase 2 — handheld hardware build:**
 
 | Feature |
 |---|
+| Physical handheld enclosure + PCB integration |
 | Three mode system — handheld, docked, wireless streaming |
 | Dual-radio WiFi — internet + streaming simultaneously |
 | Cover art dock mode |
@@ -71,7 +74,7 @@ OctaneOS currently runs on the **Radxa Cubie A7S** with the Allwinner A733 SoC. 
 | Display out | USB-C DisplayPort Alt Mode |
 | GPIO | 30-pin + 15-pin headers |
 
-Full hardware specification available in the [Octane Platform Spec v1.3](docs/Octane_Platform_Spec_v1_3.pdf).
+Full hardware specification available in the [Octane Platform Spec v1.4](docs/Octane_Platform_Spec_v1_4.md).
 
 ---
 
@@ -101,6 +104,7 @@ OctaneOS includes pre-configured entries in the **Ports** section of EmulationSt
 |---|---|
 | **Moonlight** | Stream your PC game library over your local network in Big Picture mode |
 | **ROM Transfer** | Transfer ROMs wirelessly from your phone or PC — no USB cable, no software required |
+| **Cave Story** | Freeware classic by Pixel — downloads automatically on first launch (~1.6 MB) |
 
 ---
 
@@ -160,6 +164,9 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 | Site-wide RA completions & masteries feed | ✅ Complete |
 | Speedrun world records in game library | ✅ Complete |
 | 120Hz DisplayPort output | ✅ Complete |
+| Cave Story (NXEngine freeware) | ✅ Complete |
+| **Phase 1 software platform** | ✅ **Complete — v0.6.0** |
+| Physical handheld hardware build | ⏳ Phase 2 |
 | Three mode system | ⏳ Phase 2 |
 | GameOctane app | ⏳ Phase 2 |
 
