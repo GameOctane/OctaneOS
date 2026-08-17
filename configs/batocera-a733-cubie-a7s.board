@@ -137,6 +137,5 @@ BR2_PACKAGE_AIC8800_USB=y
 # same-cdi: MAME-based, too memory-intensive for local WSL2 builds.
 #   CI runners have enough RAM — enabled here for full image builds.
 #   Disable locally via local.mk if needed.
-BR2_PACKAGE_LIBRETRO_NXENGINE=y
 BR2_PACKAGE_LIBRETRO_SAME_CDI=y
 BR2_PACKAGE_ECWOLF=y

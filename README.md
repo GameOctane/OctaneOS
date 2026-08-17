@@ -104,7 +104,6 @@ OctaneOS includes pre-configured entries in the **Ports** section of EmulationSt
 |---|---|
 | **Moonlight** | Stream your PC game library over your local network in Big Picture mode |
 | **ROM Transfer** | Transfer ROMs wirelessly from your phone or PC — no USB cable, no software required |
-| **Cave Story** | Freeware classic by Pixel — downloads automatically on first launch (~1.6 MB) |
 
 ---
 
@@ -164,7 +163,6 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 | Site-wide RA completions & masteries feed | ✅ Complete |
 | Speedrun world records in game library | ✅ Complete |
 | 120Hz DisplayPort output | ✅ Complete |
-| Cave Story (NXEngine freeware) | ✅ Complete |
 | **Phase 1 software platform** | ✅ **Complete — v0.6.0** |
 | Physical handheld hardware build | ⏳ Phase 2 |
 | Three mode system | ⏳ Phase 2 |
