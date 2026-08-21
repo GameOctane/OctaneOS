@@ -98,11 +98,21 @@ echo "[post-build] pvrsrvkm.ko done."
 # batocera.version: compared against ota/cubie-a7s/stable/last/batocera.version
 # octaneos.version: compared against GitHub latest release tag by ES swissknife
 # =============================================================================
-OCTANE_BUILD_NUMBER=62
-OCTANE_RELEASE_TAG="v0.6.2"
+OCTANE_BUILD_NUMBER=63
+OCTANE_RELEASE_TAG="v0.6.3"
 echo "${OCTANE_RELEASE_TAG}" \
     > "${TARGET_DIR}/usr/share/batocera/batocera.version"
 echo "${OCTANE_RELEASE_TAG}" \
     > "${TARGET_DIR}/usr/share/batocera/octaneos.version"
 echo "[post-build] batocera.version: ${OCTANE_RELEASE_TAG}"
 echo "[post-build] octaneos.version: ${OCTANE_RELEASE_TAG}"
+
+# =============================================================================
+# OctaneOS defaults — injected into datainit batocera.conf
+# Layers on top of the upstream file without maintaining a full copy.
+# =============================================================================
+DATAINIT_CONF="${TARGET_DIR}/usr/share/batocera/datainit/system/batocera.conf"
+if [ -f "${DATAINIT_CONF}" ] && ! grep -q "^system.services=" "${DATAINIT_CONF}"; then
+    printf '\n## OctaneOS defaults\nsystem.services=syncthing\n' >> "${DATAINIT_CONF}"
+    echo "[post-build] Enabled syncthing in datainit batocera.conf"
+fi
