@@ -1,6 +1,6 @@
 # Batocera Lightweight Profiles — RA / SRAM / Save States
 
-**Status:** Draft v0.2
+**Status:** Draft v0.3
 **Author:** Jason (GameOctane)
 **Scope:** Minimal viable per-user profile switching for Batocera
 
@@ -27,12 +27,27 @@ is not blocked on that PR — it works today, independent of whether
 
 ## Non-Goals (v1)
 
-Explicitly out of scope, based on where prior attempts stalled:
+Explicitly out of scope, based on where prior attempts stalled (see
+"External validation" below for a concrete example of why):
 
 - Shader / control-remap / display-setting profiles
-- Admin / Standard / Guest permission classes
+- Admin / Standard / Guest permission classes — including any
+  read-only vs. read-write distinction between profiles for game
+  metadata/deletion (some profiles able to edit/scrape/delete, others
+  not)
 - Live mid-session profile switching
 - Recently-played / playlist scoping (candidate for v2, not v1)
+- Splitting `batocera.conf` or `es_settings.cfg` into system-wide vs.
+  per-user keys
+- Per-user scraper or netplay credentials (RA credentials only)
+- Per-user `gamelist.xml` metadata — playtime, play count, region/
+  language image preference (US/JP/EUR box art variants, etc.)
+- Per-user personal collections
+- Per-user privacy for screenshots, recordings, decorations, music, or
+  splash screens (shared across all profiles in v1)
+- High-score sharing policy across profiles (e.g. arcade high scores
+  staying global vs. per-person)
+- Per-user ES kiosk/kids mode
 - Any change to RetroArch itself — this operates entirely at the
   Batocera config layer
 
@@ -129,6 +144,31 @@ dedicated "Users" icon/theme is a nice-to-have, not a blocker.
 First-run flow creates a default profile automatically so single-user
 setups are unaffected.
 
+## Interaction with Syncthing
+
+Profile switching redirects RetroArch's `savefile_directory`/
+`savestate_directory` to `/userdata/profiles/<name>/saves/` and
+`.../states/` — a different absolute path per profile. This is a
+config redirect, not a mount swap: nothing is hidden or swapped out
+from under an existing sync relationship, which is the specific
+failure mode raised against a mount-based approach in the Batocera
+Discord thread cited below (a two-way Syncthing sync interpreting a
+swapped-out mount as mass file deletion, propagating that to every
+peer node).
+
+The real, smaller caveat: anyone with Syncthing already watching the
+legacy `/userdata/saves/` path will find new saves silently stop
+appearing there once profiles are in use, since nothing writes to that
+path anymore. Mitigations:
+
+- The default/un-selected profile ("Default," for existing
+  single-user setups) keeps using the legacy path, so adopting this
+  feature doesn't break existing Syncthing configs by itself.
+- Anyone syncing multiple named profiles needs to add each profile's
+  `saves/`/`states/` subfolder as its own Syncthing-shared folder —
+  Syncthing already supports watching multiple independent folders, so
+  this is a reconfiguration, not a Syncthing code change.
+
 ## Why this scope
 
 - Matches the "most important" list from the original RetroArch
@@ -139,6 +179,30 @@ setups are unaffected.
   merge, this could later be simplified to use RetroArch's native
   profile system instead of config-rewriting, but isn't blocked
   waiting for it
+
+### External validation
+
+A near-identical proposal came up independently on the Batocera
+Discord (#batocera-linux-requests, "Multiple User Profiles" thread,
+Mar 2026): DokiDerg proposed a boot-time account prompt that mounts/
+redirects `/userdata/save` (and themes, bindings) per account. Lbrpdx
+— a recognized Batocera contributor — replied with a detailed
+rebuttal listing everything a full multi-user system actually
+touches: `batocera.conf`'s system-vs-user split, `es_settings.cfg`,
+scraper/RA/netplay credentials, `gamelist.xml` per-user metadata
+(playtime, region/language preference, per-user images), personal
+collections, privacy of screenshots/recordings/decorations/music/
+splash screens, arcade high-score sharing policy, and ES kiosk/kids
+mode plus admin-vs-read-only permission tiers — concluding "multi-user
+is a humongous feature."
+
+That critique is aimed at a full mount-swap covering saves, themes,
+and bindings all at once — a bigger blast radius than this spec. It
+independently confirms the reasoning behind this spec's Non-Goals:
+every item Lbrpdx lists is something this v1 deliberately does not
+attempt (see Non-Goals, above). This spec's three-item scope (RA
+credentials, SRAM, save states, via `retroarch.cfg` keys only) is
+intentionally narrower than what was being critiqued.
 
 ## Open Questions
 
