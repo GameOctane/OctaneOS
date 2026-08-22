@@ -1,0 +1,122 @@
+#!/bin/bash
+# batocera-profiles — multi-user profile management
+#
+# Profiles redirect RetroArch save/state directories and RA credentials per user.
+# Each profile lives in /userdata/profiles/<name>/  with:
+#   saves/                   — SRAM save files
+#   states/                  — save states
+#   retroachievements.conf   — RA username= and password= for this profile
+#
+# The active profile is tracked in /userdata/system/.batocera-profiles.current
+# (empty = default, using /userdata/saves and /userdata/states).
+
+PROFILES_DIR="/userdata/profiles"
+CURRENT_FILE="/userdata/system/.batocera-profiles.current"
+RETROARCH_CFG="/userdata/system/configs/retroarch/retroarchcustom.cfg"
+BATOCERA_CONF="/userdata/system/batocera.conf"
+
+# Set or add a key in retroarchcustom.cfg
+set_retroarch_key() {
+    local key="$1" val="$2"
+    touch "${RETROARCH_CFG}" 2>/dev/null || true
+    if grep -q "^${key} = " "${RETROARCH_CFG}" 2>/dev/null; then
+        sed -i "s|^${key} = .*|${key} = \"${val}\"|" "${RETROARCH_CFG}"
+    else
+        echo "${key} = \"${val}\"" >> "${RETROARCH_CFG}"
+    fi
+}
+
+# Read a key from batocera.conf (returns empty string if not set)
+get_batocera_key() {
+    grep "^${1}=" "${BATOCERA_CONF}" 2>/dev/null | cut -d= -f2-
+}
+
+case "$1" in
+    list)
+        [ -d "${PROFILES_DIR}" ] && ls "${PROFILES_DIR}" 2>/dev/null || true
+        ;;
+
+    current)
+        cat "${CURRENT_FILE}" 2>/dev/null || true
+        ;;
+
+    create)
+        NAME="${2:-}"
+        if [ -z "${NAME}" ]; then
+            echo "usage: batocera-profiles create <name>" >&2
+            exit 1
+        fi
+        mkdir -p "${PROFILES_DIR}/${NAME}/saves" "${PROFILES_DIR}/${NAME}/states"
+        # Copy current global RA credentials into the new profile
+        RA_USER=$(get_batocera_key "global.retroachievements.username")
+        RA_PASS=$(get_batocera_key "global.retroachievements.password")
+        printf 'username=%s\npassword=%s\n' "${RA_USER}" "${RA_PASS}" \
+            > "${PROFILES_DIR}/${NAME}/retroachievements.conf"
+        echo "Profile '${NAME}' created."
+        ;;
+
+    switch)
+        NAME="${2:-}"
+        if [ -z "${NAME}" ]; then
+            SAVE_DIR="/userdata/saves"
+            STATE_DIR="/userdata/states"
+        else
+            if [ ! -d "${PROFILES_DIR}/${NAME}" ]; then
+                echo "Profile '${NAME}' not found" >&2
+                exit 1
+            fi
+            SAVE_DIR="${PROFILES_DIR}/${NAME}/saves"
+            STATE_DIR="${PROFILES_DIR}/${NAME}/states"
+        fi
+
+        # Redirect save directories in retroarch.cfg
+        set_retroarch_key "savefile_directory" "${SAVE_DIR}"
+        set_retroarch_key "savestate_directory" "${STATE_DIR}"
+
+        # Load RA credentials from profile (if named and has .conf)
+        if [ -n "${NAME}" ] && [ -f "${PROFILES_DIR}/${NAME}/retroachievements.conf" ]; then
+            RA_USER=$(grep "^username=" "${PROFILES_DIR}/${NAME}/retroachievements.conf" | cut -d= -f2-)
+            RA_PASS=$(grep "^password=" "${PROFILES_DIR}/${NAME}/retroachievements.conf" | cut -d= -f2-)
+            if [ -n "${RA_USER}" ]; then
+                batocera-settings-set global.retroachievements.username "${RA_USER}"
+                set_retroarch_key "cheevos_username" "${RA_USER}"
+            fi
+            if [ -n "${RA_PASS}" ]; then
+                batocera-settings-set global.retroachievements.password "${RA_PASS}"
+                set_retroarch_key "cheevos_password" "${RA_PASS}"
+            fi
+        fi
+
+        # Track active profile
+        echo "${NAME}" > "${CURRENT_FILE}"
+
+        # Persist userdata overlay
+        batocera-save-overlay
+
+        echo "Switched to profile '${NAME:-DEFAULT}'."
+        ;;
+
+    delete)
+        NAME="${2:-}"
+        if [ -z "${NAME}" ]; then
+            echo "usage: batocera-profiles delete <name>" >&2
+            exit 1
+        fi
+        if [ ! -d "${PROFILES_DIR}/${NAME}" ]; then
+            echo "Profile '${NAME}' not found" >&2
+            exit 1
+        fi
+        rm -rf "${PROFILES_DIR}/${NAME}"
+        # Clear current marker if the deleted profile was active
+        ACTIVE=$(cat "${CURRENT_FILE}" 2>/dev/null || true)
+        if [ "${ACTIVE}" = "${NAME}" ]; then
+            echo "" > "${CURRENT_FILE}"
+        fi
+        echo "Profile '${NAME}' deleted."
+        ;;
+
+    *)
+        echo "usage: batocera-profiles {list|current|create <name>|switch [<name>]|delete <name>}" >&2
+        exit 1
+        ;;
+esac
