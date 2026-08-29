@@ -57,16 +57,9 @@ case "$1" in
 
     switch)
         NAME="${2:-}"
-        if [ -z "${NAME}" ]; then
-            SAVE_DIR="/userdata/saves"
-            STATE_DIR="/userdata/states"
-        else
-            if [ ! -d "${PROFILES_DIR}/${NAME}" ]; then
-                echo "Profile '${NAME}' not found" >&2
-                exit 1
-            fi
-            SAVE_DIR="${PROFILES_DIR}/${NAME}/saves"
-            STATE_DIR="${PROFILES_DIR}/${NAME}/states"
+        if [ -n "${NAME}" ] && [ ! -d "${PROFILES_DIR}/${NAME}" ]; then
+            echo "Profile '${NAME}' not found" >&2
+            exit 1
         fi
 
         # Save current RA credentials back to the active profile before switching.
@@ -84,9 +77,22 @@ case "$1" in
                 > "${PROFILES_DIR}/.default-retroachievements.conf"
         fi
 
-        # Redirect save directories in retroarch.cfg
-        set_retroarch_key "savefile_directory" "${SAVE_DIR}"
-        set_retroarch_key "savestate_directory" "${STATE_DIR}"
+        # Repoint /userdata/saves and /userdata/states symlinks to the active profile's dirs.
+        # configgen hardcodes SAVES=/userdata/saves and overwrites savefile_directory at every
+        # game launch, so retroarch.cfg cannot redirect saves — the symlink is the only mechanism.
+        # Migration guard: only repoint if /userdata/saves is already a symlink (post-migration).
+        PROFILE_NAME="${NAME:-default}"
+        SAVE_TARGET="${PROFILES_DIR}/${PROFILE_NAME}/saves"
+        STATE_TARGET="${PROFILES_DIR}/${PROFILE_NAME}/states"
+        mkdir -p "${SAVE_TARGET}" "${STATE_TARGET}"
+        if [ -L "/userdata/saves" ]; then
+            rm -f /userdata/saves
+            ln -s "${SAVE_TARGET}" /userdata/saves
+        fi
+        if [ -L "/userdata/states" ]; then
+            rm -f /userdata/states
+            ln -s "${STATE_TARGET}" /userdata/states
+        fi
 
         # Load RA credentials for the target profile
         if [ -n "${NAME}" ] && [ -f "${PROFILES_DIR}/${NAME}/retroachievements.conf" ]; then
