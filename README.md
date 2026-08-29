@@ -176,6 +176,8 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 
 - **[NickAlilovic](https://github.com/NickAlilovic)** — A733 bring-up work in the Armbian community build ([build/tree/Radxa-A7A](https://github.com/NickAlilovic/build/tree/Radxa-A7A)), which served as an essential reference for getting OctaneOS running on Cubie A7S hardware
 
+- **Amish** — Early adopter, tester, and contributor. Invaluable help getting 120Hz smart glasses support off the ground, and steady feedback across features that has shaped the direction of OctaneOS from the start.
+
 ---
 
 ## Development References
