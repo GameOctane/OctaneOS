@@ -69,23 +69,51 @@ case "$1" in
             STATE_DIR="${PROFILES_DIR}/${NAME}/states"
         fi
 
+        # Save current RA credentials back to the active profile before switching.
+        # This captures any credentials/token the user may have updated via the ES UI.
+        ACTIVE=$(cat "${CURRENT_FILE}" 2>/dev/null || true)
+        CUR_USER=$(get_batocera_key "global.retroachievements.username")
+        CUR_PASS=$(get_batocera_key "global.retroachievements.password")
+        CUR_TOKEN=$(get_batocera_key "global.retroachievements.token")
+        if [ -n "${ACTIVE}" ] && [ -d "${PROFILES_DIR}/${ACTIVE}" ]; then
+            printf 'username=%s\npassword=%s\ntoken=%s\n' "${CUR_USER}" "${CUR_PASS}" "${CUR_TOKEN}" \
+                > "${PROFILES_DIR}/${ACTIVE}/retroachievements.conf"
+        else
+            # Persist default profile creds so they can be restored on switch-back
+            printf 'username=%s\npassword=%s\ntoken=%s\n' "${CUR_USER}" "${CUR_PASS}" "${CUR_TOKEN}" \
+                > "${PROFILES_DIR}/.default-retroachievements.conf"
+        fi
+
         # Redirect save directories in retroarch.cfg
         set_retroarch_key "savefile_directory" "${SAVE_DIR}"
         set_retroarch_key "savestate_directory" "${STATE_DIR}"
 
-        # Load RA credentials from profile (if named and has .conf)
+        # Load RA credentials for the target profile
         if [ -n "${NAME}" ] && [ -f "${PROFILES_DIR}/${NAME}/retroachievements.conf" ]; then
-            RA_USER=$(grep "^username=" "${PROFILES_DIR}/${NAME}/retroachievements.conf" | cut -d= -f2-)
-            RA_PASS=$(grep "^password=" "${PROFILES_DIR}/${NAME}/retroachievements.conf" | cut -d= -f2-)
-            if [ -n "${RA_USER}" ]; then
-                batocera-settings-set global.retroachievements.username "${RA_USER}"
-                set_retroarch_key "cheevos_username" "${RA_USER}"
-            fi
-            if [ -n "${RA_PASS}" ]; then
-                batocera-settings-set global.retroachievements.password "${RA_PASS}"
-                set_retroarch_key "cheevos_password" "${RA_PASS}"
-            fi
+            RA_CONF="${PROFILES_DIR}/${NAME}/retroachievements.conf"
+        elif [ -z "${NAME}" ] && [ -f "${PROFILES_DIR}/.default-retroachievements.conf" ]; then
+            RA_CONF="${PROFILES_DIR}/.default-retroachievements.conf"
+        else
+            RA_CONF=""
         fi
+        if [ -n "${RA_CONF}" ]; then
+            RA_USER=$(grep "^username=" "${RA_CONF}" | cut -d= -f2-)
+            RA_PASS=$(grep "^password=" "${RA_CONF}" | cut -d= -f2-)
+            RA_TOKEN=$(grep "^token=" "${RA_CONF}" | cut -d= -f2-)
+        else
+            RA_USER="" ; RA_PASS="" ; RA_TOKEN=""
+        fi
+        if [ -n "${RA_USER}" ]; then
+            batocera-settings-set global.retroachievements.username "${RA_USER}"
+            set_retroarch_key "cheevos_username" "${RA_USER}"
+        fi
+        if [ -n "${RA_PASS}" ]; then
+            batocera-settings-set global.retroachievements.password "${RA_PASS}"
+            set_retroarch_key "cheevos_password" "${RA_PASS}"
+        fi
+        # Always write the profile's token (empty string clears a stale one)
+        batocera-settings-set global.retroachievements.token "${RA_TOKEN}"
+        set_retroarch_key "cheevos_token" "${RA_TOKEN}"
 
         # Track active profile
         echo "${NAME}" > "${CURRENT_FILE}"

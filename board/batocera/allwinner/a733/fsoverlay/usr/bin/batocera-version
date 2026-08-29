@@ -1,0 +1,11 @@
+#!/bin/bash
+# OctaneOS override: return our versioned string directly.
+# Upstream batocera-version appends suffix flags (o=overlay, c=custom.sh, etc.)
+# using a sed regex that expects a digit-prefixed version. Our "vX.Y.Z" format
+# causes the 'o' (overlay) flag to land at position 0 → "ov0.6.7". We always
+# have an overlay (batocera-save-overlay), so just return the clean version.
+if test "${1}" = "--extra"; then
+    echo "none"
+else
+    sed 's/^v//' /usr/share/batocera/octaneos.version
+fi
