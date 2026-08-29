@@ -81,7 +81,7 @@ case "$1" in
         # configgen hardcodes SAVES=/userdata/saves and overwrites savefile_directory at every
         # game launch, so retroarch.cfg cannot redirect saves — the symlink is the only mechanism.
         # Migration guard: only repoint if /userdata/saves is already a symlink (post-migration).
-        PROFILE_NAME="${NAME:-default}"
+        PROFILE_NAME="${NAME:-.default}"
         SAVE_TARGET="${PROFILES_DIR}/${PROFILE_NAME}/saves"
         STATE_TARGET="${PROFILES_DIR}/${PROFILE_NAME}/states"
         mkdir -p "${SAVE_TARGET}" "${STATE_TARGET}"
