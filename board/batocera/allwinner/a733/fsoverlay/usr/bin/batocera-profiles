@@ -1,21 +1,23 @@
 #!/bin/bash
 # batocera-profiles — multi-user profile management
 #
-# Profiles redirect RetroArch save/state directories and RA credentials per user.
 # Each profile lives in /userdata/profiles/<name>/  with:
-#   saves/                   — SRAM save files
-#   states/                  — save states
-#   retroachievements.conf   — RA username= and password= for this profile
+#   saves/                   — SRAM save files (via /userdata/saves symlink)
+#   states/                  — save states    (via /userdata/states symlink)
+#   retroachievements.conf   — per-profile settings:
+#                               username=, password=, token=
+#                               ra_enabled= (0 or 1)
+#                               display_name= (optional friendly label)
 #
-# The active profile is tracked in /userdata/system/.batocera-profiles.current
-# (empty = default, using /userdata/saves and /userdata/states).
+# Active profile tracked in /userdata/system/.batocera-profiles.current
+# (empty = default; default profile data lives in .default/ and
+#  .default-retroachievements.conf, both hidden from ls)
 
 PROFILES_DIR="/userdata/profiles"
 CURRENT_FILE="/userdata/system/.batocera-profiles.current"
 RETROARCH_CFG="/userdata/system/configs/retroarch/retroarchcustom.cfg"
 BATOCERA_CONF="/userdata/system/batocera.conf"
 
-# Set or add a key in retroarchcustom.cfg
 set_retroarch_key() {
     local key="$1" val="$2"
     touch "${RETROARCH_CFG}" 2>/dev/null || true
@@ -26,9 +28,27 @@ set_retroarch_key() {
     fi
 }
 
-# Read a key from batocera.conf (returns empty string if not set)
 get_batocera_key() {
     grep "^${1}=" "${BATOCERA_CONF}" 2>/dev/null | cut -d= -f2-
+}
+
+# Read a single key=value field from a conf file
+read_conf_field() {
+    local file="$1" key="$2"
+    grep "^${key}=" "${file}" 2>/dev/null | cut -d= -f2-
+}
+
+# Write all per-profile fields to a conf file, preserving display_name.
+# Args: file username password token ra_enabled
+write_profile_conf() {
+    local file="$1" user="$2" pass="$3" token="$4" ra_enabled="$5"
+    local dn
+    dn=$(read_conf_field "${file}" "display_name")
+    {
+        printf 'username=%s\npassword=%s\ntoken=%s\nra_enabled=%s\n' \
+            "${user}" "${pass}" "${token}" "${ra_enabled}"
+        [ -n "${dn}" ] && printf 'display_name=%s\n' "${dn}"
+    } > "${file}"
 }
 
 case "$1" in
@@ -47,11 +67,12 @@ case "$1" in
             exit 1
         fi
         mkdir -p "${PROFILES_DIR}/${NAME}/saves" "${PROFILES_DIR}/${NAME}/states"
-        # Copy current global RA credentials into the new profile
         RA_USER=$(get_batocera_key "global.retroachievements.username")
         RA_PASS=$(get_batocera_key "global.retroachievements.password")
-        printf 'username=%s\npassword=%s\n' "${RA_USER}" "${RA_PASS}" \
-            > "${PROFILES_DIR}/${NAME}/retroachievements.conf"
+        RA_ENABLED=$(get_batocera_key "global.retroachievements")
+        write_profile_conf \
+            "${PROFILES_DIR}/${NAME}/retroachievements.conf" \
+            "${RA_USER}" "${RA_PASS}" "" "${RA_ENABLED:-1}"
         echo "Profile '${NAME}' created."
         ;;
 
@@ -62,25 +83,26 @@ case "$1" in
             exit 1
         fi
 
-        # Save current RA credentials back to the active profile before switching.
-        # This captures any credentials/token the user may have updated via the ES UI.
+        # --- Save current profile's state before switching ---
         ACTIVE=$(cat "${CURRENT_FILE}" 2>/dev/null || true)
         CUR_USER=$(get_batocera_key "global.retroachievements.username")
         CUR_PASS=$(get_batocera_key "global.retroachievements.password")
         CUR_TOKEN=$(get_batocera_key "global.retroachievements.token")
+        CUR_RA_ENABLED=$(get_batocera_key "global.retroachievements")
         if [ -n "${ACTIVE}" ] && [ -d "${PROFILES_DIR}/${ACTIVE}" ]; then
-            printf 'username=%s\npassword=%s\ntoken=%s\n' "${CUR_USER}" "${CUR_PASS}" "${CUR_TOKEN}" \
-                > "${PROFILES_DIR}/${ACTIVE}/retroachievements.conf"
+            write_profile_conf \
+                "${PROFILES_DIR}/${ACTIVE}/retroachievements.conf" \
+                "${CUR_USER}" "${CUR_PASS}" "${CUR_TOKEN}" "${CUR_RA_ENABLED:-1}"
         else
-            # Persist default profile creds so they can be restored on switch-back
-            printf 'username=%s\npassword=%s\ntoken=%s\n' "${CUR_USER}" "${CUR_PASS}" "${CUR_TOKEN}" \
-                > "${PROFILES_DIR}/.default-retroachievements.conf"
+            write_profile_conf \
+                "${PROFILES_DIR}/.default-retroachievements.conf" \
+                "${CUR_USER}" "${CUR_PASS}" "${CUR_TOKEN}" "${CUR_RA_ENABLED:-1}"
         fi
 
-        # Repoint /userdata/saves and /userdata/states symlinks to the active profile's dirs.
-        # configgen hardcodes SAVES=/userdata/saves and overwrites savefile_directory at every
-        # game launch, so retroarch.cfg cannot redirect saves — the symlink is the only mechanism.
-        # Migration guard: only repoint if /userdata/saves is already a symlink (post-migration).
+        # --- Repoint saves/states symlinks ---
+        # configgen hardcodes SAVES=/userdata/saves and overwrites savefile_directory
+        # at every game launch; the symlink is the only effective redirect mechanism.
+        # Guard: only repoint if already a symlink (i.e. migration has run).
         PROFILE_NAME="${NAME:-.default}"
         SAVE_TARGET="${PROFILES_DIR}/${PROFILE_NAME}/saves"
         STATE_TARGET="${PROFILES_DIR}/${PROFILE_NAME}/states"
@@ -94,7 +116,7 @@ case "$1" in
             ln -s "${STATE_TARGET}" /userdata/states
         fi
 
-        # Load RA credentials for the target profile
+        # --- Load target profile's credentials and settings ---
         if [ -n "${NAME}" ] && [ -f "${PROFILES_DIR}/${NAME}/retroachievements.conf" ]; then
             RA_CONF="${PROFILES_DIR}/${NAME}/retroachievements.conf"
         elif [ -z "${NAME}" ] && [ -f "${PROFILES_DIR}/.default-retroachievements.conf" ]; then
@@ -102,13 +124,16 @@ case "$1" in
         else
             RA_CONF=""
         fi
+
         if [ -n "${RA_CONF}" ]; then
-            RA_USER=$(grep "^username=" "${RA_CONF}" | cut -d= -f2-)
-            RA_PASS=$(grep "^password=" "${RA_CONF}" | cut -d= -f2-)
-            RA_TOKEN=$(grep "^token=" "${RA_CONF}" | cut -d= -f2-)
+            RA_USER=$(read_conf_field "${RA_CONF}" "username")
+            RA_PASS=$(read_conf_field "${RA_CONF}" "password")
+            RA_TOKEN=$(read_conf_field "${RA_CONF}" "token")
+            RA_ENABLED=$(read_conf_field "${RA_CONF}" "ra_enabled")
         else
-            RA_USER="" ; RA_PASS="" ; RA_TOKEN=""
+            RA_USER="" ; RA_PASS="" ; RA_TOKEN="" ; RA_ENABLED=""
         fi
+
         if [ -n "${RA_USER}" ]; then
             batocera-settings-set global.retroachievements.username "${RA_USER}"
             set_retroarch_key "cheevos_username" "${RA_USER}"
@@ -117,16 +142,16 @@ case "$1" in
             batocera-settings-set global.retroachievements.password "${RA_PASS}"
             set_retroarch_key "cheevos_password" "${RA_PASS}"
         fi
-        # Always write the profile's token (empty string clears a stale one)
+        # Always write token — empty string clears a stale one
         batocera-settings-set global.retroachievements.token "${RA_TOKEN}"
         set_retroarch_key "cheevos_token" "${RA_TOKEN}"
+        # Restore RA enabled/disabled if the profile has a saved value
+        if [ -n "${RA_ENABLED}" ]; then
+            batocera-settings-set global.retroachievements "${RA_ENABLED}"
+        fi
 
-        # Track active profile
         echo "${NAME}" > "${CURRENT_FILE}"
-
-        # Persist userdata overlay
         batocera-save-overlay
-
         echo "Switched to profile '${NAME:-DEFAULT}'."
         ;;
 
@@ -141,7 +166,6 @@ case "$1" in
             exit 1
         fi
         rm -rf "${PROFILES_DIR}/${NAME}"
-        # Clear current marker if the deleted profile was active
         ACTIVE=$(cat "${CURRENT_FILE}" 2>/dev/null || true)
         if [ "${ACTIVE}" = "${NAME}" ]; then
             echo "" > "${CURRENT_FILE}"
