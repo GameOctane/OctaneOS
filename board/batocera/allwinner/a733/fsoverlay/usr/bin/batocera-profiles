@@ -102,16 +102,25 @@ case "$1" in
         # --- Repoint saves/states symlinks ---
         # configgen hardcodes SAVES=/userdata/saves and overwrites savefile_directory
         # at every game launch; the symlink is the only effective redirect mechanism.
-        # Guard: only repoint if already a symlink (i.e. migration has run).
+        # Auto-migrate: if /userdata/saves is still a real directory (fresh install or
+        # pre-v0.6.8 device), move contents into .default/saves and replace with symlink.
         PROFILE_NAME="${NAME:-.default}"
         SAVE_TARGET="${PROFILES_DIR}/${PROFILE_NAME}/saves"
         STATE_TARGET="${PROFILES_DIR}/${PROFILE_NAME}/states"
-        mkdir -p "${SAVE_TARGET}" "${STATE_TARGET}"
-        if [ -L "/userdata/saves" ]; then
+        mkdir -p "${PROFILES_DIR}/.default/saves" "${PROFILES_DIR}/.default/states"
+        if [ -d "/userdata/saves" ] && [ ! -L "/userdata/saves" ]; then
+            cp -a /userdata/saves/. "${PROFILES_DIR}/.default/saves/" 2>/dev/null || true
+            rm -rf /userdata/saves
+            ln -s "${SAVE_TARGET}" /userdata/saves
+        elif [ -L "/userdata/saves" ]; then
             rm -f /userdata/saves
             ln -s "${SAVE_TARGET}" /userdata/saves
         fi
-        if [ -L "/userdata/states" ]; then
+        if [ -d "/userdata/states" ] && [ ! -L "/userdata/states" ]; then
+            cp -a /userdata/states/. "${PROFILES_DIR}/.default/states/" 2>/dev/null || true
+            rm -rf /userdata/states
+            ln -s "${STATE_TARGET}" /userdata/states
+        elif [ -L "/userdata/states" ]; then
             rm -f /userdata/states
             ln -s "${STATE_TARGET}" /userdata/states
         fi
