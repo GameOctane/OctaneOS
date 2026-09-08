@@ -142,10 +142,9 @@ BR2_PACKAGE_ECWOLF=y
 
 # Additional libretro cores — explicitly listed because Config.in select conditions
 # only cover named targets (x86, BCM2712, RK3588, etc.) and don't include A733.
-# DeSmuME: alternate NDS core (better audio compatibility than MelonDS for some titles)
+# NOTE: DeSmuME requires desktop GL (GL/gl.h) and cannot build on GLES-only A733.
 # Beetle PSX: alternate PS1 core with higher accuracy
 # Dolphin: GameCube / Wii libretro core
-BR2_PACKAGE_LIBRETRO_DESMUME=y
 BR2_PACKAGE_LIBRETRO_BEETLE_PSX=y
 BR2_PACKAGE_LIBRETRO_DOLPHIN=y
 # mupen64plus-next: RetroAchievements-compatible N64 core (depends on GLES which
