@@ -99,30 +99,24 @@ case "$1" in
                 "${CUR_USER}" "${CUR_PASS}" "${CUR_TOKEN}" "${CUR_RA_ENABLED:-1}"
         fi
 
-        # --- Repoint saves/states symlinks ---
-        # configgen hardcodes SAVES=/userdata/saves and overwrites savefile_directory
-        # at every game launch; the symlink is the only effective redirect mechanism.
-        # Auto-migrate: if /userdata/saves is still a real directory (fresh install or
-        # pre-v0.6.8 device), move contents into .default/saves and replace with symlink.
-        PROFILE_NAME="${NAME:-.default}"
-        SAVE_TARGET="${PROFILES_DIR}/${PROFILE_NAME}/saves"
-        STATE_TARGET="${PROFILES_DIR}/${PROFILE_NAME}/states"
+        # --- One-time migration of pre-profiles saves into .default ---
+        # configgen (batoceraPaths.SAVES) now reads .batocera-profiles.current
+        # directly and sets savefile_directory/savestate_directory per-profile.
+        # No symlinks needed. We only migrate existing flat saves into .default
+        # once so they aren't stranded. Any old /userdata/saves symlinks from
+        # a pre-Variant-C install are cleaned up here too.
         mkdir -p "${PROFILES_DIR}/.default/saves" "${PROFILES_DIR}/.default/states"
-        if [ -d "/userdata/saves" ] && [ ! -L "/userdata/saves" ]; then
+        if [ -L "/userdata/saves" ]; then
+            rm -f /userdata/saves
+        elif [ -d "/userdata/saves" ]; then
             cp -a /userdata/saves/. "${PROFILES_DIR}/.default/saves/" 2>/dev/null || true
             rm -rf /userdata/saves
-            ln -s "${SAVE_TARGET}" /userdata/saves
-        elif [ -L "/userdata/saves" ]; then
-            rm -f /userdata/saves
-            ln -s "${SAVE_TARGET}" /userdata/saves
         fi
-        if [ -d "/userdata/states" ] && [ ! -L "/userdata/states" ]; then
+        if [ -L "/userdata/states" ]; then
+            rm -f /userdata/states
+        elif [ -d "/userdata/states" ]; then
             cp -a /userdata/states/. "${PROFILES_DIR}/.default/states/" 2>/dev/null || true
             rm -rf /userdata/states
-            ln -s "${STATE_TARGET}" /userdata/states
-        elif [ -L "/userdata/states" ]; then
-            rm -f /userdata/states
-            ln -s "${STATE_TARGET}" /userdata/states
         fi
 
         # --- Load target profile's credentials and settings ---
