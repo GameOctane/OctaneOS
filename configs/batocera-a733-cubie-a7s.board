@@ -148,3 +148,6 @@ BR2_PACKAGE_ECWOLF=y
 BR2_PACKAGE_LIBRETRO_DESMUME=y
 BR2_PACKAGE_LIBRETRO_BEETLE_PSX=y
 BR2_PACKAGE_LIBRETRO_DOLPHIN=y
+# mupen64plus-next: RetroAchievements-compatible N64 core (depends on GLES which
+# may prevent auto-select via Config.in on A733 — listed explicitly to ensure it builds)
+BR2_PACKAGE_LIBRETRO_MUPEN64PLUS_NEXT=y
