@@ -98,14 +98,17 @@ echo "[post-build] pvrsrvkm.ko done."
 # batocera.version: compared against ota/cubie-a7s/stable/last/batocera.version
 # octaneos.version: compared against GitHub latest release tag by ES swissknife
 # =============================================================================
-OCTANE_BUILD_NUMBER=68
-OCTANE_RELEASE_TAG="v0.6.8"
-echo "${OCTANE_RELEASE_TAG}" \
+OCTANE_BUILD_NUMBER=69
+OCTANE_RELEASE_TAG="v0.6.9"
+OCTANE_VERSION_STRING="0.6.9"
+# Write version files WITHOUT the leading 'v' — ES prepends " V" in the menu
+# label, so keeping "v0.6.9" would display as "OctaneOS V v0.6.9".
+echo "${OCTANE_VERSION_STRING}" \
     > "${TARGET_DIR}/usr/share/batocera/batocera.version"
-echo "${OCTANE_RELEASE_TAG}" \
+echo "${OCTANE_VERSION_STRING}" \
     > "${TARGET_DIR}/usr/share/batocera/octaneos.version"
-echo "[post-build] batocera.version: ${OCTANE_RELEASE_TAG}"
-echo "[post-build] octaneos.version: ${OCTANE_RELEASE_TAG}"
+echo "[post-build] batocera.version: ${OCTANE_VERSION_STRING}"
+echo "[post-build] octaneos.version: ${OCTANE_VERSION_STRING}"
 
 # =============================================================================
 # OctaneOS defaults — injected into datainit batocera.conf
