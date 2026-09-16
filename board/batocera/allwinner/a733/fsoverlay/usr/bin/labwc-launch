@@ -159,55 +159,24 @@ prefer_120hz() {
     fi
 }
 
-# pvrsrvkm's render node. sunxi-drm (display) does NOT set DRIVER_RENDER so it
-# gets no renderD node. pvrsrvkm does, and gets the first available minor (128).
-# Do NOT derive by card-number arithmetic — render node minors are assigned by
-# DRIVER_RENDER registration order, not card index.
+# pvrsrvkm's render node — log it for diagnostics; emulators use it directly.
+# pvrsrvkm with a live GLES2 compositor hard-hangs the kernel under sustained
+# GPU load (confirmed on A733 / BXM-4-64). Use pixman (software) for the
+# compositor so pvrsrvkm is only touched by ES and emulator processes, not by
+# the compositor's own render path.
 PVR_RENDER_NODE=$(ls /dev/dri/renderD* 2>/dev/null | head -1)
-if [ -z "$PVR_RENDER_NODE" ]; then
-    serial "ERROR: no render node found — pvrsrvkm.ko may not be loaded"
-    exit 1
-fi
-serial "PVR render node: $PVR_RENDER_NODE"
+serial "PVR render node: ${PVR_RENDER_NODE:-none}"
 
-# Try GLES2 with the PowerVR DDK. WLR_RENDER_DRM_DEVICE points wlroots at the
-# PVR render node instead of the sunxi-drm render node (which can't do GLES2).
-# If labwc crashes within 5s (EGL init failure), fall back to pixman.
-
-serial "Attempting WLR_RENDERER=gles2 display=/dev/dri/$DISPLAY_CARD render=$PVR_RENDER_NODE"
-echo "=== labwc GLES2 attempt $(date) ===" > "$LABWC_GLES2_LOG"
-LD_LIBRARY_PATH="/usr/local/lib:/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
-LIBGL_DRIVERS_PATH="/usr/local/lib/dri" \
-GBM_BACKENDS_PATH="/usr/local/lib/gbm" \
-MESA_LOADER_DRIVER_OVERRIDE=pvr \
-WLR_RENDERER=gles2 \
+serial "Starting labwc with pixman renderer (display=/dev/dri/$DISPLAY_CARD)"
+WLR_RENDERER=pixman \
+WLR_RENDERER_ALLOW_SOFTWARE=1 \
 WLR_DRM_DEVICES="/dev/dri/$DISPLAY_CARD" \
-WLR_RENDER_DRM_DEVICE="$PVR_RENDER_NODE" \
 WLR_LIBINPUT_NO_DEVICES=1 \
-WLR_DRM_NO_MODIFIERS=1 \
-    /usr/bin/labwc -d -C $LABWC_CONF_DIR >> "$LABWC_GLES2_LOG" 2>&1 &
+    /usr/bin/labwc -d -C $LABWC_CONF_DIR >> "$LABWC_LOG_FILE" 2>&1 &
 LABWC_PID=$!
-
-sleep 5
-if kill -0 $LABWC_PID 2>/dev/null; then
-    serial "labwc GLES2 alive after 5s — GPU rendering active"
-    cp "$LABWC_GLES2_LOG" "$LABWC_LOG_FILE"
-    prefer_120hz "$WAYLAND_OUTPUT" &
-    wait $LABWC_PID
-    EXIT_CODE=$?
-else
-    serial "labwc GLES2 crashed — falling back to pixman"
-    cp "$LABWC_GLES2_LOG" "$LABWC_LOG_FILE"
-    tail -20 "$LABWC_GLES2_LOG" | while IFS= read -r line; do serial "  $line"; done
-    WLR_RENDERER=pixman WLR_RENDERER_ALLOW_SOFTWARE=1 \
-    WLR_DRM_DEVICES="/dev/dri/$DISPLAY_CARD" WLR_LIBINPUT_NO_DEVICES=1 \
-        /usr/bin/labwc -d -C $LABWC_CONF_DIR >> "$LABWC_LOG_FILE" 2>&1 &
-    LABWC_PID=$!
-    serial "labwc pixman fallback started with PID $LABWC_PID"
-    prefer_120hz "$WAYLAND_OUTPUT" &
-    wait $LABWC_PID
-    EXIT_CODE=$?
-fi
+prefer_120hz "$WAYLAND_OUTPUT" &
+wait $LABWC_PID
+EXIT_CODE=$?
 
 serial "labwc exited with code $EXIT_CODE"
 echo "labwc exited with code $EXIT_CODE" >> "$LOG_FILE"
