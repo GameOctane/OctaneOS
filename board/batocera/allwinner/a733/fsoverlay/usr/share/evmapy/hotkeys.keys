@@ -1,0 +1,22 @@
+{
+    "actions_player1": [
+        {"trigger": ["hotkey","start"], "type": "key", "target": ["KEY_EXIT"], "description": "Exit emulator"},
+        {"trigger": ["hotkey","a"], "type": "key", "target": ["KEY_CONTEXT_MENU"], "description": "Batocera Control Center"},
+        {"trigger": ["hotkey","b"], "type": "key", "target": ["KEY_F1"], "description": "Menu"},
+        {"trigger": ["hotkey","x"], "type": "key", "target": ["KEY_SEND"], "description": "Restore state"},
+        {"trigger": ["hotkey","y"], "type": "key", "target": ["KEY_SAVE"], "description": "Save state"},
+        {"trigger": ["hotkey","up"], "type": "key", "target": ["KEY_PREVIOUS"], "description": "Previous slot"},
+        {"trigger": ["hotkey","down"], "type": "key", "target": ["KEY_NEXT"], "description": "Next slot"},
+        {"trigger": ["hotkey","left"], "type": "key", "target": ["KEY_REWIND"], "description": "Rewind"},
+        {"trigger": ["hotkey","right"], "type": "key", "target": ["KEY_FASTFORWARD"], "description": "Fast forward"},
+        {"trigger": ["hotkey","pageup"], "type": "key", "target": ["KEY_SYSRQ"], "description": "Screenshot"},
+        {"trigger": ["hotkey","l3"], "type": "key", "target": ["KEY_VIDEO_NEXT"], "description": "Next disk"},
+        {"trigger": ["hotkey","l2"], "type": "key", "target": ["KEY_CAMERA_FOCUS"], "description": "Swap screen"},
+        {"trigger": ["hotkey","r2"], "type": "key", "target": ["KEY_PRESENTATION"], "description": "Toggle screen layout"},
+        {"trigger": ["hotkey","pagedown"], "type": "key", "target": ["KEY_SUBTITLE"], "description": "Translate"},
+        {"trigger": ["hotkey","r3"], "type": "key", "target": ["KEY_FRONT"], "description": "Hide bezels"}
+    ],
+    "actions_gun1": [
+        {"trigger": ["left","right","middle"], "type": "key", "hold": 2.0, "target": ["KEY_EXIT"], "description": "Exit emulator"}
+    ]
+}
