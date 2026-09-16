@@ -127,6 +127,13 @@ case "$1" in
           "$PORTS_DIR/Today's Completions.sh" \
           "$PORTS_DIR/Speedrun WR Update.sh" 2>/dev/null || true
 
+    # evmapy reads hotkeys.keys from the squashfs system path. If userdata has a
+    # customized copy, overlay it so evmapy picks up the correct bindings (e.g.
+    # KEY_F1 for Guide+B to open the RetroArch menu instead of KEY_MENU).
+    if [ -f /userdata/system/configs/hotkeys.keys ]; then
+        cp /userdata/system/configs/hotkeys.keys /usr/share/evmapy/hotkeys.keys
+    fi
+
     SSH_DIR=/userdata/system/.ssh
     AUTH_KEYS=$SSH_DIR/authorized_keys
     mkdir -p -m 0700 "$SSH_DIR"
