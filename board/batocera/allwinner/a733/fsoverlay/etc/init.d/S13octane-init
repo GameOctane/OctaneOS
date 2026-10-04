@@ -39,6 +39,14 @@ case "$1" in
         echo "system.screensaver.behavior=black" >> "$BATOCERA_CONF"
     fi
 
+    # pvrsrvkm DM overlap causes a kernel hard-hang under heavy GPU+WiFi load (e.g.
+    # scraping). Disable overlap to serialise DM submissions; also enable soft
+    # reset on context switch so a stuck GPU recovers rather than hanging the system.
+    # modprobe.d/pvrsrvkm-stability.conf sets these at module load; the sysfs write
+    # below covers the running session in case the module was already loaded.
+    echo Y > /sys/module/pvrsrvkm/parameters/DisableDMOverlap 2>/dev/null || true
+    echo Y > /sys/module/pvrsrvkm/parameters/EnableSoftResetContextSwitch 2>/dev/null || true
+
     # Disable xpad auto-poweroff. The built-in xpad driver defaults auto_poweroff=Y
     # which sends an Xbox360 "power off" command to idle controllers. 8BitDo in
     # Xbox360 mode (045e:028e) interprets this as a reset and drops the USB connection.
