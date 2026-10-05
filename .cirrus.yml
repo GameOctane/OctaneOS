@@ -65,9 +65,9 @@ build_image_task:
     mkdir -p batocera/dl
     wget -q -O batocera/dl/libtool-2.4.7.tar.xz \
       https://ftp.gnu.org/pub/gnu/libtool/libtool-2.4.7.tar.xz
-    wget -q -O /tmp/ecwolf-source.tar.gz \
-      https://github.com/suckbluefrog/Batocera-Multilib/releases/download/7-4-2026/ecwolf-source.tar.gz
-    tar xzf /tmp/ecwolf-source.tar.gz -C batocera/dl/
+    mkdir -p batocera/dl/ecwolf
+    wget -q -O batocera/dl/ecwolf/ecwolf-d1de69a576d4bb39e89124185a6dfd6991202cb9-git4.tar.gz \
+      https://github.com/GameOctane/batocera/releases/download/ecwolf-cache-v1/ecwolf-d1de69a576d4bb39e89124185a6dfd6991202cb9-git4.tar.gz
 
   build_script: |
     cd batocera

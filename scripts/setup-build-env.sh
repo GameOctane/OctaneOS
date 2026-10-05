@@ -179,13 +179,15 @@ if [ ! -f "${LIBTOOL_DEST}" ]; then
     wget -q -O "${LIBTOOL_DEST}" "${LIBTOOL_URL}" || echo "[WARNING] libtool download failed — will retry during build."
 fi
 
-ECWOLF_URL="https://github.com/suckbluefrog/Batocera-Multilib/releases/download/7-4-2026/ecwolf-source.tar.gz"
-ECWOLF_TMP="/tmp/ecwolf-source.tar.gz"
-if ! ls "${REPO_ROOT}/batocera/dl/ecwolf"* &>/dev/null 2>&1; then
+# Cached on our own GameOctane/batocera fork (release ecwolf-cache-v1) — the
+# previous source, suckbluefrog/Batocera-Multilib, was deleted upstream
+# without warning, which is why this is vendored under our own control now.
+ECWOLF_URL="https://github.com/GameOctane/batocera/releases/download/ecwolf-cache-v1/ecwolf-d1de69a576d4bb39e89124185a6dfd6991202cb9-git4.tar.gz"
+ECWOLF_DEST="${REPO_ROOT}/batocera/dl/ecwolf/ecwolf-d1de69a576d4bb39e89124185a6dfd6991202cb9-git4.tar.gz"
+if [ ! -f "${ECWOLF_DEST}" ]; then
     echo "[INFO] Downloading ecwolf source..."
-    wget -q -O "${ECWOLF_TMP}" "${ECWOLF_URL}" && \
-        tar xzf "${ECWOLF_TMP}" -C "${REPO_ROOT}/batocera/dl/" && \
-        rm -f "${ECWOLF_TMP}" || \
+    mkdir -p "${REPO_ROOT}/batocera/dl/ecwolf"
+    wget -q -O "${ECWOLF_DEST}" "${ECWOLF_URL}" || \
         echo "[WARNING] ecwolf download failed — build will attempt it later."
 fi
 
