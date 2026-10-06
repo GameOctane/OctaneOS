@@ -20,8 +20,15 @@ LINUX_OVERRIDE_SRCDIR = $(BR2_EXTERNAL)/../linux/kernel-66
 # (e.g. _GL_ATTRIBUTE_NODISCARD) that break under C23. Force C11/C++11 for
 # all host package compilations. local.mk is included after package/Makefile.in
 # sets HOST_CFLAGS ?= -O2, so += appends without losing the base flags.
+#
+# Only needed on GCC 15+. Older compilers (e.g. GCC 13 on Ubuntu 24.04) default
+# to C17/C++17, and forcing C++11 breaks host-cmake's bootstrap, which needs
+# std::make_unique and <filesystem>.
+HOST_GCC_MAJOR := $(shell $(or $(HOSTCC),gcc) -dumpversion | cut -d. -f1)
+ifeq ($(shell test $(HOST_GCC_MAJOR) -ge 15 && echo y),y)
 HOST_CFLAGS += -std=gnu11 -D_GL_ATTRIBUTE_NODISCARD= -Wno-incompatible-pointer-types
 HOST_CXXFLAGS += -std=gnu++11 -D_GL_ATTRIBUTE_NODISCARD=
+endif
 
 # CMake 4.0 dropped compatibility with cmake_minimum_required < 3.5.
 # BR2_CMAKE uses ?= so we can override it here. Point it to a thin wrapper
