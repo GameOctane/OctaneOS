@@ -15,7 +15,7 @@ POST_BUILD="${REPO_ROOT}/board/batocera/allwinner/a733/post-build.sh"
 OTA_VERSION_FILE="${REPO_ROOT}/ota/cubie-a7s/stable/last/batocera.version"
 
 if [ "${1:-}" != "--skip-image-check" ]; then
-    if ! "${REPO_ROOT}/scripts/check-image.sh" --no-sums; then
+    if ! "${REPO_ROOT}/scripts/check-image.sh" --release --no-sums; then
         echo "ERROR: the image check failed, so the OTA version file was NOT updated." >&2
         echo "       Fix what failed and rebuild, or pass --skip-image-check if you mean it." >&2
         exit 1

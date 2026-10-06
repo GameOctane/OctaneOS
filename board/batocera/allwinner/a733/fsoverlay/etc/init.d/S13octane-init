@@ -1,9 +1,7 @@
 #!/bin/sh
-# OctaneOS init: install dev SSH key to the correct path.
+# OctaneOS init: first-boot defaults, and the developer SSH key handling.
 # Root home in Batocera is /userdata/system — Dropbear looks there for
 # authorized_keys, not /root/.ssh. Runs after S12populateshare.
-
-DEV_KEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEmEFho+A+VIZNyOogCAiL2ZpGoGFY8v8Fu4/TdwYb4u octaneos-dev"
 
 case "$1" in
   start)
@@ -144,10 +142,19 @@ case "$1" in
 
     SSH_DIR=/userdata/system/.ssh
     AUTH_KEYS=$SSH_DIR/authorized_keys
+    DEV_KEY_FILE=/usr/share/octane/dev-ssh-key.pub
     mkdir -p -m 0700 "$SSH_DIR"
-    if ! grep -qF "octaneos-dev" "$AUTH_KEYS" 2>/dev/null; then
-        echo "$DEV_KEY" >> "$AUTH_KEYS"
-        chmod 0600 "$AUTH_KEYS"
+    if [ -f "$DEV_KEY_FILE" ]; then
+        # Developer build (OCTANE_DEV_KEY=1 at build time): install the developer key.
+        if ! grep -qF "octaneos-dev" "$AUTH_KEYS" 2>/dev/null; then
+            # keep the new key on its own line even if the file does not end with a newline
+            [ -s "$AUTH_KEYS" ] && [ -n "$(tail -c1 "$AUTH_KEYS")" ] && echo >> "$AUTH_KEYS"
+            cat "$DEV_KEY_FILE" >> "$AUTH_KEYS"
+            chmod 0600 "$AUTH_KEYS"
+        fi
+    elif [ -f "$AUTH_KEYS" ] && grep -qF "octaneos-dev" "$AUTH_KEYS"; then
+        # Normal build: an older image installed the developer key, so take it out again.
+        sed -i '/octaneos-dev/d' "$AUTH_KEYS"
     fi
     ;;
 esac

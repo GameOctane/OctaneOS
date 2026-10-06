@@ -12,6 +12,8 @@
 #   ./scripts/build.sh CMD=linux-menuconfig   # open kernel config menu
 #   ./scripts/build.sh CMD=mesa3d-rebuild     # rebuild a single package
 #   ./scripts/build.sh --sync-kernel-only      # only re-sync the kernel tree if its inputs changed
+#   OCTANE_DEV_KEY=1 ./scripts/build.sh --nohup  # test image that also installs the developer SSH key
+#                                              # (never release such an image; see board/.../a733/dev/README.md)
 # =============================================================================
 
 set -e

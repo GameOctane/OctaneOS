@@ -111,6 +111,22 @@ echo "[post-build] batocera.version: ${OCTANE_VERSION_STRING}"
 echo "[post-build] octaneos.version: ${OCTANE_VERSION_STRING}"
 
 # =============================================================================
+# Developer SSH key: NOT part of a normal image.
+# With OCTANE_DEV_KEY=1 in the environment of the build, the developer's public key is added
+# so S13octane-init installs it on boot.  That gives the key's holder root SSH on every device
+# running the image, so such an image must never be released (check-image.sh --release fails
+# if the key is present).
+# =============================================================================
+DEV_KEY_SRC="$(dirname "${BASH_SOURCE[0]}")/dev/octaneos-dev-ssh.pub"
+if [ "${OCTANE_DEV_KEY:-0}" = "1" ]; then
+    install -D -m 0644 "${DEV_KEY_SRC}" "${TARGET_DIR}/usr/share/octane/dev-ssh-key.pub"
+    echo "[post-build] WARNING: developer SSH key INCLUDED (OCTANE_DEV_KEY=1). Do not release this image."
+else
+    rm -f "${TARGET_DIR}/usr/share/octane/dev-ssh-key.pub"
+    echo "[post-build] Developer SSH key not included."
+fi
+
+# =============================================================================
 # OctaneOS defaults — injected into datainit batocera.conf
 # Layers on top of the upstream file without maintaining a full copy.
 # =============================================================================

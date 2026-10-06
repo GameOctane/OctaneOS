@@ -11,7 +11,9 @@
 # It also writes standard-format SHA256SUMS next to the images.  The .sha256 files the build
 # writes hold only the hash, so "sha256sum -c" cannot read them.
 #
-# Usage: scripts/check-image.sh [--no-sums]
+# Usage: scripts/check-image.sh [--release] [--no-sums]
+#   --release   also fail if the developer SSH key is in the image (a release must not have it)
+#   --no-sums   do not write SHA256SUMS
 #   exit status 0 = every check passed, 1 = at least one failed
 #
 # Environment: OCTANE_CHECK_EXTRA_DTB_PROPS="prop1 prop2" adds device-tree properties that
@@ -25,7 +27,14 @@ KSRC="${REPO_ROOT}/linux/kernel-66"
 KBUILD="${OUT}/build/linux-custom"
 DTC="${OUT}/host/bin/dtc"
 WRITE_SUMS=1
-[ "${1:-}" = "--no-sums" ] && WRITE_SUMS=0
+RELEASE=0
+for arg in "$@"; do
+    case "${arg}" in
+        --no-sums) WRITE_SUMS=0 ;;
+        --release) RELEASE=1 ;;
+        *) echo "unknown option: ${arg}" >&2; exit 2 ;;
+    esac
+done
 
 fail=0
 pass() { printf '  PASS  %s\n' "$1"; }
@@ -79,6 +88,18 @@ check "flight recorder installed and executable" test -x "${OUT}/target/usr/bin/
 check "flight recorder init script installed" test -x "${OUT}/target/etc/init.d/S98octane-flightlog"
 check "image is newer than the kernel it contains" \
     bash -c "[ \"\$(stat -c %Y '${IMG_DIR}'/*.img.gz | sort -n | tail -1)\" -ge \"\$(stat -c %Y '${OUT}/images/Image')\" ]"
+
+# A build started with OCTANE_DEV_KEY=1 gives the key's holder root SSH on every device.
+DEVKEY="${OUT}/target/usr/share/octane/dev-ssh-key.pub"
+if [ -e "${DEVKEY}" ]; then
+    if [ "${RELEASE}" -eq 1 ]; then
+        bad "no developer SSH key in a release image (rebuild without OCTANE_DEV_KEY=1)"
+    else
+        echo "  NOTE  this image contains the developer SSH key; fine for testing, never release it"
+    fi
+else
+    pass "no developer SSH key in the image"
+fi
 
 echo "== Checksums"
 shopt -s nullglob
