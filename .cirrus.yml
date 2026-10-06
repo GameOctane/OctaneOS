@@ -1,3 +1,15 @@
+# Fast check that runs on every branch and pull request, before anything is built.
+# Catches patches with wrong hunk counts and patch folders Buildroot never applies.
+check_patches_task:
+  name: Check patches
+
+  container:
+    image: python:3.12-slim
+    cpu: 1
+    memory: 1G
+
+  check_script: bash scripts/check-patches.sh
+
 build_image_task:
   name: Build OctaneOS image (a733-cubie-a7s)
 

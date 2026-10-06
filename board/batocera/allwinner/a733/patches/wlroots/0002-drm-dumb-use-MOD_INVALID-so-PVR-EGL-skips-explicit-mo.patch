@@ -23,11 +23,9 @@ flag is now false and FBO creation succeeds.
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/render/allocator/drm_dumb.c b/render/allocator/drm_dumb.c
-index 3333333..4444444 100644
 --- a/render/allocator/drm_dumb.c
 +++ b/render/allocator/drm_dumb.c
-@@ -94,7 +94,7 @@ static struct wlr_drm_dumb_buffer *create_buffer(
- 	buffer->dmabuf = (struct wlr_dmabuf_attributes){
+@@ -95,7 +95,7 @@
  		.width = buffer->width,
  		.height = buffer->height,
  		.format = format->format,
