@@ -71,3 +71,12 @@ define LIBRETRO_SAME_CDI_BUILD_CMDS
 	$(if $(BR2_aarch64),PTR64=1 LIBRETRO_CPU= PLATFORM=arm64 ARCHITECTURE= NOASM=1) \
 	GIT_VERSION="" -C $(@D) -f Makefile.libretro
 endef
+
+# pipewire-ffmpeg-plugins does "rm -f .../spa-0.2/videoconvert" and then recreates it
+# as a directory.  When the main pipewire package has already installed videoconvert/
+# (build order differs between machines) that rm -f fails on a directory.  Clear it
+# first; the recipe reinstalls libspa-videoconvert.so right after.
+define PIPEWIRE_FFMPEG_PLUGINS_CLEAR_VIDEOCONVERT
+	rm -rf $(TARGET_DIR)/usr/lib/spa-0.2/videoconvert
+endef
+PIPEWIRE_FFMPEG_PLUGINS_PRE_INSTALL_TARGET_HOOKS += PIPEWIRE_FFMPEG_PLUGINS_CLEAR_VIDEOCONVERT
