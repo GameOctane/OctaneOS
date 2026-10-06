@@ -80,3 +80,13 @@ define PIPEWIRE_FFMPEG_PLUGINS_CLEAR_VIDEOCONVERT
 	rm -rf $(TARGET_DIR)/usr/lib/spa-0.2/videoconvert
 endef
 PIPEWIRE_FFMPEG_PLUGINS_PRE_INSTALL_TARGET_HOOKS += PIPEWIRE_FFMPEG_PLUGINS_CLEAR_VIDEOCONVERT
+
+# libretro-desmume: Makefile.libretro unconditionally enables the desktop-OpenGL renderer for
+# platform=unix (-DHAVE_OPENGL, -lGL, OGLRender.cpp).  This target only has GLES (no GL/gl.h),
+# so build DeSmuME with its software 3D renderer instead.  The same makefile also assumes an x86
+# host and enables the x86-only AsmJit JIT (DESMUME_JIT ?= 1); aarch64 has no JIT backend, so run
+# the interpreter.
+define LIBRETRO_DESMUME_DISABLE_OPENGL
+	$(SED) 's/-lpthread -lGL -lpcap/-lpthread -lpcap/; s/^\([[:space:]]*\)CXXFLAGS += -DHAVE_OPENGL -std=gnu++11/\1CXXFLAGS += -std=gnu++11/; s/^\([[:space:]]*\)DESMUME_OPENGL = 1/\1DESMUME_OPENGL = 0/; s/^\([[:space:]]*\)DESMUME_OPENGL_CORE = 1/\1DESMUME_OPENGL_CORE = 0/; s/DESMUME_JIT ?= 1/DESMUME_JIT ?= 0/' $(@D)/desmume/src/frontend/libretro/Makefile.libretro
+endef
+LIBRETRO_DESMUME_POST_PATCH_HOOKS += LIBRETRO_DESMUME_DISABLE_OPENGL
