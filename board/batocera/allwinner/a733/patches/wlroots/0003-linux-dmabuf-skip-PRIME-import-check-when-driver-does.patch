@@ -17,10 +17,9 @@ authoritative import check anyway.
  1 file changed, 7 insertions(+), 0 deletions(-)
 
 diff --git a/types/wlr_linux_dmabuf_v1.c b/types/wlr_linux_dmabuf_v1.c
-index 5555555..6666666 100644
 --- a/types/wlr_linux_dmabuf_v1.c
 +++ b/types/wlr_linux_dmabuf_v1.c
-@@ -215,6 +215,13 @@ static bool check_import_dmabuf(struct wlr_dmabuf_attributes *attribs, void *da
+@@ -216,6 +216,12 @@
  	for (int i = 0; i < attribs->n_planes; i++) {
  		uint32_t handle = 0;
  		if (drmPrimeFDToHandle(linux_dmabuf->main_device_fd, attribs->fd[i], &handle) != 0) {

@@ -18,12 +18,12 @@ modifiers), consistent with the original intent for modifier-less drivers.
  1 file changed, 7 insertions(+), 11 deletions(-)
 
 diff --git a/render/egl.c b/render/egl.c
-index 1111111..2222222 100644
 --- a/render/egl.c
 +++ b/render/egl.c
-@@ -134,23 +134,19 @@ static void egl_init_formats(struct wlr_egl *egl) {
+@@ -135,25 +135,22 @@
+ 
  		has_modifiers = has_modifiers || modifiers_len > 0;
-
+ 
 -		bool all_external_only = true;
  		for (int j = 0; j < modifiers_len; j++) {
  			wlr_drm_format_set_add(&egl->dmabuf_texture_formats, fmt,
@@ -34,7 +34,7 @@ index 1111111..2222222 100644
 -				all_external_only = false;
  			}
  		}
-
+ 
 -		// EGL always supports implicit modifiers. If at least one modifier supports rendering,
 -		// assume the implicit modifier supports rendering too.
 +		// EGL always supports implicit modifiers. Add INVALID unconditionally —
@@ -48,6 +48,6 @@ index 1111111..2222222 100644
 -		}
 +		wlr_drm_format_set_add(&egl->dmabuf_render_formats, fmt,
 +			DRM_FORMAT_MOD_INVALID);
-
+ 
  		if (modifiers_len == 0) {
- 			// Assume the linear layout is supported if the driver doesn't
+ 			// Asume the linear layout is supported if the driver doesn't
