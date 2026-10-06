@@ -208,26 +208,42 @@ if ! grep -q "sun60i-a733-cubie-a7s.dtb" "${ALLWINNER_MK}"; then
 fi
 
 # -----------------------------------------------------------------------------
-# 6. Apply small OctaneOS patches
+# 6. Apply OctaneOS kernel patches
 #
-# Patches in linux_patches_66/ are applied in order.  Each patch is
-# idempotent: --forward means already-applied patches are skipped silently.
-# Currently: cpufreq sun50i A733 match (adds one line to match list).
-# The BSP may already include this — if so, the patch fails harmlessly.
+# Two series, applied in this order (the order the original, non-override flow
+# used, where Buildroot applied them itself):
+#   1. linux_patches_66/   the 6.6 bring-up series (BR2_LINUX_KERNEL_PATCH)
+#   2. patches/linux/      global patches for the "linux" package, added later
+# Buildroot applies neither once LINUX_OVERRIDE_SRCDIR is set, so it is done here.
+#
+# Any patch that fails aborts the script: a failed patch must never silently drop
+# a fix.  Patches that became redundant (e.g. already shipped in the BSP) live in an
+# obsolete/ subdirectory, which is not applied.
 # -----------------------------------------------------------------------------
-echo "[kernel-66] Step 9: apply OctaneOS patches"
-if [ -d "${PATCHES_DIR}" ]; then
-    for patch in $(find "${PATCHES_DIR}" -name '*.patch' | sort); do
+GLOBAL_PATCHES_DIR="${REPO_ROOT}/board/batocera/allwinner/a733/patches/linux"
+
+apply_patch_dir() {
+    local dir="$1" patch pname
+    if [ ! -d "${dir}" ]; then
+        echo "  No patches dir at ${dir} — skipping."
+        return 0
+    fi
+    for patch in $(find "${dir}" -maxdepth 1 -name '*.patch' | sort); do
         pname="$(basename "${patch}")"
         echo "  Applying ${pname} ..."
-        patch -d "${KERNEL_DIR}" -p1 --forward --reject-file=/tmp/octaneos-reject.rej \
-            < "${patch}" \
-            || { echo "  WARN: ${pname} may already be applied or context mismatch — check manually."; \
-                 rm -f /tmp/octaneos-reject.rej; }
+        if ! patch -d "${KERNEL_DIR}" -p1 --forward --no-backup-if-mismatch \
+                --reject-file=/dev/null < "${patch}"; then
+            echo "  ERROR: ${pname} failed to apply to ${KERNEL_DIR}." >&2
+            echo "         Fix the patch, or move it to obsolete/ if the tree already has it." >&2
+            exit 1
+        fi
     done
-else
-    echo "  No patches dir at ${PATCHES_DIR} — skipping."
-fi
+}
+
+echo "[kernel-66] Step 9: apply OctaneOS patches (linux_patches_66)"
+apply_patch_dir "${PATCHES_DIR}"
+echo "[kernel-66] Step 9b: apply OctaneOS global linux patches (patches/linux)"
+apply_patch_dir "${GLOBAL_PATCHES_DIR}"
 
 # -----------------------------------------------------------------------------
 # 7. Write a bsp_defconfig into arch/arm64/configs/ so Buildroot (or make
