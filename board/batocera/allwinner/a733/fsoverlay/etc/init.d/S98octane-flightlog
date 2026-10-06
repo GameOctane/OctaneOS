@@ -1,0 +1,34 @@
+#!/bin/sh
+# OctaneOS flight recorder service. Starts /usr/bin/octane-flightlog only when
+# octane.flightlog=1 is set in /userdata/system/batocera.conf. See that script for
+# what it records and why.
+
+PIDFILE=/var/run/octane-flightlog.pid
+
+case "$1" in
+  start)
+    if [ "$(/usr/bin/batocera-settings-get octane.flightlog 2>/dev/null)" != "1" ]; then
+        echo "octane-flightlog: disabled (set octane.flightlog=1 to enable)"
+        exit 0
+    fi
+    printf "Starting octane-flightlog: "
+    /usr/bin/octane-flightlog >/dev/null 2>&1 &
+    echo $! > "$PIDFILE"
+    echo "OK"
+    ;;
+  stop)
+    if [ -f "$PIDFILE" ]; then
+        kill "$(cat "$PIDFILE")" 2>/dev/null
+        rm -f "$PIDFILE"
+    fi
+    ;;
+  restart)
+    "$0" stop
+    "$0" start
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart}"
+    exit 1
+    ;;
+esac
+exit 0

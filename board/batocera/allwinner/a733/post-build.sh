@@ -119,3 +119,11 @@ if [ -f "${DATAINIT_CONF}" ] && ! grep -q "^system.services=" "${DATAINIT_CONF}"
     printf '\n## OctaneOS defaults\nsystem.services=syncthing\n' >> "${DATAINIT_CONF}"
     echo "[post-build] Enabled syncthing in datainit batocera.conf"
 fi
+
+# TEMPORARY, while the hard shutoffs are being diagnosed: turn the flight recorder on by
+# default (see usr/bin/octane-flightlog). It is opt-in in the code; this line is the only
+# thing that enables it. Remove it, or set octane.flightlog=0, once the cause is found.
+if [ -f "${DATAINIT_CONF}" ] && ! grep -q "^octane.flightlog=" "${DATAINIT_CONF}"; then
+    printf 'octane.flightlog=1\n' >> "${DATAINIT_CONF}"
+    echo "[post-build] Enabled octane.flightlog in datainit batocera.conf (temporary)"
+fi

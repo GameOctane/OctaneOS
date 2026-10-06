@@ -1,0 +1,154 @@
+#!/bin/sh
+# octane-flightlog: a flight recorder for hard shutoffs.
+#
+# Every few seconds this appends one line to /userdata/system/logs/flightlog.log with the
+# uptime, load, CPU clocks, every thermal zone, devfreq clocks and the power-supply
+# readings, and syncs it to storage.  If the board loses power, the last lines before the
+# blackout are still on the card.  A line "=== clean stop" marks an orderly shutdown, so a
+# log that ends without it ended in a power loss or hang.
+#
+# It follows /dev/kmsg into kmsg.log, so the kernel's own messages (thermal trips, PMIC and
+# Type-C events, GPU errors, hang warnings) are on the card up to the moment of a blackout.
+#
+# It also dumps all PMIC (AXP) registers into pmic.log: once per boot, then every 30 s.
+# The PMIC may keep a latched record of why it last powered off; diff the last dump before
+# a blackout with the BOOT dump after it.
+#
+# Everything here is read-only except the log files.  The one exception is the PMIC
+# address register (see pmic_dump): its sysfs file treats any value of 0x100 or more as a
+# register WRITE, so only the numbers 0..255 are ever sent, and the loop is guarded.
+#
+# Settings in /userdata/system/batocera.conf:
+#   octane.flightlog=1            enable (the init script starts this only when it is 1)
+#   octane.flightlog.interval=2   seconds between lines (1..60)
+
+LOGDIR="${OCTANE_FLIGHTLOG_DIR:-/userdata/system/logs}"
+LOG="$LOGDIR/flightlog.log"
+PMICLOG="$LOGDIR/pmic.log"
+KLOG="$LOGDIR/kmsg.log"
+KMSG="${OCTANE_FLIGHTLOG_KMSG:-/dev/kmsg}"
+KPID=""
+MAXBYTES=$((20 * 1024 * 1024))
+GET=/usr/bin/batocera-settings-get
+
+INTERVAL="${OCTANE_FLIGHTLOG_INTERVAL:-}"
+[ -z "$INTERVAL" ] && [ -x "$GET" ] && INTERVAL="$($GET octane.flightlog.interval 2>/dev/null)"
+case "$INTERVAL" in
+    ''|*[!0-9]*) INTERVAL=2 ;;
+esac
+[ "$INTERVAL" -lt 1 ] && INTERVAL=1
+[ "$INTERVAL" -gt 60 ] && INTERVAL=60
+
+mkdir -p "$LOGDIR" || exit 1
+
+# Print the first line of a file, or "-" if it cannot be read.
+r1() {
+    v="-"
+    [ -r "$1" ] && read -r v < "$1" 2>/dev/null
+    printf '%s' "${v:--}"
+}
+
+# Dump every register of every AXP PMIC node as one hex line each.
+pmic_dump() {
+    tag="$1"
+    for node in $PMIC_NODES; do
+        out="PMIC $tag $(r1 /proc/uptime | cut -d' ' -f1) $node"
+        i=0
+        while [ "$i" -lt 256 ]; do
+            # SAFETY: values below 256 only select the register address. 256 or more would
+            # be written to the PMIC. The loop bound and this check keep it below 256.
+            [ "$i" -ge 0 ] && [ "$i" -le 255 ] || return 1
+            printf '%x' "$i" > "$node" 2>/dev/null
+            line=""
+            read -r line < "$node" 2>/dev/null
+            val="${line##*=0x}"
+            out="$out $(printf '%02x' "$i")=${val:-??}"
+            i=$((i + 1))
+        done
+        echo "$out" >> "$PMICLOG"
+    done
+}
+
+clean_stop() {
+    [ -n "$KPID" ] && kill "$KPID" 2>/dev/null
+    stop_up="$(r1 /proc/uptime)"
+    echo "=== clean stop $(date '+%F %T') up=${stop_up%% *}" >> "$LOG"
+    sync
+    exit 0
+}
+trap clean_stop TERM INT
+
+# OCTANE_FLIGHTLOG_PMIC_NODES lets a test point this at a plain file instead of sysfs.
+PMIC_NODES="${OCTANE_FLIGHTLOG_PMIC_NODES-$(find /sys/devices -name axp_reg 2>/dev/null)}"
+
+{
+    boot_up="$(r1 /proc/uptime)"
+    echo "=== boot $(date '+%F %T') up=${boot_up%% *} kernel=$(uname -r) interval=${INTERVAL}s"
+    echo "=== thermal zones: $(ls -d /sys/class/thermal/thermal_zone* 2>/dev/null | wc -l)  pmic nodes: $(echo "$PMIC_NODES" | grep -c .)"
+} >> "$LOG"
+[ -n "$PMIC_NODES" ] && pmic_dump BOOT
+
+# Follow the kernel log.  Reading /dev/kmsg replays the whole ring buffer first, so the boot
+# messages are included.  It blocks waiting for new messages; if it ever exits (for example
+# the buffer overran) the loop below restarts it, which can repeat some lines.
+start_kmsg() {
+    [ -r "$KMSG" ] || return 1
+    cat "$KMSG" >> "$KLOG" 2>/dev/null &
+    KPID=$!
+}
+start_kmsg
+
+n=0
+while :; do
+    up="$(r1 /proc/uptime)"; up="${up%% *}"
+    load="$(r1 /proc/loadavg)"; load="${load%% *}"
+
+    temps=""
+    for z in /sys/class/thermal/thermal_zone*; do
+        [ -d "$z" ] || continue
+        t="$(r1 "$z/temp")"
+        case "$t" in ''|-|*[!0-9-]*) t="?";; *) t=$((t / 1000));; esac
+        temps="$temps $(r1 "$z/type")=$t"
+    done
+    [ -z "$temps" ] && temps=" none"
+
+    clk=""
+    for p in /sys/devices/system/cpu/cpufreq/policy*; do
+        [ -d "$p" ] || continue
+        f="$(r1 "$p/scaling_cur_freq")"
+        case "$f" in ''|-|*[!0-9]*) f="?";; *) f=$((f / 1000));; esac
+        clk="$clk ${p##*policy}=$f"
+    done
+    for d in /sys/class/devfreq/*; do
+        [ -d "$d" ] || continue
+        f="$(r1 "$d/cur_freq")"
+        case "$f" in ''|-|*[!0-9]*) f="?";; *) f=$((f / 1000000));; esac
+        clk="$clk ${d##*/}=$f"
+    done
+
+    ps=""
+    for s in /sys/class/power_supply/*; do
+        [ -d "$s" ] || continue
+        ps="$ps ${s##*/}:on=$(r1 "$s/online"),mV=$(r1 "$s/voltage_now"),mA=$(r1 "$s/current_now")"
+    done
+
+    echo "T=$(date +%s) up=$up load=$load mhz:$clk temp_C:$temps ps:$ps" >> "$LOG"
+    sync
+
+    n=$((n + 1))
+    if [ $((n % 10)) -eq 0 ] && { [ -z "$KPID" ] || ! kill -0 "$KPID" 2>/dev/null; }; then
+        start_kmsg
+    fi
+    if [ $((n % 15)) -eq 0 ] && [ -n "$PMIC_NODES" ]; then
+        pmic_dump TICK
+    fi
+    if [ $((n % 30)) -eq 0 ]; then
+        for f in "$LOG" "$PMICLOG" "$KLOG"; do
+            sz="$(stat -c %s "$f" 2>/dev/null || echo 0)"
+            [ "$sz" -gt "$MAXBYTES" ] && mv -f "$f" "$f.1"
+        done
+    fi
+    [ -n "$OCTANE_FLIGHTLOG_ONCE" ] && break
+    sleep "$INTERVAL" &
+    wait $!
+done
