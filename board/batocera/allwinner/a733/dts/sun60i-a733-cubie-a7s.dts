@@ -896,58 +896,29 @@
 &cpu6 { operating-points-v2 = <&a733_cluster1_opp>; };
 &cpu7 { operating-points-v2 = <&a733_cluster1_opp>; };
 
+/*
+ * Thermal trip points.
+ *
+ * The SoC dtsi (sun60iw2p1.dtsi) defines passive trips at 70 and 90 C and a critical trip
+ * at 110 C, and attaches CPU frequency cooling to the 90 C "target" trip.  Radxa's own
+ * images throttle at 60 C; Radxa staff say that value is for consistency across products,
+ * not tuned data.  This unit has no heatsink, so the CPU frequency cooling starts at 80 C
+ * here.  80 C is a starting point to be tuned from temperature logs, not a vendor limit.
+ *
+ * The board has a 3-pin 5 V PWM fan header (fan0, PWM1 channel 9) but it is NOT usable yet:
+ * the kernel needs CONFIG_AW_PWM and CONFIG_SENSORS_PWM_FAN, and enabling AW_PWM also turns
+ * on the legacy sunxi-disp2 display driver (AW_DISP2 depends on AW_PWM and defaults to y),
+ * which does not build on 6.6 and would conflict with the DRM driver.  AW_DISP2 must be
+ * forced off if the fan is ever enabled.
+ */
 &cpul_target {
-	temperature = <60000>;
+	temperature = <80000>;
 	hysteresis = <2000>;
-};
-
-&cpul_threshold{
-	type = "active";
-	temperature = <60000>;
-	hysteresis = <2000>;
-};
-
-&cpul_thermal_zone {
-	cooling-maps {
-		map0 {
-			trip = <&cpul_target>;
-			cooling-device = <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
-			contribution = <1024>;
-		};
-
-		map1 {
-			trip = <&cpul_threshold>;
-			cooling-device = <&fan0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
-			contribution = <1024>;
-		};
-	};
 };
 
 &cpub_target {
-	temperature = <60000>;
+	temperature = <80000>;
 	hysteresis = <2000>;
-};
-
-&cpub_threshold{
-	type = "active";
-	temperature = <60000>;
-	hysteresis = <2000>;
-};
-
-&cpub_thermal_zone {
-	cooling-maps {
-		map0 {
-			trip = <&cpub_target>;
-			cooling-device = <&cpu6 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
-			contribution = <1024>;
-		};
-
-		map1 {
-			trip = <&cpub_threshold>;
-			cooling-device = <&fan0 2 THERMAL_NO_LIMIT>;
-			contribution = <1024>;
-		};
-	};
 };
 
 &sdc2 {
