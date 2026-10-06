@@ -21,7 +21,10 @@ BR2_TARGET_GENERIC_GETTY_BAUDRATE_115200=y
 # Base Batocera patches + OctaneOS A733-specific patches
 BR2_GLOBAL_PATCH_DIR="$(BR2_EXTERNAL_BATOCERA_PATH)/board/batocera/patches $(BR2_EXTERNAL_BATOCERA_PATH)/board/batocera/allwinner/patches $(BR2_EXTERNAL_BATOCERA_PATH)/board/batocera/allwinner/a733/patches"
 BR2_ROOTFS_OVERLAY="$(BR2_EXTERNAL_BATOCERA_PATH)/board/batocera/fsoverlay $(BR2_EXTERNAL_BATOCERA_PATH)/board/batocera/allwinner/a733/fsoverlay"
-BR2_ROOTFS_POST_BUILD_SCRIPT="$(BR2_EXTERNAL_BATOCERA_PATH)/board/batocera/allwinner/a733/post-build.sh"
+# Run Batocera's generic post-build script first (it splits the target into two squashfs
+# layers and generates images/rufomaculata, which post-image-script.sh requires), then the
+# A733 one.  Assigning only the A733 script replaces the generic one (last assignment wins).
+BR2_ROOTFS_POST_BUILD_SCRIPT="$(BR2_EXTERNAL_BATOCERA_PATH)/board/batocera/scripts/post-build-script.sh $(BR2_EXTERNAL_BATOCERA_PATH)/board/batocera/allwinner/a733/post-build.sh"
 BR2_TARGET_ROOTFS_SQUASHFS4_ZSTD=y
 
 # Linux headers — must match kernel series
