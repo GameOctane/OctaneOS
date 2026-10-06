@@ -35,10 +35,19 @@ Signed-off-by: Jason Germino <jasongermino@gmail.com>
 diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
 --- a/drivers/usb/typec/tcpm/tcpm.c
 +++ b/drivers/usb/typec/tcpm/tcpm.c
-@@ -4197,6 +4197,27 @@ static void run_state_machine(struct tcpm_port *port)
+@@ -30,6 +30,7 @@
+ #include <linux/usb/role.h>
+ #include <linux/usb/tcpm.h>
+ #include <linux/usb/typec_altmode.h>
++#include <linux/usb/typec_dp.h>
+ 
+ #include <uapi/linux/sched/types.h>
+ 
+@@ -4198,6 +4199,28 @@
+ 		 * port type-c and the spec does not clearly say whether PD is
  		 * possible when type-c is connected to Type-A/B
  		 */
-
++
 +		/*
 +		 * Passive USB-C→DisplayPort cable: pd_capable stays false
 +		 * because the display has no PD controller (every
@@ -61,3 +70,5 @@ diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
 +				     USB_ROLE_HOST, orientation);
 +		}
  		break;
+ 	case SRC_WAIT_NEW_CAPABILITIES:
+ 		/* Nothing to do... */
