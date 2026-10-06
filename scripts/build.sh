@@ -144,6 +144,17 @@ if [ -n "${FLATPAK_ID}" ]; then
     MAKE_EXTRA_ARGS+=(HOSTCC=/usr/bin/gcc HOSTCXX=/usr/bin/g++)
 fi
 
+# The batocera-emulationstation recipe in the Batocera fork hardcodes
+# OVERRIDE_SRCDIR to a path on the original Steam Deck (/home/deck/...).  A plain
+# assignment in the recipe beats local.mk, but a make command-line variable beats
+# both, so point it at a checkout under this tree.  Expected contents:
+# GameOctane/batocera-emulationstation @ feat/multi-user-profiles, cloned with
+# --recurse-submodules into batocera/dl/batocera-emulationstation/git.
+ES_SRCDIR="${REPO_ROOT}/batocera/dl/batocera-emulationstation/git"
+if [ -d "${ES_SRCDIR}" ]; then
+    MAKE_EXTRA_ARGS+=(BATOCERA_EMULATIONSTATION_OVERRIDE_SRCDIR="${ES_SRCDIR}")
+fi
+
 echo "[INFO] Starting build..."
 
 # --nohup: detach from the terminal so VS Code / Claude crashes don't kill the build.
