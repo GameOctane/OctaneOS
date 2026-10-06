@@ -38,10 +38,10 @@ Signed-off-by: Jason Germino <jasongermino@gmail.com>
 diff --git a/bsp/drivers/drm/sunxi_drm_drv.c b/bsp/drivers/drm/sunxi_drm_drv.c
 --- a/bsp/drivers/drm/sunxi_drm_drv.c
 +++ b/bsp/drivers/drm/sunxi_drm_drv.c
-@@ -1278,7 +1278,32 @@ static int sunxi_drm_bind(struct device *dev)
-
+@@ -1277,7 +1277,31 @@ static int sunxi_drm_bind(struct device *dev)
+ 	commit_init_connecting(drm);
+ 
  dev_register:
--	ret = drm_dev_register(drm, 0);
 +	/* Probe HPD connectors before drm_dev_register fires its internal
 +	 * hotplug events.  drm_dev_register sends a hotplug uevent for every
 +	 * connector before it returns; if DP-1 still has zero modes at that
@@ -64,8 +64,9 @@ diff --git a/bsp/drivers/drm/sunxi_drm_drv.c b/bsp/drivers/drm/sunxi_drm_drv.c
 +		drm_connector_list_iter_end(&conn_iter);
 +		mutex_unlock(&drm->mode_config.mutex);
 +	}
-+	ret = drm_dev_register(drm, 0);
+ 	ret = drm_dev_register(drm, 0);
 +	if (!ret)
 +		drm_kms_helper_hotplug_event(drm);
-
+ 
  #if IS_ENABLED(CONFIG_PROC_FS)
+ 	ret = sunxi_drm_procfs_init(drm);

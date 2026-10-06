@@ -39,13 +39,14 @@ Signed-off-by: OctaneOS <octaneos@local>
 
 --- a/bsp/drivers/usb/typec/mux/sunxi-phy-switcher.c
 +++ b/bsp/drivers/usb/typec/mux/sunxi-phy-switcher.c
-@@ -282,9 +282,18 @@
-
- 		/* altmode displayport plugin */
+@@ -279,11 +279,22 @@
+ 			mdelay(phy_switcher->dp_configure_delay);
+ 		}
+ 
+-		/* altmode displayport plugin */
 -		if ((data->conf & DP_CONF_SIGNALING_DP) && (data->status & DP_STATUS_HPD_STATE))
 -			phy_switcher->hpd_status = true;
 -		else
--			phy_switcher->hpd_status = false;
 +		/* altmode displayport plugin.
 +		 * On a mode transition (Configure VDM just completed), fire HPD-in
 +		 * immediately even if the monitor's HPD is de-asserted -- it may be
@@ -60,5 +61,8 @@ Signed-off-by: OctaneOS <octaneos@local>
 +			else
 +				phy_switcher->hpd_status = false;
 +		} else {
-+			phy_switcher->hpd_status = false;
+ 			phy_switcher->hpd_status = false;
 +		}
+ 	} else if (dp_mode) {
+ 		/*
+ 		 * Called from TCPM without altmode data — passive USB-C→DP

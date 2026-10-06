@@ -29,7 +29,9 @@ Signed-off-by: OctaneOS <octaneos@local>
 
 --- a/bsp/drivers/power/typec/tcpci_husb311.c
 +++ b/bsp/drivers/power/typec/tcpci_husb311.c
-@@ -832,9 +832,8 @@
+@@ -830,10 +830,10 @@
+ 	struct husb311_chip *chip = i2c_get_clientdata(client);
+ 
  	disable_irq(chip->gpio_int_n_irq);
 -	if (!chip->battery_exist) {
 -		dev_dbg(chip->dev, "no battery, hardreset forbidden");
@@ -39,3 +41,6 @@ Signed-off-by: OctaneOS <octaneos@local>
 +	 * so the I2C write is safe.  This tells the monitor to cleanly exit
 +	 * DP Alt Mode and cycle HPD, ensuring it re-detects the source when
 +	 * the new kernel re-establishes Alt Mode. */
+ 	/* Transmit Hard Reset: nRetryCount is 3 in PD2.0 spec where 2 in PD3.0 spec */
+ 	ret = husb311_write8(chip, TCPC_TRANSMIT,
+ 			     (0x2 << TCPC_TRANSMIT_RETRY_SHIFT) | (TCPC_TX_HARD_RESET << TCPC_TRANSMIT_TYPE_SHIFT));

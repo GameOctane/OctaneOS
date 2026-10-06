@@ -28,7 +28,8 @@ Signed-off-by: OctaneOS <octaneos@local>
 diff --git a/bsp/drivers/drm/sunxi_drm_edp.c b/bsp/drivers/drm/sunxi_drm_edp.c
 --- a/bsp/drivers/drm/sunxi_drm_edp.c
 +++ b/bsp/drivers/drm/sunxi_drm_edp.c
-@@ -3964,8 +3964,11 @@ int sunxi_edp_encoder_atomic_check(struct drm_encoder *encoder,
+@@ -3964,8 +3964,11 @@
+ 	scrtc_state->set_backlight_value = sunxi_edp_set_backlight_value;
  	scrtc_state->output_dev_data = drm_edp;
  	if (conn_state->crtc) {
 -		drm_edp->sw_enable = sunxi_drm_check_if_need_sw_enable(conn_state->connector);
@@ -39,5 +40,5 @@ diff --git a/bsp/drivers/drm/sunxi_drm_edp.c b/bsp/drivers/drm/sunxi_drm_edp.c
 +		drm_edp->sw_enable = false;
 +		scrtc_state->sw_enable = false;
  	}
-
+ 
  	DRM_DEBUG_DRIVER("%s finish\n", __FUNCTION__);
