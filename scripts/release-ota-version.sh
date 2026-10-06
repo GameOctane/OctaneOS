@@ -2,13 +2,25 @@
 # Update ota/cubie-a7s/stable/last/batocera.version to match the build number
 # in post-build.sh. Run this before committing a release.
 #
-# Usage: ./scripts/release-ota-version.sh
+# Refuses to run unless scripts/check-image.sh passes on the finished build, so the OTA version
+# cannot be bumped for an image that is missing a fix (v0.5.29 to v0.5.31 went out without the
+# 120 Hz device-tree change).  --skip-image-check overrides this; use it only on purpose.
+#
+# Usage: ./scripts/release-ota-version.sh [--skip-image-check]
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 POST_BUILD="${REPO_ROOT}/board/batocera/allwinner/a733/post-build.sh"
 OTA_VERSION_FILE="${REPO_ROOT}/ota/cubie-a7s/stable/last/batocera.version"
+
+if [ "${1:-}" != "--skip-image-check" ]; then
+    if ! "${REPO_ROOT}/scripts/check-image.sh" --no-sums; then
+        echo "ERROR: the image check failed, so the OTA version file was NOT updated." >&2
+        echo "       Fix what failed and rebuild, or pass --skip-image-check if you mean it." >&2
+        exit 1
+    fi
+fi
 
 BUILD_OUTPUT="${REPO_ROOT}/batocera/output/a733-cubie-a7s/target/usr/share/batocera/batocera.version"
 
