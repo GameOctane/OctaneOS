@@ -11,6 +11,7 @@
 #   ./scripts/build.sh CMD=linux-rebuild      # rebuild kernel only
 #   ./scripts/build.sh CMD=linux-menuconfig   # open kernel config menu
 #   ./scripts/build.sh CMD=mesa3d-rebuild     # rebuild a single package
+#   ./scripts/build.sh --sync-kernel-only      # only re-sync the kernel tree if its inputs changed
 # =============================================================================
 
 set -e
@@ -154,6 +155,63 @@ ES_SRCDIR="${REPO_ROOT}/batocera/dl/batocera-emulationstation/git"
 if [ -d "${ES_SRCDIR}" ]; then
     MAKE_EXTRA_ARGS+=(BATOCERA_EMULATIONSTATION_OVERRIDE_SRCDIR="${ES_SRCDIR}")
 fi
+
+# -----------------------------------------------------------------------------
+# Keep the kernel source tree, and Buildroot's compiled copy of it, in step with their inputs.
+#
+# LINUX_OVERRIDE_SRCDIR makes Buildroot copy linux/kernel-66 into build/linux-custom ONCE and
+# never again, and setup-kernel-66.sh applies the patches and installs the board device tree
+# ONCE.  So an edit to a patch, the kernel config or the board DTS silently did nothing: the
+# 120 Hz fix missed three releases that way, and a stale copy compiled unpatched code.
+#
+# Hash every input.  If it differs from the hash recorded at the last build, redo the setup
+# from clean checkouts and delete the compiled copy so Buildroot copies and rebuilds it.
+# -----------------------------------------------------------------------------
+sync_kernel_inputs() {
+    local ksrc="${REPO_ROOT}/linux/kernel-66"
+    local out="${BATOCERA_DIR}/output/a733-cubie-a7s"
+    local stamp="${out}/.octane-kernel-inputs"
+    local a733="${REPO_ROOT}/board/batocera/allwinner/a733"
+
+    # Not set up yet (first build): setup-kernel-66.sh has to run first, by hand.
+    [ -d "${ksrc}/.git" ] || return 0
+
+    local now last=""
+    now="$(
+        {
+            cat "${a733}/dts/sun60i-a733-cubie-a7s.dts" \
+                "${a733}/linux-defconfig.config" \
+                "${a733}/linux-defconfig-fragment.config" \
+                "${REPO_ROOT}/scripts/setup-kernel-66.sh"
+            # names as well as contents, so a rename or a move into obsolete/ counts
+            find "${a733}/linux_patches_66" "${a733}/patches/linux" -maxdepth 1 -name '*.patch' | sort
+            find "${a733}/linux_patches_66" "${a733}/patches/linux" -maxdepth 1 -name '*.patch' | sort | xargs cat
+        } | sha256sum | cut -d' ' -f1
+    )"
+    [ -f "${stamp}" ] && last="$(cat "${stamp}")"
+
+    if [ "${now}" = "${last}" ]; then
+        echo "[INFO] Kernel inputs unchanged since the last build."
+        return 0
+    fi
+
+    echo "[INFO] Kernel inputs changed since the last build; redoing the kernel setup from clean."
+    "${REPO_ROOT}/scripts/setup-kernel-66.sh" --reset || {
+        echo "[ERROR] Kernel setup failed (a patch probably no longer applies). Fix it and rerun." >&2
+        return 1
+    }
+    rm -rf "${out}/build/linux-custom"
+    mkdir -p "${out}"
+    echo "${now}" > "${stamp}"
+    echo "[INFO] Kernel tree rebuilt; Buildroot will copy and rebuild the kernel."
+}
+
+# --sync-kernel-only: do just that and stop (also handy to test the guard without a build)
+if [[ "${1:-}" == "--sync-kernel-only" ]]; then
+    sync_kernel_inputs
+    exit $?
+fi
+sync_kernel_inputs || exit 1
 
 echo "[INFO] Starting build..."
 

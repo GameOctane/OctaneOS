@@ -9,9 +9,12 @@
 # Run this ONCE before ./scripts/build.sh.  Re-run to update (it is idempotent).
 #
 # Usage:
-#   ./scripts/setup-kernel-66.sh [--update]
+#   ./scripts/setup-kernel-66.sh [--update | --reset]
 #
 #   --update   Force a git pull on existing clones (slow, rarely needed)
+#   --reset    Throw away every change in the existing clones and re-apply the patches, the
+#              board device tree and the BSP fixes from scratch (no network, about a minute).
+#              scripts/build.sh does this by itself when the kernel inputs have changed.
 # =============================================================================
 
 set -euo pipefail
@@ -29,8 +32,11 @@ BSP_BRANCH="cubie-aiot-v1.4.8"
 PATCHES_DIR="${REPO_ROOT}/board/batocera/allwinner/a733/linux_patches_66"
 
 UPDATE=0
+RESET=0
 if [[ "${1:-}" == "--update" ]]; then
     UPDATE=1
+elif [[ "${1:-}" == "--reset" ]]; then
+    RESET=1
 fi
 
 # -----------------------------------------------------------------------------
@@ -66,6 +72,16 @@ else
         git -C "${KERNEL_DIR}/bsp" reset --hard "origin/${BSP_BRANCH}"
         rm -f "${STAMP}"
     fi
+fi
+
+# --reset: back to the clean checkouts, then fall through and redo every step below.
+if [ "${RESET}" -eq 1 ]; then
+    echo "[kernel-66] Resetting the kernel and BSP trees to their clean checkouts"
+    git -C "${KERNEL_DIR}" reset -q --hard HEAD
+    git -C "${KERNEL_DIR}" clean -qfd -e bsp
+    git -C "${KERNEL_DIR}/bsp" reset -q --hard HEAD
+    git -C "${KERNEL_DIR}/bsp" clean -qfd
+    rm -f "${STAMP}"
 fi
 
 # Skip remaining steps if already done and not forced
