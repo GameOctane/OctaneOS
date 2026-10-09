@@ -4,7 +4,6 @@
 # Added 2026-10-08. Reasons marked (unverified) were not traced to their parent option.
 
 # --- real gaps, not fixed yet ---
-gap ARM_PSCI_CPUIDLE CONFIG_CPU_IDLE is not set, so deep CPU sleep is unused (see audit note 2026-10-08).
 gap DEVFREQ_THERMAL no CONFIG_PM_DEVFREQ, so the GPU and memory cannot be throttled by the kernel's thermal system. Needs a review of the GPU driver's own DVFS before turning it on.
 gap DEVFREQ_GOV_SIMPLE_ONDEMAND no CONFIG_PM_DEVFREQ (same reason as DEVFREQ_THERMAL)
 
