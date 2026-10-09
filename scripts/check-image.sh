@@ -89,6 +89,14 @@ check "flight recorder init script installed" test -x "${OUT}/target/etc/init.d/
 check "image is newer than the kernel it contains" \
     bash -c "[ \"\$(stat -c %Y '${IMG_DIR}'/*.img.gz | sort -n | tail -1)\" -ge \"\$(stat -c %Y '${OUT}/images/Image')\" ]"
 
+# N64: the standalone emulator quits only on Esc and flickers on the ground in OoT without a
+# polygon offset.  Both fixes ship in the image (see board/.../a733/fsoverlay).
+check "N64 exit: hotkey+start is mapped to Esc" \
+    grep -q '"KEY_ESC"' "${OUT}/target/usr/share/evmapy/n64.keys"
+check "N64 default: polygon offset on in the seeded mupen64plus.cfg" \
+    grep -qx 'force_polygon_offset = True' \
+    "${OUT}/target/usr/share/batocera/datainit/system/configs/mupen64/mupen64plus.cfg"
+
 # A build started with OCTANE_DEV_KEY=1 gives the key's holder root SSH on every device.
 DEVKEY="${OUT}/target/usr/share/octane/dev-ssh-key.pub"
 if [ -e "${DEVKEY}" ]; then
