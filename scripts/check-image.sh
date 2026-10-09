@@ -63,6 +63,15 @@ CFG="${KBUILD}/.config"
 for opt in THERMAL AW_THERMAL SOFTLOCKUP_DETECTOR DETECT_HUNG_TASK; do
     check "CONFIG_${opt}=y" grep -qx "CONFIG_${opt}=y" "${CFG}"
 done
+# Every option we ask for must exist in the built kernel (Kconfig drops options silently).
+cfgcheck="$(mktemp)"
+if "${REPO_ROOT}/scripts/check-kernel-config.py" "${CFG}" >"${cfgcheck}" 2>&1; then
+    pass "every requested kernel option made it into the built kernel"
+else
+    bad "every requested kernel option made it into the built kernel"
+fi
+grep -E "FAIL|NOTE" "${cfgcheck}" | sed 's/^/        /'
+rm -f "${cfgcheck}"
 # AW_DISP2 is the legacy display driver. It builds only if AW_PWM is on, does not compile on
 # 6.6, and would conflict with the DRM driver.
 check "legacy display driver CONFIG_AW_DISP2 is off" bash -c "! grep -Eq '^CONFIG_AW_DISP2=(y|m)' '${CFG}'"
