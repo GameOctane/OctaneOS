@@ -1,0 +1,51 @@
+#!/bin/sh
+# Records every start and exit of the boot-splash video player (mpv), so "the intro played
+# twice" can be checked from a log instead of argued about.
+#
+# Why this exists: S28splash starts mpv with --log-file, and mpv overwrites that file on every
+# start.  If mpv ever started twice, only the second run would be left, so mpv.log cannot show
+# it.  This script watches the process list instead and does not touch Batocera's S28splash,
+# so it does not drift from upstream.
+#
+# Output: /userdata/system/logs/splash-trace.log  (the previous boot is kept as .prev)
+#   up=<kernel seconds> mpv pids: [<pids>]    one line each time the set of mpv processes changes
+# Two different pids, or the list going [] -> [123] -> [] -> [456], means mpv started twice.
+#
+# Runs in the background for the first 100 seconds of boot, then stops.
+# Test overrides: OCTANE_SPLASHTRACE_LOG, OCTANE_SPLASHTRACE_SECONDS, OCTANE_SPLASHTRACE_FG=1
+
+[ "$1" = "start" ] || exit 0
+
+LOG="${OCTANE_SPLASHTRACE_LOG:-/userdata/system/logs/splash-trace.log}"
+WINDOW="${OCTANE_SPLASHTRACE_SECONDS:-100}"
+
+up() { cut -d' ' -f1 /proc/uptime; }
+
+trace() {
+    mkdir -p "$(dirname "$LOG")"
+    [ -f "$LOG" ] && mv -f "$LOG" "$LOG.prev"
+    echo "=== splash trace started up=$(up) window=${WINDOW}s" > "$LOG"
+    prev="-"
+    es_seen=0
+    end=$(( $(up | cut -d. -f1) + WINDOW ))
+    while [ "$(up | cut -d. -f1)" -lt "$end" ]; do
+        now="$(pgrep -x mpv | tr '\n' ' ')"
+        if [ "$now" != "$prev" ]; then
+            echo "up=$(up) mpv pids: [${now}]" >> "$LOG"
+            prev="$now"
+        fi
+        if [ "$es_seen" -eq 0 ] && pgrep -f emulationstation-standalone > /dev/null 2>&1; then
+            echo "up=$(up) emulationstation-standalone running" >> "$LOG"
+            es_seen=1
+        fi
+        sleep 0.2
+    done
+    echo "=== splash trace ended up=$(up)" >> "$LOG"
+}
+
+if [ -n "$OCTANE_SPLASHTRACE_FG" ]; then
+    trace
+else
+    trace > /dev/null 2>&1 &
+fi
+exit 0
