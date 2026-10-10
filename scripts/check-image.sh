@@ -102,6 +102,10 @@ check "image is newer than the kernel it contains" \
 
 # N64: the standalone emulator quits only on Esc and flickers on the ground in OoT without a
 # polygon offset.  Both fixes ship in the image (see board/.../a733/fsoverlay).
+# The intro must play once.  S28splash plays it; a second copy in the labwc autostart played it
+# again, inside the desktop, with a mouse cursor (the cause of the "intro plays twice" report).
+check "the intro is played by S28splash only (no second player in the labwc start-up files)" \
+    bash -c "! grep -rIlE 'splash\.mp4|--gpu-context=wayland' '${OUT}/target/usr/share/labwc' 2>/dev/null | grep -q ."
 check "N64 exit: hotkey+start is mapped to Esc" \
     grep -q '"KEY_ESC"' "${OUT}/target/usr/share/evmapy/n64.keys"
 check "N64 default: polygon offset on in the seeded mupen64plus.cfg" \
