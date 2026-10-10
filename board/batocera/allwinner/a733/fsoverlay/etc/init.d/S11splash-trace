@@ -10,6 +10,9 @@
 # Output: /userdata/system/logs/splash-trace.log  (the previous boot is kept as .prev)
 #   up=<kernel seconds> mpv pids: [<pids>]    one line each time the set of mpv processes changes
 # Two different pids, or the list going [] -> [123] -> [] -> [456], means mpv started twice.
+# For every new mpv it also records the full command line, the parent pid, the environment
+# variables that show what launched it (a Wayland session, or an init script), and a snapshot of
+# the related processes, so the second start can be traced to its source.
 #
 # Runs in the background for the first 100 seconds of boot, then stops.
 # Test overrides: OCTANE_SPLASHTRACE_LOG, OCTANE_SPLASHTRACE_SECONDS, OCTANE_SPLASHTRACE_FG=1
@@ -20,6 +23,16 @@ LOG="${OCTANE_SPLASHTRACE_LOG:-/userdata/system/logs/splash-trace.log}"
 WINDOW="${OCTANE_SPLASHTRACE_SECONDS:-100}"
 
 up() { cut -d' ' -f1 /proc/uptime; }
+
+# what is this process and where did it come from?
+describe() {
+    p="$1"
+    echo "    cmdline: $(tr '\0' ' ' < /proc/$p/cmdline 2>/dev/null | cut -c1-400)"
+    echo "    ppid: $(awk '/^PPid:/ {print $2}' /proc/$p/status 2>/dev/null)"
+    echo "    env: $(tr '\0' '\n' < /proc/$p/environ 2>/dev/null | grep -E '^(WAYLAND_DISPLAY|XDG_SESSION_TYPE|DISPLAY|runlevel|PREVLEVEL|SHLVL|_|PWD|HOME|TERM)=' | tr '\n' ' ')"
+    echo "    related processes now:"
+    ps -eo pid,ppid,args 2>/dev/null | grep -E 'S28|S3[01]|rcS|emulationstation|start-stop|labwc|splash|mpv' | grep -v grep | cut -c1-160 | sed 's/^/      /'
+}
 
 trace() {
     mkdir -p "$(dirname "$LOG")"
@@ -32,6 +45,12 @@ trace() {
         now="$(pgrep -x mpv | tr '\n' ' ')"
         if [ "$now" != "$prev" ]; then
             echo "up=$(up) mpv pids: [${now}]" >> "$LOG"
+            for p in $now; do
+                case " $prev " in
+                    *" $p "*) ;;
+                    *) describe "$p" >> "$LOG" 2>&1 ;;
+                esac
+            done
             prev="$now"
         fi
         if [ "$es_seen" -eq 0 ] && pgrep -f emulationstation-standalone > /dev/null 2>&1; then
