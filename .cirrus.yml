@@ -10,6 +10,19 @@ check_patches_task:
 
   check_script: bash scripts/check-patches.sh
 
+# Runs the device updater against a fake /boot: a normal update, and every case where an update
+# must be refused without touching /boot.  No hardware needed.
+test_updater_task:
+  name: Test the device updater
+
+  container:
+    image: ubuntu:22.04
+    cpu: 1
+    memory: 1G
+
+  install_script: apt-get update -qq && apt-get install -y -qq xz-utils util-linux > /dev/null
+  test_script: bash scripts/test-upgrade.sh
+
 build_image_task:
   name: Build OctaneOS image (a733-cubie-a7s)
 
