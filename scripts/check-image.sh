@@ -106,6 +106,14 @@ check "image is newer than the kernel it contains" \
 # again, inside the desktop, with a mouse cursor (the cause of the "intro plays twice" report).
 check "the intro is played by S28splash only (no second player in the labwc start-up files)" \
     bash -c "! grep -rIlE 'splash\.mp4|--gpu-context=wayland' '${OUT}/target/usr/share/labwc' 2>/dev/null | grep -q ."
+# ...and inside rootfs.squashfs, the file the device really boots (target/ can hold stale files)
+SQUASH="${OUT}/images/rootfs.squashfs"
+if [ -f "${SQUASH}" ] && [ -x "${OUT}/host/bin/unsquashfs" ]; then
+    check "the second intro hook is not inside the system image (rootfs.squashfs)" \
+        bash -c "! '${OUT}/host/bin/unsquashfs' -ll '${SQUASH}' 2>/dev/null | grep -q 'usr/share/labwc/autostart_sun60iw2'"
+else
+    bad "system image rootfs.squashfs and unsquashfs available to inspect"
+fi
 check "N64 exit: hotkey+start is mapped to Esc" \
     grep -q '"KEY_ESC"' "${OUT}/target/usr/share/evmapy/n64.keys"
 check "N64 default: polygon offset on in the seeded mupen64plus.cfg" \

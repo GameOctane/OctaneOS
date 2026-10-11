@@ -215,6 +215,16 @@ if [[ "${1:-}" == "--sync-kernel-only" ]]; then
 fi
 sync_kernel_inputs || exit 1
 
+# Buildroot keeps target/ between builds and never deletes a file that was removed from our
+# overlay, so a deleted file would stay in the finished image.  Remove such files (unless a
+# package also installs them; then it only warns).  See scripts/prune-stale-overlay-files.sh.
+_out="${BATOCERA_DIR}/output/a733-cubie-a7s"
+if [ -d "${_out}/target" ]; then
+    "${REPO_ROOT}/scripts/prune-stale-overlay-files.sh" "${_out}/target" "${_out}/build/packages-file-list.txt" \
+        "${_out}/.octane-overlay-manifest" "${BATOCERA_DIR}/board/batocera/fsoverlay" \
+        "${REPO_ROOT}/board/batocera/allwinner/a733/fsoverlay" || exit 1
+fi
+
 echo "[INFO] Starting build..."
 
 # --nohup: detach from the terminal so VS Code / Claude crashes don't kill the build.
