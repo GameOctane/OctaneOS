@@ -157,6 +157,8 @@ reset_device; set_serve good; head -c 120000 "${T}/serve/boot.tar.xz" > "${T}/up
 check "a partial download is resumed, not restarted" '[ "${RC}" = 0 ] && grep -q -- "-C -" ${T}/curl.log && [ "$(cat ${T}/boot/boot/Image)" = NEW-KERNEL ]'
 reset_device; set_serve good; rm -f "${T:?}/serve/boot.tar.xz.md5"; run_upgrade
 check "only a sha256 published -> accepted" '[ "${RC}" = 0 ] && [ "$(cat ${T}/boot/boot/Image)" = NEW-KERNEL ]'
+reset_device; cp "${T}/serve/good.tar.xz" "${T}/upg/boot.tar.xz"; sums "${T}/upg/boot.tar.xz"; run_upgrade manual
+check "manual mode with checksum files: installs, then removes the archive and the checksum files" '[ "${RC}" = 0 ] && [ ! -e ${T}/upg/boot.tar.xz ] && [ ! -e ${T}/upg/boot.tar.xz.md5 ] && [ ! -e ${T}/upg/boot.tar.xz.sha256 ]'
 reset_device; cp "${T}/serve/good.tar.xz" "${T}/upg/boot.tar.xz"; run_upgrade manual
 check "manual mode, no checksum file -> installs with a warning" '[ "${RC}" = 0 ] && echo "${OUT}" | grep -q "WARNING: no checksum" && [ "$(cat ${T}/boot/boot/Image)" = NEW-KERNEL ]'
 reset_device; cp "${T}/serve/good.tar.xz" "${T}/upg/boot.tar.xz"; echo 00000000000000000000000000000000 > "${T}/upg/boot.tar.xz.md5"; run_upgrade manual
