@@ -100,9 +100,9 @@ echo "[post-build] pvrsrvkm.ko done."
 # batocera.version: compared against ota/cubie-a7s/stable/last/batocera.version
 # octaneos.version: compared against GitHub latest release tag by ES swissknife
 # =============================================================================
-OCTANE_BUILD_NUMBER=69
-OCTANE_RELEASE_TAG="v0.6.9"
-OCTANE_VERSION_STRING="0.6.9"
+OCTANE_BUILD_NUMBER=70
+OCTANE_RELEASE_TAG="v0.7.0-rc1"
+OCTANE_VERSION_STRING="0.7.0-rc1"
 # Write version files WITHOUT the leading 'v' — ES prepends " V" in the menu
 # label, so keeping "v0.6.9" would display as "OctaneOS V v0.6.9".
 echo "${OCTANE_VERSION_STRING}" \
