@@ -34,6 +34,19 @@ If a fresh install is needed, say so here in plain words and link
 > Update over the air: <yes/no>. Back up first: <yes/no>. Needs a fresh install: <yes/no>.
 > Notes and files: <link to the release>. How to update or re-flash: <link to UPGRADING.md>.
 
+## Publishing
+
+Use the script. It checks everything, publishes in a safe order, and bumps the OTA version file
+last, because that file is what tells devices an update exists:
+
+    scripts/publish-release.sh --notes my-notes.md --dry-run     # all checks, publishes nothing
+    scripts/publish-release.sh --notes my-notes.md               # the real thing
+
+It never overwrites an existing release, creates a draft first (devices cannot see drafts),
+verifies what GitHub holds, publishes, verifies what a device would download, and only then
+commits the version bump locally. **You** push that commit to `main`: until you do, no device is
+told about the release. Run it from a fully committed tree.
+
 ## Before publishing: do not release if any of these is true
 
 - The image was built with the developer SSH key (`OCTANE_DEV_KEY_FILE` was set).
