@@ -14,10 +14,18 @@
 # variables that show what launched it (a Wayland session, or an init script), and a snapshot of
 # the related processes, so the second start can be traced to its source.
 #
-# Runs in the background for the first 100 seconds of boot, then stops.
+# Runs in the background for the first 100 seconds of boot, then stops.  Off by default: enable with
+# octane.splashtrace=1 in /userdata/system/batocera.conf.
 # Test overrides: OCTANE_SPLASHTRACE_LOG, OCTANE_SPLASHTRACE_SECONDS, OCTANE_SPLASHTRACE_FG=1
 
 [ "$1" = "start" ] || exit 0
+
+# A diagnostic: off unless octane.splashtrace=1 is set in batocera.conf.
+# (OCTANE_SPLASHTRACE_FORCE=1 skips the setting; it exists for scripts/test-splash-trace.sh.)
+if [ "${OCTANE_SPLASHTRACE_FORCE:-0}" != "1" ] \
+   && [ "$(/usr/bin/batocera-settings-get octane.splashtrace 2>/dev/null)" != "1" ]; then
+    exit 0
+fi
 
 LOG="${OCTANE_SPLASHTRACE_LOG:-/userdata/system/logs/splash-trace.log}"
 WINDOW="${OCTANE_SPLASHTRACE_SECONDS:-100}"

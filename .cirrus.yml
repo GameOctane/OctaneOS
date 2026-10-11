@@ -20,8 +20,8 @@ test_updater_task:
     cpu: 1
     memory: 1G
 
-  install_script: apt-get update -qq && apt-get install -y -qq xz-utils util-linux > /dev/null
-  test_script: bash scripts/test-upgrade.sh && bash scripts/test-prune-overlay.sh && bash scripts/test-dev-key.sh && bash scripts/test-update-version.sh && bash scripts/test-publish-release.sh && bash scripts/test-harden-network.sh
+  install_script: apt-get update -qq && apt-get install -y -qq xz-utils util-linux dash > /dev/null
+  test_script: bash scripts/test-upgrade.sh && bash scripts/test-prune-overlay.sh && bash scripts/test-dev-key.sh && bash scripts/test-update-version.sh && bash scripts/test-publish-release.sh && bash scripts/test-harden-network.sh && bash scripts/test-splash-trace.sh
 
 build_image_task:
   name: Build OctaneOS image (a733-cubie-a7s)
