@@ -147,6 +147,12 @@ if [ -f "${DATAINIT_CONF}" ] && ! grep -q "^updates.url=" "${DATAINIT_CONF}"; th
     echo "[post-build] Set updates.url in datainit batocera.conf"
 fi
 
+# Network defaults (phase 1 of docs/security-design-phase1.md): hide the system folder and the
+# credential files from guests of the file share, no NFS server unless something is exported,
+# Syncthing's page local-only by default, Wi-Fi on by default.  Fails the build if the upstream
+# text it patches has changed.
+"${REPO_ROOT_FOR_SCRIPTS}/harden-network-defaults.py" "${TARGET_DIR}" || exit 1
+
 # TEMPORARY, while the hard shutoffs are being diagnosed: turn the flight recorder on by
 # default (see usr/bin/octane-flightlog). It is opt-in in the code; this line is the only
 # thing that enables it. Remove it, or set octane.flightlog=0, once the cause is found.

@@ -119,6 +119,15 @@ if [ -f "${SQUASH}" ] && [ -x "${OUT}/host/bin/unsquashfs" ]; then
 else
     bad "system image rootfs.squashfs and unsquashfs available to inspect"
 fi
+# Network defaults (docs/security-design-phase1.md), checked inside the system image itself.
+if [ -f "${SQUASH}" ] && [ -x "${OUT}/host/bin/unsquashfs" ]; then
+    in_image() { "${OUT}/host/bin/unsquashfs" -cat "${SQUASH}" "$1" 2>/dev/null | grep -q -- "$2"; }
+    check "file share: guests cannot see the system folder or the RetroAchievements credential files" \
+        in_image etc/samba/smb.conf '^veto files = /\._\*/\.DS_Store/system/retroachievements\.conf/\.default-retroachievements\.conf/$'
+    check "NFS: not started when nothing is exported" in_image etc/init.d/S60nfs 'nothing exported in /etc/exports'
+    check "Syncthing page: local-only by default" in_image usr/share/batocera/services/syncthing 'system.syncthing.lan'
+    check "Wi-Fi is on by default on a fresh card" in_image usr/share/batocera/datainit/system/batocera.conf '^wifi.enabled=1$'
+fi
 check "N64 exit: hotkey+start is mapped to Esc" \
     grep -q '"KEY_ESC"' "${OUT}/target/usr/share/evmapy/n64.keys"
 check "N64 default: polygon offset on in the seeded mupen64plus.cfg" \
