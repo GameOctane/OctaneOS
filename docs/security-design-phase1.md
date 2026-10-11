@@ -1,7 +1,7 @@
 # Network and password defaults: design (phase 1)
 
-Status: **proposed, not built.** Written 2026-10-11 after the audit of the running system. Nothing
-here changes a device until the decisions at the end are made.
+Status: **phase 1 implemented (2026-10-11), phases 2 and 3 not built.** Written after the audit of the
+running system. The four decisions at the end were made on 2026-10-11 (see there).
 
 ## Where we are today (checked on a real board)
 
@@ -79,7 +79,36 @@ ROM in and a save out; the Syncthing page refuses non-local connections until a 
 the first-boot migration runs once; the reset file works and is removed; an update from the current
 image keeps everything.
 
-## Decisions needed
+## Live test of the share veto (real board, 2026-10-11, Samba 4.20.6)
+
+Applied to the running board in memory only, then reverted. As an anonymous guest, before and after:
+
+| Attempt | Before | After |
+|---|---|---|
+| list `system` | listed | not listed |
+| read `system/.ssh/authorized_keys` and `system/batocera.conf` | readable | not found |
+| write into `system/` | allowed | not found |
+| `System`, `SYSTEM` spellings | n/a | not found |
+| read `retroachievements.conf`, `.default-retroachievements.conf` | n/a | hidden, not found |
+| read, write and delete a save | allowed | still allowed |
+| create a symlink (SMB3) | n/a | refused, nothing created |
+| create a symlink (SMB1) | n/a | the server refuses SMB1 entirely |
+
+**Known limit:** the veto works on names. If a symlink INTO `system` already exists (an administrator
+made it), a guest can read through it: the test read `batocera.conf` that way. Guests cannot create
+symlinks, and the card has none pointing there, so the default layout is protected, but this is not
+absolute. `follow symlinks = no` would close it but breaks people who link ROM folders elsewhere, so it
+is left for phase 2 after checking how common that is.
+
+## Decisions (made 2026-10-11)
+
+1. Hide `system` and the RetroAchievements credential files from guests: **yes** (done in phase 1).
+2. A skipped password leaves SSH on `linux`, with a visible reminder: **yes** (phase 2).
+3. Reset a forgotten password by a file on the boot partition: **yes** (phase 2).
+4. SSH password login stays on once a password is set: **yes**.
+5. Wi-Fi on by default on fresh cards, country not set: **yes** (done in phase 1).
+
+## Decisions that were open
 
 1. **Hide `system` and the RetroAchievements credential files from guests** on the file share. Yes?
 2. **If the user skips the password,** leave SSH on `linux` as today (my suggestion, with a visible
