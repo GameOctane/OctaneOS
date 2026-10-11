@@ -165,6 +165,7 @@ reset_device; cp "${T}/serve/good.tar.xz" "${T}/upg/boot.tar.xz"; echo 000000000
 check "manual mode, wrong md5 -> refused" '[ "${RC}" = 1 ] && boot_untouched'
 reset_device; set_serve good; TERM_MODE=0 run_upgrade
 check "EmulationStation mode (no terminal) installs and exits 0" '[ "${RC}" = 0 ] && [ "$(cat ${T}/boot/boot/Image)" = NEW-KERNEL ] && relocked'
+check "EmulationStation mode: no stray shell job messages ('Killed') in the output" '! echo "${OUT}" | grep -q "Killed"'
 
 echo
 echo "${PASS} passed, ${FAIL} failed"

@@ -141,6 +141,7 @@ if [ "${MODE}" = "net" ]; then
             touch "${FILE}"
             do_badgeines "$((size_mb > 0 ? size_mb : 1))" &
             GETPERPID=$!
+            disown "${GETPERPID}" 2>/dev/null   # so the shell does not print "Killed" when we stop it
             "${CURL}" "${CURL_OPTS[@]}" -sfL -C - -o "${FILE}" "${BINARY_URL}" || die "download failed (run the update again to resume)"
             kill -9 "${GETPERPID}" 2>/dev/null; GETPERPID=""
         else
