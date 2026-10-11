@@ -153,10 +153,7 @@ fi
 # text it patches has changed.
 "${REPO_ROOT_FOR_SCRIPTS}/harden-network-defaults.py" "${TARGET_DIR}" || exit 1
 
-# TEMPORARY, while the hard shutoffs are being diagnosed: turn the flight recorder on by
-# default (see usr/bin/octane-flightlog). It is opt-in in the code; this line is the only
-# thing that enables it. Remove it, or set octane.flightlog=0, once the cause is found.
-if [ -f "${DATAINIT_CONF}" ] && ! grep -q "^octane.flightlog=" "${DATAINIT_CONF}"; then
-    printf 'octane.flightlog=1\n' >> "${DATAINIT_CONF}"
-    echo "[post-build] Enabled octane.flightlog in datainit batocera.conf (temporary)"
-fi
+# The flight recorder (usr/bin/octane-flightlog, see docs/) is OFF by default: it reads the power
+# chip's registers every 30 s, which is fine for a tester but not something to run on every device.
+# Enable it for an investigation with octane.flightlog=1 in /userdata/system/batocera.conf.
+# Its logs are capped (20 MB per file, one rotated copy each).  Nothing is sent anywhere.
