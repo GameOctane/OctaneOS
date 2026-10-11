@@ -104,7 +104,10 @@ fi
 
 # Devices decide "is there an update?" by comparing version strings, so a release that is not NEWER
 # than the latest one would never be offered to anyone on that version.
-LATEST_TAG="$("${GH}" api "repos/${REPO}/releases/latest" --jq .tag_name 2>/dev/null || true)"
+# gh prints GitHub's JSON error text on stdout when there is no release (404), so accept the output only
+# when the call succeeded AND it looks like a version tag.
+LATEST_TAG="$("${GH}" api "repos/${REPO}/releases/latest" --jq .tag_name 2>/dev/null)" || LATEST_TAG=""
+[[ "${LATEST_TAG}" =~ ^v?[0-9]+(\.[0-9]+)*([-.+][0-9A-Za-z.+-]*)?$ ]] || LATEST_TAG=""
 if [ -n "${LATEST_TAG}" ]; then
     NEWEST="$(printf '%s\n%s\n' "${LATEST_TAG#v}" "${VERSION}" | sort -V | tail -1)"
     if [ "${LATEST_TAG#v}" = "${VERSION}" ] || [ "${NEWEST}" != "${VERSION}" ]; then

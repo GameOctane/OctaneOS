@@ -55,7 +55,9 @@ case "$1 $2" in
     "api repos/"*)
         latest=""
         for d in "${STORE}"/*/; do [ -f "${d}state" ] && [ "$(cat "${d}state")" = published ] && latest="$(printf '%s\n%s\n' "${latest#v}" "$(basename "${d}" | sed s/^v//)" | sort -V | tail -1)"; done
-        [ -n "${latest}" ] && { echo "v${latest#v}"; exit 0; } ; exit 1 ;;
+        [ -n "${latest}" ] && { echo "v${latest#v}"; exit 0; }
+        # the real gh prints GitHub's JSON error on STDOUT when there is no release, and exits 1
+        echo '{"message":"Not Found","documentation_url":"https://docs.github.com/rest/releases/releases#get-the-latest-release","status":"404"}'; exit 1 ;;
 esac
 exit 1
 FAKE
