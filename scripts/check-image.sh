@@ -120,11 +120,11 @@ check "N64 default: polygon offset on in the seeded mupen64plus.cfg" \
     grep -qx 'force_polygon_offset = True' \
     "${OUT}/target/usr/share/batocera/datainit/system/configs/mupen64/mupen64plus.cfg"
 
-# A build started with OCTANE_DEV_KEY=1 gives the key's holder root SSH on every device.
+# A build started with OCTANE_DEV_KEY_FILE set gives the key's holder root SSH on every device.
 DEVKEY="${OUT}/target/usr/share/octane/dev-ssh-key.pub"
 if [ -e "${DEVKEY}" ]; then
     if [ "${RELEASE}" -eq 1 ]; then
-        bad "no developer SSH key in a release image (rebuild without OCTANE_DEV_KEY=1)"
+        bad "no developer SSH key in a release image (rebuild without OCTANE_DEV_KEY_FILE)"
     else
         echo "  NOTE  this image contains the developer SSH key; fine for testing, never release it"
     fi

@@ -12,7 +12,7 @@
 #   ./scripts/build.sh CMD=linux-menuconfig   # open kernel config menu
 #   ./scripts/build.sh CMD=mesa3d-rebuild     # rebuild a single package
 #   ./scripts/build.sh --sync-kernel-only      # only re-sync the kernel tree if its inputs changed
-#   OCTANE_DEV_KEY=1 ./scripts/build.sh --nohup  # test image that also installs the developer SSH key
+#   OCTANE_DEV_KEY_FILE=$HOME/.ssh/id_ed25519.pub ./scripts/build.sh --nohup   # test image that also lets that key log in
 #                                              # (never release such an image; see board/.../a733/dev/README.md)
 # =============================================================================
 
@@ -51,7 +51,7 @@ unset CLEAN_PATH _PATH_ENTRIES _entry
 REAL_MAKE="$(PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin command -v make || true)"
 if [ -z "${REAL_MAKE}" ]; then
     echo "[ERROR] 'make' not found in PATH. Install build tools first:"
-    echo "        sudo pacman -Sy --noconfirm --needed base-devel"
+    echo "        sudo apt-get install -y build-essential   (or run ./scripts/setup-build-env.sh)"
     exit 1
 fi
 mkdir -p "$HOME/bin"
@@ -66,44 +66,9 @@ exec ${REAL_MAKE} "\$@"
 SHIM_EOF
 chmod +x "$HOME/bin/make"
 
-# When running inside Flatpak, /run/host/usr/bin/x86_64-pc-linux-gnu-gcc is the
-# SteamOS host GCC 14.2.1. Its cc1 depends on libisl.so.23 which is absent from
-# the Flatpak runtime, causing autoconf C89/C99 conformance probes to fail with
-# "error while loading shared libraries: libisl.so.23". Mask the broken triplet-
-# prefixed compilers with symlinks to the working Flatpak GCC in $HOME/bin.
-if [ -n "${FLATPAK_ID}" ]; then
-    ln -sf /usr/bin/gcc  "$HOME/bin/x86_64-pc-linux-gnu-gcc"
-    ln -sf /usr/bin/g++  "$HOME/bin/x86_64-pc-linux-gnu-g++"
-    ln -sf /usr/bin/gcc  "$HOME/bin/x86_64-unknown-linux-gnu-gcc"
-    ln -sf /usr/bin/g++  "$HOME/bin/x86_64-unknown-linux-gnu-g++"
-
-    # /run/host/usr/bin/rsync segfaults in the Flatpak due to glibc/ABI mismatch.
-    # Use flatpak-spawn --host to run rsync on the host side.
-    if [ -x "/usr/bin/flatpak-spawn" ] && [ -f "/run/host/usr/bin/rsync" ]; then
-        cat > "$HOME/bin/rsync" << 'RSYNC_EOF'
-#!/bin/bash
-exec /usr/bin/flatpak-spawn --host rsync "$@"
-RSYNC_EOF
-        chmod +x "$HOME/bin/rsync"
-    fi
-fi
-
 export PATH="$HOME/bin:${PATH}"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
-# -----------------------------------------------------------------------------
-# When running inside a Flatpak (e.g. VS Code on SteamOS), the Flatpak has a
-# working host-native GCC but is missing tools installed on the host via
-# pacman (rsync, mtools, bc, etc.). The host filesystem is bind-mounted at
-# /run/host — prepend its bin dirs so those tools are visible to the build.
-# -----------------------------------------------------------------------------
-if [ -d "/run/host/usr/bin" ]; then
-    # Append host paths so Flatpak-provided tools (/usr/bin/gcc, etc.) take
-    # precedence. Flatpak GCC 15.x has working headers; host GCC on SteamOS
-    # does not. rsync/bc/mtools from the host are still found via this suffix.
-    export PATH="${PATH}:/run/host/usr/bin:/run/host/usr/local/bin"
-fi
 
 # -----------------------------------------------------------------------------
 # Add the Buildroot host/bin to PATH so host tools (mkimage, etc.) installed
@@ -136,19 +101,13 @@ cd "${BATOCERA_DIR}"
 # %-build already depends on %-config in the Batocera Makefile, so no
 # explicit pre-config step is needed — it runs automatically.
 
-# When running inside Flatpak (e.g. VS Code on SteamOS), the GCC at
-# /usr/bin/gcc is the Flatpak runtime GCC (15.x) which has working C headers.
-# The SteamOS host GCC has no headers. Buildroot's Makefile uses HOSTCC :=
-# (not ?=), so it cannot be overridden by environment — it must be passed as
-# a make command-line variable, which GNU Make propagates to all sub-makes
-# via MAKEFLAGS.
+# Extra variables for make.  Buildroot's Makefile assigns some variables with := (not ?=), so
+# they cannot be set from the environment: they have to be passed as make command-line
+# variables, which GNU Make hands on to all sub-makes through MAKEFLAGS.
 MAKE_EXTRA_ARGS=()
-if [ -n "${FLATPAK_ID}" ]; then
-    MAKE_EXTRA_ARGS+=(HOSTCC=/usr/bin/gcc HOSTCXX=/usr/bin/g++)
-fi
 
 # The batocera-emulationstation recipe in the Batocera fork hardcodes
-# OVERRIDE_SRCDIR to a path on the original Steam Deck (/home/deck/...).  A plain
+# OVERRIDE_SRCDIR to a developer's local path (/home/deck/...).  A plain
 # assignment in the recipe beats local.mk, but a make command-line variable beats
 # both, so point it at a checkout under this tree.  Expected contents:
 # GameOctane/batocera-emulationstation @ feat/multi-user-profiles, cloned with

@@ -36,7 +36,7 @@ If a fresh install is needed, say so here in plain words and link
 
 ## Before publishing: do not release if any of these is true
 
-- The image was built with the developer SSH key (`OCTANE_DEV_KEY=1`).
+- The image was built with the developer SSH key (`OCTANE_DEV_KEY_FILE` was set).
 - `scripts/check-image.sh --release` does not pass.
 - The release has no `boot.tar.xz.md5` or `.sha256` (devices refuse to install it).
 - The update has only been tried on a computer. Try it on a spare card first.

@@ -145,13 +145,14 @@ case "$1" in
     DEV_KEY_FILE=/usr/share/octane/dev-ssh-key.pub
     mkdir -p -m 0700 "$SSH_DIR"
     if [ -f "$DEV_KEY_FILE" ]; then
-        # Developer build (OCTANE_DEV_KEY=1 at build time): install the developer key.
-        if ! grep -qF "octaneos-dev" "$AUTH_KEYS" 2>/dev/null; then
-            # keep the new key on its own line even if the file does not end with a newline
-            [ -s "$AUTH_KEYS" ] && [ -n "$(tail -c1 "$AUTH_KEYS")" ] && echo >> "$AUTH_KEYS"
-            cat "$DEV_KEY_FILE" >> "$AUTH_KEYS"
-            chmod 0600 "$AUTH_KEYS"
-        fi
+        # Developer build (OCTANE_DEV_KEY_FILE at build time): install this build's developer
+        # key.  First drop any earlier developer key (an older image installed a different
+        # one), so only this build's key is left.
+        [ -f "$AUTH_KEYS" ] && sed -i '/octaneos-dev/d' "$AUTH_KEYS"
+        # keep the new key on its own line even if the file does not end with a newline
+        [ -s "$AUTH_KEYS" ] && [ -n "$(tail -c1 "$AUTH_KEYS")" ] && echo >> "$AUTH_KEYS"
+        cat "$DEV_KEY_FILE" >> "$AUTH_KEYS"
+        chmod 0600 "$AUTH_KEYS"
     elif [ -f "$AUTH_KEYS" ] && grep -qF "octaneos-dev" "$AUTH_KEYS"; then
         # Normal build: an older image installed the developer key, so take it out again.
         sed -i '/octaneos-dev/d' "$AUTH_KEYS"
