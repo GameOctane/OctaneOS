@@ -102,6 +102,19 @@ if grep -qE 'yes / no|<version>|<yes/no>|<link' "${NOTES}"; then
     die "the release notes still contain template placeholders (yes / no, <version>, <link ...>)"
 fi
 
+# Devices decide "is there an update?" by comparing version strings, so a release that is not NEWER
+# than the latest one would never be offered to anyone on that version.
+LATEST_TAG="$("${GH}" api "repos/${REPO}/releases/latest" --jq .tag_name 2>/dev/null || true)"
+if [ -n "${LATEST_TAG}" ]; then
+    NEWEST="$(printf '%s\n%s\n' "${LATEST_TAG#v}" "${VERSION}" | sort -V | tail -1)"
+    if [ "${LATEST_TAG#v}" = "${VERSION}" ] || [ "${NEWEST}" != "${VERSION}" ]; then
+        die "version ${VERSION} is not newer than the latest release ${LATEST_TAG}, so devices on ${LATEST_TAG#v} would not be offered it. Raise OCTANE_VERSION_STRING in post-build.sh and rebuild."
+    fi
+    echo "latest published release is ${LATEST_TAG}; ${VERSION} is newer"
+else
+    echo "no published release found on ${REPO} (first release)"
+fi
+
 COMMIT="$(repo_git rev-parse HEAD)"
 if [ "${DIRTY_OK}" != "1" ]; then
     if repo_git status --porcelain --untracked-files=no | grep -vE '^ ?m? ?batocera$|^ M batocera$' | grep -q .; then

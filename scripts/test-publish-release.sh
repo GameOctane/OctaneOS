@@ -52,6 +52,10 @@ case "$1 $2" in
         [ -n "${FAKE_PUBLIC_BAD:-}" ] && echo wrong > "${PUBLIC}/boot.tar.xz.md5"
         exit 0 ;;
     "release delete") tag="$3"; rm -rf "${STORE:?}/${tag:?}"; exit 0 ;;
+    "api repos/"*)
+        latest=""
+        for d in "${STORE}"/*/; do [ -f "${d}state" ] && [ "$(cat "${d}state")" = published ] && latest="$(printf '%s\n%s\n' "${latest#v}" "$(basename "${d}" | sed s/^v//)" | sort -V | tail -1)"; done
+        [ -n "${latest}" ] && { echo "v${latest#v}"; exit 0; } ; exit 1 ;;
 esac
 exit 1
 FAKE
@@ -154,6 +158,17 @@ new_build; FAKE_DIRTY=1 run --notes "${T}/notes.md" --allow-dirty
 check "uncommitted changes with --allow-dirty -> allowed" '[ "${RC}" = 0 ]'
 new_build; mkdir -p "${STORE}/v0.9.1/files"; run --notes "${T}/notes.md"
 check "a release for this version already exists -> refused, never overwritten" '[ "${RC}" = 1 ] && ! called "release create" && echo "${OUT_TXT}" | grep -q "never overwritten"'
+
+echo "== the version must be newer than the latest published release"
+published() { mkdir -p "${STORE}/$1/files"; echo published > "${STORE}/$1/state"; }
+new_build; published v0.9.0; run --notes "${T}/notes.md"
+check "newer than the latest published release (0.9.1 after 0.9.0) -> allowed" '[ "${RC}" = 0 ] && echo "${OUT_TXT}" | grep -q "is newer"'
+new_build; published v0.9.1; run --notes "${T}/notes.md" --dry-run
+check "same version as the latest release -> refused (devices would not see an update)" '[ "${RC}" = 1 ] && no_publish && echo "${OUT_TXT}" | grep -q "not newer"'
+new_build; published v0.10.0; run --notes "${T}/notes.md" --dry-run
+check "older than the latest release (0.9.1 after 0.10.0) -> refused, with the numbers compared properly" '[ "${RC}" = 1 ] && no_publish && echo "${OUT_TXT}" | grep -q "not newer"'
+new_build; run --notes "${T}/notes.md" --dry-run
+check "no release published yet -> treated as a first release, allowed" '[ "${RC}" = 0 ] && echo "${OUT_TXT}" | grep -q "first release"'
 
 echo "== failures after the draft exists"
 new_build; FAKE_TRUNCATE=boot.tar.xz run --notes "${T}/notes.md"
