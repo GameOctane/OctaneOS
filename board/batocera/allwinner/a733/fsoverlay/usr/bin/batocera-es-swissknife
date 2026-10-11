@@ -61,6 +61,17 @@ function version_update() {
 
 # ---- MAINS ----
 
+# True only when NET is a real version that is NEWER than LOCAL.  Release tags carry a leading
+# "v" (v0.6.9) but the installed version does not (0.6.9); comparing the strings made every
+# up-to-date device report "Possible Update found!".  Also never offer an older version.
+octane_update_available() {
+    local local_v="${1#v}" net_v="${2#v}"
+    [[ "$net_v" =~ ^[0-9]+(\.[0-9]+)*([-.+][0-9A-Za-z.+-]*)?$ ]] || return 1   # not a version (e.g. "Connection failed!")
+    [ "$local_v" != "$net_v" ] || return 1
+    [[ "$local_v" =~ ^[0-9]+(\.[0-9]+)*([-.+][0-9A-Za-z.+-]*)?$ ]] || return 0   # installed version unreadable: offer it
+    [ "$(printf '%s\n%s\n' "$local_v" "$net_v" | sort -V | tail -1)" = "$net_v" ]
+}
+
 case ${1,,} in
     --restart)
         ES_PID=$(check_esrun)
@@ -123,7 +134,7 @@ case ${1,,} in
             [[ -n "$NET_VER" ]] || NET_VER="Connection failed!"
             echo "Installed:   $LOCAL_VER"
             echo "Latest:      $NET_VER"
-            if [[ "$LOCAL_VER" != "$NET_VER" && "$NET_VER" != "Connection failed!" ]]; then
+            if octane_update_available "$LOCAL_VER" "$NET_VER"; then
                 echo "Status:      Possible Update found!"
                 ret=0
             else

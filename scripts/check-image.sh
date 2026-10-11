@@ -102,6 +102,11 @@ check "image is newer than the kernel it contains" \
 
 # N64: the standalone emulator quits only on Esc and flickers on the ground in OoT without a
 # polygon offset.  Both fixes ship in the image (see board/.../a733/fsoverlay).
+# Devices must look for updates at OctaneOS, not at Batocera's server.
+check "updates.url points at the OctaneOS GitHub repo in the default settings" \
+    grep -qx 'updates.url=https://raw.githubusercontent.com/GameOctane/OctaneOS/main/ota' \
+    "${OUT}/target/usr/share/batocera/datainit/system/batocera.conf"
+
 # The intro must play once.  S28splash plays it; a second copy in the labwc autostart played it
 # again, inside the desktop, with a mouse cursor (the cause of the "intro plays twice" report).
 check "the intro is played by S28splash only (no second player in the labwc start-up files)" \

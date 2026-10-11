@@ -137,6 +137,16 @@ if [ -f "${DATAINIT_CONF}" ] && ! grep -q "^system.services=" "${DATAINIT_CONF}"
     echo "[post-build] Enabled syncthing in datainit batocera.conf"
 fi
 
+# Where the device looks for new versions.  EmulationStation's update check
+# (batocera-config canupdate) reads <updates.url>/<board>/<channel>/last/batocera.version, and
+# without this setting both it and EmulationStation fall back to Batocera's own server
+# (updates.batocera.org), which knows nothing about this board.  S13octane-init adds the same
+# line on a card that does not have it yet, so existing devices are covered too.
+if [ -f "${DATAINIT_CONF}" ] && ! grep -q "^updates.url=" "${DATAINIT_CONF}"; then
+    printf 'updates.url=https://raw.githubusercontent.com/GameOctane/OctaneOS/main/ota\n' >> "${DATAINIT_CONF}"
+    echo "[post-build] Set updates.url in datainit batocera.conf"
+fi
+
 # TEMPORARY, while the hard shutoffs are being diagnosed: turn the flight recorder on by
 # default (see usr/bin/octane-flightlog). It is opt-in in the code; this line is the only
 # thing that enables it. Remove it, or set octane.flightlog=0, once the cause is found.
