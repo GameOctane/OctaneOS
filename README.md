@@ -38,7 +38,7 @@ Batocera is an incredible foundation. OctaneOS builds on top of it with features
 | ROM transfer over WiFi (no PC software needed) | ❌ | ✅ |
 | Checked, staged OTA updates (checksum required, boot partition always re-locked) | ❌ | ✅ |
 | Kernel thermal throttling at 80 °C on A733 | ❌ | ✅ |
-| Nintendo 64 fixes: Ocarina of Time ground flicker, Hotkey + Start exit | ❌ | ✅ |
+| Nintendo 64: video flicker fix (found testing the ground in Ocarina of Time) and Hotkey + Start exit | ❌ | ✅ |
 | Box art default (TheGamesDB + ScreenScraper) | ❌ | ✅ |
 | RetroAchievements | ✅ | ✅ |
 | EmulationStation frontend | ✅ | ✅ |
@@ -177,7 +177,7 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 | Hardened OTA updater (checksum required, staged install, HTTPS only) | ✅ Complete — v0.7.0 |
 | Safer network defaults (guests can't see `system`, NFS off, Syncthing local-only, Wi-Fi on) | ✅ Complete — v0.7.0 |
 | Kernel thermal management | ✅ Complete — v0.7.0 |
-| Nintendo 64: Ocarina of Time ground-flicker fix and Hotkey + Start exit shipped in the image | ✅ Complete — v0.7.0 |
+| Nintendo 64: video flicker fix (found by testing the flickering ground in Ocarina of Time) and Hotkey + Start exit | ✅ Complete — v0.7.0 |
 | Device password + first-boot screen | ⏳ Next |
 | Signed updates | ⏳ Planned |
 | **Phase 1 software platform** | ✅ **Complete — v0.7.0** |
