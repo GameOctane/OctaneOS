@@ -36,6 +36,9 @@ Batocera is an incredible foundation. OctaneOS builds on top of it with features
 | OTA updates from GameOctane.com | ❌ | ✅ |
 | PC streaming via Moonlight (Big Picture) | ❌ | ✅ |
 | ROM transfer over WiFi (no PC software needed) | ❌ | ✅ |
+| Checked, staged OTA updates (checksum required, boot partition always re-locked) | ❌ | ✅ |
+| Kernel thermal throttling at 80 °C on A733 | ❌ | ✅ |
+| Nintendo 64: video flicker fix (found testing the ground in Ocarina of Time) and Hotkey + Start exit | ❌ | ✅ |
 | Box art default (TheGamesDB + ScreenScraper) | ❌ | ✅ |
 | RetroAchievements | ✅ | ✅ |
 | EmulationStation frontend | ✅ | ✅ |
@@ -75,6 +78,14 @@ OctaneOS currently runs on the **Radxa Cubie A7S** with the Allwinner A733 SoC. 
 | GPIO | 30-pin + 15-pin headers |
 
 Full hardware specification available in the [Octane Platform Spec v1.4](docs/Octane_Platform_Spec_v1_4.md).
+
+---
+
+## Updates and security
+
+- **Updating:** the device checks GameOctane's GitHub releases. The updater refuses a download without a matching checksum, unpacks into a staging folder, checks it is for your board, and only then replaces boot files. See [UPGRADING.md](UPGRADING.md) for what to do before updating and how to recover.
+- **Network defaults:** the file share hides the `system` folder (SSH keys, settings, Wi-Fi password) and RetroAchievements credential files from guests; NFS only runs if you export something; Syncthing's page is local-only unless you set `system.syncthing.lan=1`. SSH and file transfer stay on. The default SSH login is `root` / `linux` — change it. Design notes: [docs/security-design-phase1.md](docs/security-design-phase1.md).
+- **Release notes:** each release lists whether it can be installed over the air and whether to back up first.
 
 ---
 
@@ -137,7 +148,7 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 | GitHub Actions CI image build | ✅ Complete |
 | A733 kernel + Cubie A7S device tree | ✅ Complete |
 | aic8800 WiFi 6 — connects to SSIDs | ✅ Complete |
-| SSH access (root/linux, or dev key) | ✅ Complete |
+| SSH access (root/linux by default; change it, device password planned) | ✅ Complete |
 | Bash shell for root | ✅ Complete |
 | US keyboard layout set by default | ✅ Complete |
 | Clean shutdown (AXP8191 PMIC poweroff) | ✅ Complete |
@@ -163,7 +174,13 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 | Site-wide RA completions & masteries feed | ✅ Complete |
 | Speedrun world records in game library | ✅ Complete |
 | 120Hz DisplayPort output | ✅ Complete |
-| **Phase 1 software platform** | ✅ **Complete — v0.6.0** |
+| Hardened OTA updater (checksum required, staged install, HTTPS only) | ✅ Complete — v0.7.0 |
+| Safer network defaults (guests can't see `system`, NFS off, Syncthing local-only, Wi-Fi on) | ✅ Complete — v0.7.0 |
+| Kernel thermal management | ✅ Complete — v0.7.0 |
+| Nintendo 64: video flicker fix (found by testing the flickering ground in Ocarina of Time) and Hotkey + Start exit | ✅ Complete — v0.7.0 |
+| Device password + first-boot screen | ⏳ Next |
+| Signed updates | ⏳ Planned |
+| **Phase 1 software platform** | ✅ **Complete — v0.7.0** |
 | Physical handheld hardware build | ⏳ Phase 2 |
 | Three mode system | ⏳ Phase 2 |
 | GameOctane app | ⏳ Phase 2 |
@@ -197,6 +214,8 @@ OctaneOS is community-built from day one. If you're interested in contributing �
 All skill levels welcome. If you're learning Linux through this project, you're in the right place.
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a PR.
+
+**Checks before a PR:** `scripts/check-patches.sh` validates the kernel patches, and the `scripts/test-*.sh` suites (updater, release publishing, network hardening, and others) run in CI. `scripts/check-image.sh` verifies a finished build before it is released.
 
 ---
 

@@ -17,7 +17,9 @@ entirely. They can still be re-enabled explicitly if needed.
 diff --git a/CMakeLists.txt b/CMakeLists.txt
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -22,6 +22,6 @@
+@@ -19,9 +19,9 @@
+   OPTION(CPUINFO_LOG_TO_STDIO "Log errors, warnings, and information to stdout/stderr" ON)
+ ENDIF()
  OPTION(CPUINFO_BUILD_TOOLS "Build command-line tools" ON)
 -OPTION(CPUINFO_BUILD_UNIT_TESTS "Build cpuinfo unit tests" ON)
 -OPTION(CPUINFO_BUILD_MOCK_TESTS "Build cpuinfo mock tests" ON)
@@ -26,3 +28,5 @@ diff --git a/CMakeLists.txt b/CMakeLists.txt
 +OPTION(CPUINFO_BUILD_MOCK_TESTS "Build cpuinfo mock tests" OFF)
 +OPTION(CPUINFO_BUILD_BENCHMARKS "Build cpuinfo micro-benchmarks" OFF)
  OPTION(CPUINFO_BUILD_PKG_CONFIG "Build pkg-config manifest" ON)
+ OPTION(USE_SYSTEM_LIBS "Use system libraries instead of downloading and building them" OFF)
+ OPTION(USE_SYSTEM_GOOGLEBENCHMARK "Use system Google Benchmark library instead of downloading and building it" ${USE_SYSTEM_LIBS})

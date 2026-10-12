@@ -33,7 +33,8 @@ Signed-off-by: Jason Germino <jasongermino@gmail.com>
 diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
 --- a/drivers/usb/typec/tcpm/tcpm.c
 +++ b/drivers/usb/typec/tcpm/tcpm.c
-@@ -4036,8 +4036,19 @@ static void run_state_machine(struct tcpm_port *port)
+@@ -4035,8 +4035,21 @@ static void run_state_machine(struct tcpm_port *port)
+ 
  	case SRC_ATTACHED:
  		ret = tcpm_src_attach(port);
 -		tcpm_set_state(port, SRC_UNATTACHED,
@@ -54,3 +55,5 @@ diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
 +			tcpm_set_state(port, SRC_UNATTACHED, PD_T_PS_SOURCE_ON);
 +		}
  		break;
+ 	case SRC_STARTUP:
+ 		opmode =  tcpm_get_pwr_opmode(tcpm_rp_cc(port));

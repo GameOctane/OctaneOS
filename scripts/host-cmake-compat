@@ -2,11 +2,17 @@
 # CMake 4.0 dropped support for cmake_minimum_required < 3.5.
 # Only inject -DCMAKE_POLICY_VERSION_MINIMUM=3.5 in configure mode.
 # Non-configure modes (--build, --install, -E, etc.) reject -D flags.
+# Prefer the system cmake; fall back to the one Buildroot built (host-cmake)
+# on machines that have no system cmake installed.
+CMAKE=/usr/bin/cmake
+if [ ! -x "${CMAKE}" ]; then
+    CMAKE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/batocera/output/a733-cubie-a7s/host/bin/cmake"
+fi
 for arg in "$@"; do
     case "${arg}" in
         --build|--install|--open|-E|--workflow|--version|--help|-h)
-            exec /usr/bin/cmake "$@"
+            exec "${CMAKE}" "$@"
             ;;
     esac
 done
-exec /usr/bin/cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 "$@"
+exec "${CMAKE}" -DCMAKE_POLICY_VERSION_MINIMUM=3.5 "$@"

@@ -1,0 +1,78 @@
+#!/bin/sh
+# Records every start and exit of the boot-splash video player (mpv), so "the intro played
+# twice" can be checked from a log instead of argued about.
+#
+# Why this exists: S28splash starts mpv with --log-file, and mpv overwrites that file on every
+# start.  If mpv ever started twice, only the second run would be left, so mpv.log cannot show
+# it.  This script watches the process list instead and does not touch Batocera's S28splash,
+# so it does not drift from upstream.
+#
+# Output: /userdata/system/logs/splash-trace.log  (the previous boot is kept as .prev)
+#   up=<kernel seconds> mpv pids: [<pids>]    one line each time the set of mpv processes changes
+# Two different pids, or the list going [] -> [123] -> [] -> [456], means mpv started twice.
+# For every new mpv it also records the full command line, the parent pid, the environment
+# variables that show what launched it (a Wayland session, or an init script), and a snapshot of
+# the related processes, so the second start can be traced to its source.
+#
+# Runs in the background for the first 100 seconds of boot, then stops.  Off by default: enable with
+# octane.splashtrace=1 in /userdata/system/batocera.conf.
+# Test overrides: OCTANE_SPLASHTRACE_LOG, OCTANE_SPLASHTRACE_SECONDS, OCTANE_SPLASHTRACE_FG=1
+
+[ "$1" = "start" ] || exit 0
+
+# A diagnostic: off unless octane.splashtrace=1 is set in batocera.conf.
+# (OCTANE_SPLASHTRACE_FORCE=1 skips the setting; it exists for scripts/test-splash-trace.sh.)
+if [ "${OCTANE_SPLASHTRACE_FORCE:-0}" != "1" ] \
+   && [ "$(/usr/bin/batocera-settings-get octane.splashtrace 2>/dev/null)" != "1" ]; then
+    exit 0
+fi
+
+LOG="${OCTANE_SPLASHTRACE_LOG:-/userdata/system/logs/splash-trace.log}"
+WINDOW="${OCTANE_SPLASHTRACE_SECONDS:-100}"
+
+up() { cut -d' ' -f1 /proc/uptime; }
+
+# what is this process and where did it come from?
+describe() {
+    p="$1"
+    echo "    cmdline: $(tr '\0' ' ' < /proc/$p/cmdline 2>/dev/null | cut -c1-400)"
+    echo "    ppid: $(awk '/^PPid:/ {print $2}' /proc/$p/status 2>/dev/null)"
+    echo "    env: $(tr '\0' '\n' < /proc/$p/environ 2>/dev/null | grep -E '^(WAYLAND_DISPLAY|XDG_SESSION_TYPE|DISPLAY|runlevel|PREVLEVEL|SHLVL|_|PWD|HOME|TERM)=' | tr '\n' ' ')"
+    echo "    related processes now:"
+    ps -eo pid,ppid,args 2>/dev/null | grep -E 'S28|S3[01]|rcS|emulationstation|start-stop|labwc|splash|mpv' | grep -v grep | cut -c1-160 | sed 's/^/      /'
+}
+
+trace() {
+    mkdir -p "$(dirname "$LOG")"
+    [ -f "$LOG" ] && mv -f "$LOG" "$LOG.prev"
+    echo "=== splash trace started up=$(up) window=${WINDOW}s" > "$LOG"
+    prev="-"
+    es_seen=0
+    end=$(( $(up | cut -d. -f1) + WINDOW ))
+    while [ "$(up | cut -d. -f1)" -lt "$end" ]; do
+        now="$(pgrep -x mpv | tr '\n' ' ')"
+        if [ "$now" != "$prev" ]; then
+            echo "up=$(up) mpv pids: [${now}]" >> "$LOG"
+            for p in $now; do
+                case " $prev " in
+                    *" $p "*) ;;
+                    *) describe "$p" >> "$LOG" 2>&1 ;;
+                esac
+            done
+            prev="$now"
+        fi
+        if [ "$es_seen" -eq 0 ] && pgrep -f emulationstation-standalone > /dev/null 2>&1; then
+            echo "up=$(up) emulationstation-standalone running" >> "$LOG"
+            es_seen=1
+        fi
+        sleep 0.2
+    done
+    echo "=== splash trace ended up=$(up)" >> "$LOG"
+}
+
+if [ -n "$OCTANE_SPLASHTRACE_FG" ]; then
+    trace
+else
+    trace > /dev/null 2>&1 &
+fi
+exit 0

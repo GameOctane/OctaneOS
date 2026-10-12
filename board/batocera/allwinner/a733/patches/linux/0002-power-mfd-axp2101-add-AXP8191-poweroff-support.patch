@@ -16,13 +16,12 @@ to use the correct register before falling through to the generic path.
  1 file changed, 7 insertions(+)
 
 diff --git a/bsp/drivers/power/mfd/axp2101.c b/bsp/drivers/power/mfd/axp2101.c
-index aaaaaa1..bbbbbbb 100644
 --- a/bsp/drivers/power/mfd/axp2101.c
 +++ b/bsp/drivers/power/mfd/axp2101.c
-@@ -3522,6 +3522,13 @@ static void axp20x_power_off(void)
+@@ -3524,6 +3524,14 @@
  	if (axp20x_pm_power_off->variant == AXP288_ID)
  		return;
-
+ 
 +	if (axp20x_pm_power_off->variant == AXP8191_ID) {
 +		regmap_write(axp20x_pm_power_off->regmap,
 +			     AXP8191_POWER_DISABLE_POWER_DOWN_SEQUENCE,
@@ -33,3 +32,4 @@ index aaaaaa1..bbbbbbb 100644
 +
  	regmap_write(axp20x_pm_power_off->regmap, AXP20X_OFF_CTRL,
  		     AXP20X_OFF);
+ 

@@ -20,8 +20,15 @@ LINUX_OVERRIDE_SRCDIR = $(BR2_EXTERNAL)/../linux/kernel-66
 # (e.g. _GL_ATTRIBUTE_NODISCARD) that break under C23. Force C11/C++11 for
 # all host package compilations. local.mk is included after package/Makefile.in
 # sets HOST_CFLAGS ?= -O2, so += appends without losing the base flags.
+#
+# Only needed on GCC 15+. Older compilers (e.g. GCC 13 on Ubuntu 24.04) default
+# to C17/C++17, and forcing C++11 breaks host-cmake's bootstrap, which needs
+# std::make_unique and <filesystem>.
+HOST_GCC_MAJOR := $(shell $(or $(HOSTCC),gcc) -dumpversion | cut -d. -f1)
+ifeq ($(shell test $(HOST_GCC_MAJOR) -ge 15 && echo y),y)
 HOST_CFLAGS += -std=gnu11 -D_GL_ATTRIBUTE_NODISCARD= -Wno-incompatible-pointer-types
 HOST_CXXFLAGS += -std=gnu++11 -D_GL_ATTRIBUTE_NODISCARD=
+endif
 
 # CMake 4.0 dropped compatibility with cmake_minimum_required < 3.5.
 # BR2_CMAKE uses ?= so we can override it here. Point it to a thin wrapper
@@ -64,3 +71,22 @@ define LIBRETRO_SAME_CDI_BUILD_CMDS
 	$(if $(BR2_aarch64),PTR64=1 LIBRETRO_CPU= PLATFORM=arm64 ARCHITECTURE= NOASM=1) \
 	GIT_VERSION="" -C $(@D) -f Makefile.libretro
 endef
+
+# pipewire-ffmpeg-plugins does "rm -f .../spa-0.2/videoconvert" and then recreates it
+# as a directory.  When the main pipewire package has already installed videoconvert/
+# (build order differs between machines) that rm -f fails on a directory.  Clear it
+# first; the recipe reinstalls libspa-videoconvert.so right after.
+define PIPEWIRE_FFMPEG_PLUGINS_CLEAR_VIDEOCONVERT
+	rm -rf $(TARGET_DIR)/usr/lib/spa-0.2/videoconvert
+endef
+PIPEWIRE_FFMPEG_PLUGINS_PRE_INSTALL_TARGET_HOOKS += PIPEWIRE_FFMPEG_PLUGINS_CLEAR_VIDEOCONVERT
+
+# libretro-desmume: Makefile.libretro unconditionally enables the desktop-OpenGL renderer for
+# platform=unix (-DHAVE_OPENGL, -lGL, OGLRender.cpp).  This target only has GLES (no GL/gl.h),
+# so build DeSmuME with its software 3D renderer instead.  The same makefile also assumes an x86
+# host and enables the x86-only AsmJit JIT (DESMUME_JIT ?= 1); aarch64 has no JIT backend, so run
+# the interpreter.
+define LIBRETRO_DESMUME_DISABLE_OPENGL
+	$(SED) 's/-lpthread -lGL -lpcap/-lpthread -lpcap/; s/^\([[:space:]]*\)CXXFLAGS += -DHAVE_OPENGL -std=gnu++11/\1CXXFLAGS += -std=gnu++11/; s/^\([[:space:]]*\)DESMUME_OPENGL = 1/\1DESMUME_OPENGL = 0/; s/^\([[:space:]]*\)DESMUME_OPENGL_CORE = 1/\1DESMUME_OPENGL_CORE = 0/; s/DESMUME_JIT ?= 1/DESMUME_JIT ?= 0/' $(@D)/desmume/src/frontend/libretro/Makefile.libretro
+endef
+LIBRETRO_DESMUME_POST_PATCH_HOOKS += LIBRETRO_DESMUME_DISABLE_OPENGL

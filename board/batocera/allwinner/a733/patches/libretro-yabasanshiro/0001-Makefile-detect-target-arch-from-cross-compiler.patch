@@ -19,11 +19,10 @@ case.
 diff --git a/yabause/src/libretro/Makefile b/yabause/src/libretro/Makefile
 --- a/yabause/src/libretro/Makefile
 +++ b/yabause/src/libretro/Makefile
-@@ -49,3 +49,12 @@
- else ifneq (,$(findstring armv,$(platform)))
+@@ -50,6 +50,16 @@
  	override platform += unix
  endif
-+
+ 
 +ifeq ($(platform),unix)
 +   ifneq (,$(findstring aarch64,$(CC)))
 +      FORCE_GLES = 1
@@ -33,3 +32,7 @@ diff --git a/yabause/src/libretro/Makefile b/yabause/src/libretro/Makefile
 +      FLAGS += -DAARCH64
 +   endif
 +endif
++
+ CORE_DIR := .
+ 
+ TARGET_NAME = yabasanshiro

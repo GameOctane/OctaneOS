@@ -13,7 +13,9 @@ Change both to NEW to allow building with CMake 4.x.
 diff --git a/source/CMakeLists.txt b/source/CMakeLists.txt
 --- a/source/CMakeLists.txt
 +++ b/source/CMakeLists.txt
-@@ -9,10 +9,10 @@ message(STATUS "cmake version ${CMAKE_VERSION}")
+@@ -7,13 +7,13 @@
+ endif()
+ message(STATUS "cmake version ${CMAKE_VERSION}")
  if(POLICY CMP0025)
 -    cmake_policy(SET CMP0025 OLD) # report Apple's Clang as just Clang
 +    cmake_policy(SET CMP0025 NEW) # CMake 4.0+ requires NEW; Apple Clang vs Clang only matters on macOS
@@ -25,3 +27,5 @@ diff --git a/source/CMakeLists.txt b/source/CMakeLists.txt
 -    cmake_policy(SET CMP0054 OLD) # Only interpret if() arguments as variables or keywords when unquoted
 +    cmake_policy(SET CMP0054 NEW) # CMake 4.0+ requires NEW; quoted if() args not dereferenced
  endif()
+ 
+ project (x265)

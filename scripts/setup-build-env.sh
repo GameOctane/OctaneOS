@@ -1,14 +1,13 @@
 #!/bin/bash
 # =============================================================================
 # OctaneOS build environment setup
-# Supports: Ubuntu/Debian (GitHub Actions, WSL2), Arch/SteamOS (Steam Deck)
+# Supports: Ubuntu/Debian (GitHub Actions, WSL2, a normal Linux box).  Other distributions:
+# install the packages listed in section 3 yourself and run with SKIP_PACKAGE_INSTALL=1.
 #
 # Usage:
 #   chmod +x scripts/setup-build-env.sh
 #   ./scripts/setup-build-env.sh
-#
-# SteamOS note: run  sudo steamos-readonly disable  before this script,
-# then  sudo steamos-readonly enable  after if desired.
+#   SKIP_PACKAGE_INSTALL=1 ./scripts/setup-build-env.sh   # packages already installed, no sudo
 # =============================================================================
 
 set -e
@@ -45,68 +44,39 @@ if [[ "$(pwd)" == /mnt/* ]]; then
 fi
 
 # -----------------------------------------------------------------------------
-# 3. Install build dependencies — detects Ubuntu/Debian vs Arch/SteamOS
-#    Skipped inside Flatpak (e.g. VS Code on SteamOS) — sudo doesn't work there
-#    because libsudo_util.so.0 is absent from the Flatpak runtime. Install deps
-#    from Konsole (the native host terminal) before running the build.
+# 3. Install build dependencies (Ubuntu/Debian).  Set SKIP_PACKAGE_INSTALL=1 to skip this,
+#    for example when the packages are already installed or you have no sudo.
 # -----------------------------------------------------------------------------
-if [ -n "${FLATPAK_ID}" ]; then
-    echo "[INFO] Flatpak environment detected — skipping package install."
-    echo "       If build deps are missing, install them from Konsole (not VS Code terminal):"
-    echo "         sudo steamos-readonly disable"
-    echo "         sudo pacman -Sy --noconfirm --needed bc bison base-devel cpio dosfstools \\"
-    echo "           file flex gawk git ncurses openssl mtools python rsync unzip wget libnewt"
-    echo "         sudo steamos-readonly enable"
-else
+if [ "${SKIP_PACKAGE_INSTALL:-0}" = "1" ]; then
+    echo "[INFO] SKIP_PACKAGE_INSTALL=1: not installing packages."
+elif command -v apt-get &>/dev/null; then
     echo "[INFO] Installing build dependencies..."
-    if command -v apt-get &>/dev/null; then
-        sudo apt-get update -qq
-        sudo apt-get install -y \
-            bc \
-            bison \
-            build-essential \
-            cpio \
-            dosfstools \
-            file \
-            flex \
-            gawk \
-            git \
-            libncurses-dev \
-            libssl-dev \
-            mtools \
-            python3 \
-            python3-dev \
-            rsync \
-            unzip \
-            wget \
-            whiptail
-    elif command -v pacman &>/dev/null; then
-        # Arch Linux / SteamOS
-        # Requires: sudo steamos-readonly disable  (SteamOS only, before running this script)
-        sudo pacman -Sy --noconfirm --needed \
-            bc \
-            bison \
-            base-devel \
-            cpio \
-            dosfstools \
-            file \
-            flex \
-            gawk \
-            git \
-            ncurses \
-            openssl \
-            mtools \
-            python \
-            rsync \
-            unzip \
-            wget \
-            libnewt
-    else
-        echo "[WARNING] No supported package manager found (apt-get or pacman)."
-        echo "          Install manually: bc bison build-essential cpio dosfstools"
-        echo "                           file flex gawk git libncurses-dev libssl-dev"
-        echo "                           mtools python3 rsync unzip wget whiptail"
-    fi
+    sudo apt-get update -qq
+    sudo apt-get install -y \
+        bc \
+        bison \
+        build-essential \
+        cpio \
+        dosfstools \
+        file \
+        flex \
+        gawk \
+        git \
+        libncurses-dev \
+        libssl-dev \
+        mtools \
+        python3 \
+        python3-dev \
+        rsync \
+        unzip \
+        wget \
+        whiptail
+else
+    echo "[WARNING] apt-get not found, so no packages were installed."
+    echo "          Install manually: bc bison build-essential cpio dosfstools"
+    echo "                           file flex gawk git libncurses-dev libssl-dev"
+    echo "                           mtools python3 rsync unzip wget whiptail"
+    echo "          then run: SKIP_PACKAGE_INSTALL=1 ./scripts/setup-build-env.sh"
 fi
 
 # -----------------------------------------------------------------------------

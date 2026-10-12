@@ -30,8 +30,7 @@ Signed-off-by: Jason Germino <jasongermino@gmail.com>
 diff --git a/bsp/drivers/usb/typec/mux/sunxi-phy-switcher.c b/bsp/drivers/usb/typec/mux/sunxi-phy-switcher.c
 --- a/bsp/drivers/usb/typec/mux/sunxi-phy-switcher.c
 +++ b/bsp/drivers/usb/typec/mux/sunxi-phy-switcher.c
-@@ -283,6 +283,14 @@ sunxi_phy_mux_set(struct typec_mux_dev *mux, struct typec_mux_state *state)
- 		if ((data->conf & DP_CONF_SIGNALING_DP) && (data->status & DP_STATUS_HPD_STATE))
+@@ -284,6 +284,14 @@
  			phy_switcher->hpd_status = true;
  		else
  			phy_switcher->hpd_status = false;
@@ -44,3 +43,5 @@ diff --git a/bsp/drivers/usb/typec/mux/sunxi-phy-switcher.c b/bsp/drivers/usb/ty
 +		 */
 +		phy_switcher->hpd_status = true;
  	}
+ 
+ 	phy_switcher->phy_mode = phy_switcher->orientation | (state->mode << 2) \

@@ -42,20 +42,10 @@ Signed-off-by: OctaneOS <noreply@octaneos.local>
 ---
  drivers/input/joystick/xpad.c | 48 ++++++++++++++++++++++++++++------
  1 file changed, 40 insertions(+), 8 deletions(-)
-
 diff --git a/drivers/input/joystick/xpad.c b/drivers/input/joystick/xpad.c
-index 05c00421f..c2d4f89a1 100644
 --- a/drivers/input/joystick/xpad.c
 +++ b/drivers/input/joystick/xpad.c
-@@ -1640,6 +1640,7 @@ struct xpad_led {
- 	char name[16];
- 	struct led_classdev led_cdev;
- 	struct usb_xpad *xpad;
-+	struct delayed_work irq_out_cancel_work;
- 	struct delayed_work led_work;
- };
-
-@@ -1352,8 +1352,9 @@ static void xpad_irq_out(struct urb *urb)
+@@ -1352,6 +1352,7 @@
  	case -ECONNRESET:
  	case -ENOENT:
  	case -ESHUTDOWN:
@@ -63,20 +53,30 @@ index 05c00421f..c2d4f89a1 100644
  		/* this urb is terminated, clean up */
  		dev_dbg(dev, "%s - urb shutting down with status: %d\n",
  			__func__, status);
- 		xpad->irq_out_active = false;
+@@ -1359,8 +1360,8 @@
  		break;
-
+ 
  	default:
 -		dev_dbg(dev, "%s - nonzero urb status received: %d\n",
 -			__func__, status);
 +		dev_warn(dev, "%s - nonzero urb status received: %d\n",
 +			 __func__, status);
  		break;
-
-@@ -1713,6 +1713,20 @@ static void xpad_identify_controller(struct usb_xpad *xpad)
+ 	}
+ 
+@@ -1646,6 +1647,8 @@
+ 	char name[16];
+ 	struct led_classdev led_cdev;
+ 	struct usb_xpad *xpad;
++	struct delayed_work irq_out_cancel_work;
++	struct delayed_work led_work;
+ };
+ 
+ /*
+@@ -1719,6 +1722,29 @@
  	led_set_brightness(&xpad->led->led_cdev, (xpad->pad_nr % 4) + 2);
  }
-
+ 
 +static void xpad_irq_out_cancel_work_fn(struct work_struct *work)
 +{
 +	struct xpad_led *xpad_led = container_of(to_delayed_work(work),
@@ -90,33 +90,44 @@ index 05c00421f..c2d4f89a1 100644
 +	}
 +}
 +
- static void xpad_led_identify_work(struct work_struct *work)
- {
- 	struct xpad_led *xpad_led = container_of(to_delayed_work(work),
-@@ -1721,6 +1735,8 @@ static void xpad_led_identify_work(struct work_struct *work)
-
- 	xpad_identify_controller(xpad_led->xpad);
++static void xpad_led_identify_work(struct work_struct *work)
++{
++	struct xpad_led *xpad_led = container_of(to_delayed_work(work),
++						 struct xpad_led, led_work);
++
++	xpad_identify_controller(xpad_led->xpad);
 +	/* Cancel OUT URB after 5s if still pending (stops EP2 NAK flood) */
 +	schedule_delayed_work(&xpad_led->irq_out_cancel_work, msecs_to_jiffies(5000));
- }
-
-@@ -1761,7 +1777,8 @@ static int xpad_led_probe(struct usb_xpad *xpad)
- 	INIT_DELAYED_WORK(&led->led_work, xpad_led_identify_work);
- 	schedule_delayed_work(&led->led_work, msecs_to_jiffies(2000));
++}
++
+ static void xpad_led_set(struct led_classdev *led_cdev,
+ 			 enum led_brightness value)
+ {
+@@ -1759,7 +1785,9 @@
+ 	if (error)
+ 		goto err_free_id;
+ 
+-	xpad_identify_controller(xpad);
++	INIT_DELAYED_WORK(&led->led_work, xpad_led_identify_work);
++	schedule_delayed_work(&led->led_work, msecs_to_jiffies(2000));
 +	INIT_DELAYED_WORK(&led->irq_out_cancel_work, xpad_irq_out_cancel_work_fn);
-
+ 
  	return 0;
-
-@@ -1778,6 +1795,7 @@ static void xpad_led_disconnect(struct usb_xpad *xpad)
-
+ 
+@@ -1776,6 +1804,8 @@
+ 	struct xpad_led *xpad_led = xpad->led;
+ 
  	if (xpad_led) {
 +		cancel_delayed_work_sync(&xpad_led->irq_out_cancel_work);
- 		cancel_delayed_work_sync(&xpad_led->led_work);
++		cancel_delayed_work_sync(&xpad_led->led_work);
  		led_classdev_unregister(&xpad_led->led_cdev);
-
-@@ -2178,6 +2196,9 @@ static int xpad_probe(struct usb_interface *intf, const struct usb_device_id *id
-
+ 		ida_simple_remove(&xpad_pad_seq, xpad->pad_nr);
+ 		kfree(xpad_led);
+@@ -2165,6 +2195,7 @@
+ 	xpad->irq_in->transfer_flags |= URB_NO_TRANSFER_DMA_MAP;
+ 
  	usb_set_intfdata(intf, xpad);
 +	usb_disable_autosuspend(udev);
-
+ 
  	/* Packet type detection */
+ 	if (le16_to_cpu(udev->descriptor.idVendor) == 0x045e) { /* Microsoft controllers */

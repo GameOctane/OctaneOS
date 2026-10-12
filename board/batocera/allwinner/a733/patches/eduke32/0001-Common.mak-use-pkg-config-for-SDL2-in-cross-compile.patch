@@ -16,8 +16,14 @@ headers are already present in the cross-compile sysroot.
 diff --git a/Common.mak b/Common.mak
 --- a/Common.mak
 +++ b/Common.mak
-@@ -948,4 +948,4 @@
+@@ -945,8 +945,8 @@
+                 LINKERFLAGS += -no-pie
+             endif
+ 
 -            SDLCONFIG_CFLAGS := $(strip $(subst -Dmain=SDL_main,,$(shell $(SDLCONFIG) --cflags)))
 -            SDLCONFIG_LIBS := $(strip $(subst -mwindows,,$(shell $(SDLCONFIG) --libs)))
 +            SDLCONFIG_CFLAGS := $(strip $(subst -Dmain=SDL_main,,$(shell $(PKG_CONFIG) --cflags sdl2 2>/dev/null || $(SDLCONFIG) --cflags)))
 +            SDLCONFIG_LIBS := $(strip $(subst -mwindows,,$(shell $(PKG_CONFIG) --libs sdl2 2>/dev/null || $(SDLCONFIG) --libs)))
+ 
+             COMPILERFLAGS += $(SDLCONFIG_CFLAGS)
+             LIBS += $(SDLCONFIG_LIBS)

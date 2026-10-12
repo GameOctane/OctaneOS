@@ -1,0 +1,23 @@
+# Kernel options that we request but the built kernel does not have.
+# Read by scripts/check-kernel-config.py. Format:  accepted|gap  OPTION  reason
+#   accepted = known and harmless, stays silent.   gap = a real problem, printed on every run.
+# Added 2026-10-08. Reasons marked (unverified) were not traced to their parent option.
+
+# --- real gaps, not fixed yet ---
+gap ARM_PSCI_CPUIDLE CONFIG_CPU_IDLE is not set, so deep CPU sleep is unused (see audit note 2026-10-08).
+gap DEVFREQ_THERMAL no CONFIG_PM_DEVFREQ, so the GPU and memory cannot be throttled by the kernel's thermal system. Needs a review of the GPU driver's own DVFS before turning it on.
+gap DEVFREQ_GOV_SIMPLE_ONDEMAND no CONFIG_PM_DEVFREQ (same reason as DEVFREQ_THERMAL)
+
+# --- accepted ---
+accepted NUMA_BALANCING needs NUMA, which this kernel does not have (unverified)
+accepted CGROUP_HUGETLB needs hugetlb pages, which are not enabled (unverified)
+accepted BT_HCIUART_BCM needs BT_HCIUART; the Bluetooth radio is on USB (unverified)
+accepted REGULATOR_AXP20X the vendor AXP8191 driver is used instead (unverified)
+accepted MFD_AXP20X_I2C the vendor AXP8191 driver is used instead (unverified)
+accepted MFD_AXP20X_RSB the vendor AXP8191 driver is used instead (unverified)
+accepted USB_MUSB_SUNXI the vendor USB stack is used instead (unverified)
+accepted MMC_SUNXI the vendor sunxi-mmc driver is used instead (unverified)
+accepted LEDS_PWM needs PWM, which is off on purpose (AW_PWM pulls in the legacy display driver)
+accepted JOYSTICK_HIDRAW not an option in the mainline kernel (unverified)
+accepted DRM_PANFROST the GPU is PowerVR, not Mali (unverified)
+accepted DRM_LIMA the GPU is PowerVR, not Mali (unverified)

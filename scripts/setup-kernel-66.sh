@@ -9,9 +9,12 @@
 # Run this ONCE before ./scripts/build.sh.  Re-run to update (it is idempotent).
 #
 # Usage:
-#   ./scripts/setup-kernel-66.sh [--update]
+#   ./scripts/setup-kernel-66.sh [--update | --reset]
 #
 #   --update   Force a git pull on existing clones (slow, rarely needed)
+#   --reset    Throw away every change in the existing clones and re-apply the patches, the
+#              board device tree and the BSP fixes from scratch (no network, about a minute).
+#              scripts/build.sh does this by itself when the kernel inputs have changed.
 # =============================================================================
 
 set -euo pipefail
@@ -29,8 +32,11 @@ BSP_BRANCH="cubie-aiot-v1.4.8"
 PATCHES_DIR="${REPO_ROOT}/board/batocera/allwinner/a733/linux_patches_66"
 
 UPDATE=0
+RESET=0
 if [[ "${1:-}" == "--update" ]]; then
     UPDATE=1
+elif [[ "${1:-}" == "--reset" ]]; then
+    RESET=1
 fi
 
 # -----------------------------------------------------------------------------
@@ -66,6 +72,16 @@ else
         git -C "${KERNEL_DIR}/bsp" reset --hard "origin/${BSP_BRANCH}"
         rm -f "${STAMP}"
     fi
+fi
+
+# --reset: back to the clean checkouts, then fall through and redo every step below.
+if [ "${RESET}" -eq 1 ]; then
+    echo "[kernel-66] Resetting the kernel and BSP trees to their clean checkouts"
+    git -C "${KERNEL_DIR}" reset -q --hard HEAD
+    git -C "${KERNEL_DIR}" clean -qfd -e bsp
+    git -C "${KERNEL_DIR}/bsp" reset -q --hard HEAD
+    git -C "${KERNEL_DIR}/bsp" clean -qfd
+    rm -f "${STAMP}"
 fi
 
 # Skip remaining steps if already done and not forced
@@ -208,26 +224,42 @@ if ! grep -q "sun60i-a733-cubie-a7s.dtb" "${ALLWINNER_MK}"; then
 fi
 
 # -----------------------------------------------------------------------------
-# 6. Apply small OctaneOS patches
+# 6. Apply OctaneOS kernel patches
 #
-# Patches in linux_patches_66/ are applied in order.  Each patch is
-# idempotent: --forward means already-applied patches are skipped silently.
-# Currently: cpufreq sun50i A733 match (adds one line to match list).
-# The BSP may already include this — if so, the patch fails harmlessly.
+# Two series, applied in this order (the order the original, non-override flow
+# used, where Buildroot applied them itself):
+#   1. linux_patches_66/   the 6.6 bring-up series (BR2_LINUX_KERNEL_PATCH)
+#   2. patches/linux/      global patches for the "linux" package, added later
+# Buildroot applies neither once LINUX_OVERRIDE_SRCDIR is set, so it is done here.
+#
+# Any patch that fails aborts the script: a failed patch must never silently drop
+# a fix.  Patches that became redundant (e.g. already shipped in the BSP) live in an
+# obsolete/ subdirectory, which is not applied.
 # -----------------------------------------------------------------------------
-echo "[kernel-66] Step 9: apply OctaneOS patches"
-if [ -d "${PATCHES_DIR}" ]; then
-    for patch in $(find "${PATCHES_DIR}" -name '*.patch' | sort); do
+GLOBAL_PATCHES_DIR="${REPO_ROOT}/board/batocera/allwinner/a733/patches/linux"
+
+apply_patch_dir() {
+    local dir="$1" patch pname
+    if [ ! -d "${dir}" ]; then
+        echo "  No patches dir at ${dir} — skipping."
+        return 0
+    fi
+    for patch in $(find "${dir}" -maxdepth 1 -name '*.patch' | sort); do
         pname="$(basename "${patch}")"
         echo "  Applying ${pname} ..."
-        patch -d "${KERNEL_DIR}" -p1 --forward --reject-file=/tmp/octaneos-reject.rej \
-            < "${patch}" \
-            || { echo "  WARN: ${pname} may already be applied or context mismatch — check manually."; \
-                 rm -f /tmp/octaneos-reject.rej; }
+        if ! patch -d "${KERNEL_DIR}" -p1 --forward --no-backup-if-mismatch \
+                --reject-file=/dev/null < "${patch}"; then
+            echo "  ERROR: ${pname} failed to apply to ${KERNEL_DIR}." >&2
+            echo "         Fix the patch, or move it to obsolete/ if the tree already has it." >&2
+            exit 1
+        fi
     done
-else
-    echo "  No patches dir at ${PATCHES_DIR} — skipping."
-fi
+}
+
+echo "[kernel-66] Step 9: apply OctaneOS patches (linux_patches_66)"
+apply_patch_dir "${PATCHES_DIR}"
+echo "[kernel-66] Step 9b: apply OctaneOS global linux patches (patches/linux)"
+apply_patch_dir "${GLOBAL_PATCHES_DIR}"
 
 # -----------------------------------------------------------------------------
 # 7. Write a bsp_defconfig into arch/arm64/configs/ so Buildroot (or make

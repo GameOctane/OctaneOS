@@ -24,6 +24,8 @@ KERNEL_BUILD="${BUILD_DIR}/linux-custom"
 
 # GPU module source lives in the original BSP tree (not the build copy)
 KERNEL_SRC="$(realpath "$(dirname "${BASH_SOURCE[0]}")/../../../../linux/kernel-66")"
+# OctaneOS scripts folder (install-dev-key.sh and friends), found the same way
+REPO_ROOT_FOR_SCRIPTS="$(realpath "$(dirname "${BASH_SOURCE[0]}")/../../../../scripts")"
 GPU_MODULE_DIR="${KERNEL_SRC}/bsp/modules/gpu"
 
 # =============================================================================
@@ -98,9 +100,9 @@ echo "[post-build] pvrsrvkm.ko done."
 # batocera.version: compared against ota/cubie-a7s/stable/last/batocera.version
 # octaneos.version: compared against GitHub latest release tag by ES swissknife
 # =============================================================================
-OCTANE_BUILD_NUMBER=69
-OCTANE_RELEASE_TAG="v0.6.9"
-OCTANE_VERSION_STRING="0.6.9"
+OCTANE_BUILD_NUMBER=71
+OCTANE_RELEASE_TAG="v0.7.0"
+OCTANE_VERSION_STRING="0.7.0"
 # Write version files WITHOUT the leading 'v' — ES prepends " V" in the menu
 # label, so keeping "v0.6.9" would display as "OctaneOS V v0.6.9".
 echo "${OCTANE_VERSION_STRING}" \
@@ -111,6 +113,21 @@ echo "[post-build] batocera.version: ${OCTANE_VERSION_STRING}"
 echo "[post-build] octaneos.version: ${OCTANE_VERSION_STRING}"
 
 # =============================================================================
+# Developer SSH key: NOT part of a normal image.
+# With OCTANE_DEV_KEY_FILE=/absolute/path/to/key.pub in the environment of the build, that
+# public key is added so S13octane-init installs it on boot.  That gives the key's holder root
+# SSH on every device running the image, so such an image must never be released
+# (check-image.sh --release fails if the key is present).  No key is stored in the repo.
+# =============================================================================
+if [ -n "${OCTANE_DEV_KEY_FILE:-}" ]; then
+    "${REPO_ROOT_FOR_SCRIPTS}/install-dev-key.sh" "${OCTANE_DEV_KEY_FILE}" "${TARGET_DIR}" || exit 1
+    echo "[post-build] WARNING: developer SSH key INCLUDED (OCTANE_DEV_KEY_FILE). Do not release this image."
+else
+    rm -f "${TARGET_DIR}/usr/share/octane/dev-ssh-key.pub"
+    echo "[post-build] Developer SSH key not included."
+fi
+
+# =============================================================================
 # OctaneOS defaults — injected into datainit batocera.conf
 # Layers on top of the upstream file without maintaining a full copy.
 # =============================================================================
@@ -119,3 +136,24 @@ if [ -f "${DATAINIT_CONF}" ] && ! grep -q "^system.services=" "${DATAINIT_CONF}"
     printf '\n## OctaneOS defaults\nsystem.services=syncthing\n' >> "${DATAINIT_CONF}"
     echo "[post-build] Enabled syncthing in datainit batocera.conf"
 fi
+
+# Where the device looks for new versions.  EmulationStation's update check
+# (batocera-config canupdate) reads <updates.url>/<board>/<channel>/last/batocera.version, and
+# without this setting both it and EmulationStation fall back to Batocera's own server
+# (updates.batocera.org), which knows nothing about this board.  S13octane-init adds the same
+# line on a card that does not have it yet, so existing devices are covered too.
+if [ -f "${DATAINIT_CONF}" ] && ! grep -q "^updates.url=" "${DATAINIT_CONF}"; then
+    printf 'updates.url=https://raw.githubusercontent.com/GameOctane/OctaneOS/main/ota\n' >> "${DATAINIT_CONF}"
+    echo "[post-build] Set updates.url in datainit batocera.conf"
+fi
+
+# Network defaults (phase 1 of docs/security-design-phase1.md): hide the system folder and the
+# credential files from guests of the file share, no NFS server unless something is exported,
+# Syncthing's page local-only by default, Wi-Fi on by default.  Fails the build if the upstream
+# text it patches has changed.
+"${REPO_ROOT_FOR_SCRIPTS}/harden-network-defaults.py" "${TARGET_DIR}" || exit 1
+
+# The flight recorder (usr/bin/octane-flightlog, see docs/) is OFF by default: it reads the power
+# chip's registers every 30 s, which is fine for a tester but not something to run on every device.
+# Enable it for an investigation with octane.flightlog=1 in /userdata/system/batocera.conf.
+# Its logs are capped (20 MB per file, one rotated copy each).  Nothing is sent anywhere.

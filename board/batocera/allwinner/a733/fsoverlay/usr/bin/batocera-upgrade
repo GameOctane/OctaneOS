@@ -1,39 +1,68 @@
 #!/bin/bash
+# OctaneOS updater.  Installs boot.tar.xz from the latest GitHub release over /boot.
+#
+# Called by EmulationStation ("batocera-config update") and from a shell.
+#   batocera-upgrade                 download and install the latest release
+#   batocera-upgrade <https-url>     install from another https URL (the checksums are
+#                                    fetched from <url>.md5 and <url>.sha256)
+#   batocera-upgrade manual          install /userdata/system/upgrade/boot.tar.xz that you
+#                                    copied there yourself
+#
+# What it guarantees, and why (each point was a gap in the previous version):
+#   - It refuses to install anything without a checksum that matches.  The old version
+#     printed "Missing md5 file - proceed" and went ahead.
+#   - The archive is unpacked into /userdata first and checked there: it must be for this
+#     board and contain the files a boot needs.  /boot is not touched until all of that has
+#     passed.  The old version unpacked straight over /boot and only warned about a wrong
+#     board afterwards.
+#   - Files go into /boot one at a time as <name>.new followed by a rename, the large
+#     system layers first and the kernel, initrd, device tree and boot menu last, so the
+#     window in which a power cut leaves a new system next to an old kernel is a few
+#     seconds, not minutes.  (A full fix needs the initrd to swap everything in one step.)
+#   - /boot is always switched back to read-only, on every exit path.
+#   - Only one update runs at a time.
+#   - Downloads are https only and resume after a dropped Wi-Fi connection.
+#
+# Variables starting with OCTANE_ exist only so scripts/test-upgrade.sh can run this against
+# a fake /boot.  Do not set them on a device.
 
-do_clean() {
-    test -n "${GETPERPID}" && kill -9 "${GETPERPID}"
-    rm -f "/userdata/system/upgrade/upgrade_message.txt"
-    rm -f "/userdata/system/upgrade/boot.tar.xz"
-    rm -f "/userdata/system/upgrade/boot.tar.xz.md5"
-    if test $# -eq 1; then
-        [ "$1" = "0" ] && echo "Finally syncing of disk ...>>>100"
-        [ "$1" = "1" ] && echo "removed downloaded files, sync disk now"
-    fi
-}
-trap do_clean EXIT
+BOOT="${OCTANE_BOOT_DIR:-/boot}"
+UPG="${OCTANE_UPGRADE_DIR:-/userdata/system/upgrade}"
+CURL="${OCTANE_CURL:-curl}"
+MOUNT="${OCTANE_MOUNT:-mount}"
+LOCKFILE="${OCTANE_LOCK:-/var/run/octane-upgrade.lock}"
+RELEASE_URL="${OCTANE_RELEASE_URL:-https://github.com/GameOctane/OctaneOS/releases/latest/download}"
+
+STAGE="${UPG}/stage"
+FILE="${UPG}/boot.tar.xz"
+BOOT_RW=0
+GETPERPID=""
+[ -t 1 ] && TERMINAL=1 || TERMINAL=0
+TERMINAL="${OCTANE_TERMINAL:-${TERMINAL}}"
 
 do_upgmsg() {
     if [ $TERMINAL -eq 0 ]; then
-        echo "$1" > /userdata/system/upgrade/upgrade_message.txt
+        echo "$1" > "${UPG}/upgrade_message.txt"
         [ -n "$2" ] && sleep $2
     else
         echo "$1"
     fi
 }
 
+# Progress lines for the EmulationStation update screen ("text>>>percent").
 do_badgeines() {
     TARVAL=$1
     COUNT=0
     while true
     do
-        if [ -f "/userdata/system/upgrade/upgrade_message.txt" ]; then
+        if [ -f "${UPG}/upgrade_message.txt" ]; then
             [ $COUNT -gt 100 ] && COUNT=0
-            MSG_STRING="$(cat /userdata/system/upgrade/upgrade_message.txt)"
+            MSG_STRING="$(cat "${UPG}/upgrade_message.txt")"
             echo "$MSG_STRING>>>$COUNT"
             COUNT=$((COUNT+5))
             sleep 0.1
         else
-            CURVAL=$(stat --printf="%s" "/userdata/system/upgrade/boot.tar.xz")
+            CURVAL=$(stat --printf="%s" "${FILE}" 2>/dev/null || echo 0)
             CURVAL=$((CURVAL / 1024 / 1024))
             PER=$((CURVAL * 100 / TARVAL))
             echo "$CURVAL of $TARVAL MB downloaded ... >>> ${PER}%"
@@ -42,176 +71,215 @@ do_badgeines() {
     done
 }
 
+do_clean() {
+    [ -n "${GETPERPID}" ] && kill -9 "${GETPERPID}" 2>/dev/null
+    GETPERPID=""
+    rm -f "${UPG}/upgrade_message.txt"
+    rm -rf "${STAGE}"
+    if [ "${BOOT_RW}" = "1" ]; then
+        BOOT_RW=0
+        "${MOUNT}" -o remount,ro "${BOOT}"
+    fi
+}
+trap do_clean EXIT
+
+die() {
+    echo "ERROR: $*" >&2
+    do_upgmsg "Update failed: $*" 5
+    exit 1
+}
+
+# first field of a checksum file, lower case, only if it is a plausible hash of length $2
+read_sum() {
+    local v
+    v=$(awk 'NR==1 {print tolower($1)}' "$1" 2>/dev/null)
+    [[ "$v" =~ ^[0-9a-f]+$ ]] && [ "${#v}" -eq "$2" ] && echo "$v"
+}
+
+free_mb() { df -m "$1" | tail -1 | awk '{print $4}'; }
+
 # ---- MAIN ----
+mkdir -p "${UPG}" || { echo "ERROR: cannot create ${UPG}" >&2; exit 1; }
+exec 9> "${LOCKFILE}" || die "cannot open the lock file"
+flock -n 9 || die "another update is already running"
+
 echo "Starting OctaneOS upgrade..."
 
-board=$(cat /boot/boot/batocera.board)
-oldboard="$board"
+board=$(cat "${BOOT}/boot/batocera.board" 2>/dev/null) || die "cannot read this device's board name"
+[ -n "${board}" ] || die "this device's board name is empty"
 
-updatetype="$(/usr/bin/batocera-settings-get updates.type)"
-test "${updatetype}" != "stable" -a "${updatetype}" != "unstable" && updatetype="stable"
+MODE=net
+[ "$1" = "manual" ] && MODE=manual
+BINARY_URL="${RELEASE_URL}/boot.tar.xz"
+[ $# -eq 1 ] && [ "$1" != "manual" ] && BINARY_URL="$1"
 
-# OctaneOS: both files come directly from GitHub Releases
-BINARY_URL="https://github.com/GameOctane/OctaneOS/releases/latest/download/boot.tar.xz"
-MD5_URL="https://github.com/GameOctane/OctaneOS/releases/latest/download/boot.tar.xz.md5"
-
-# CLI override: batocera-upgrade <url> uses that URL directly for the binary
-test $# -eq 1 && [ "$1" != "manual" ] && BINARY_URL="$1"
-
-[ -t 1 ] && TERMINAL=1 || TERMINAL=0
+CURL_OPTS=(-A "OctaneOS-upgrade/1.0" --connect-timeout 30 --retry 3 --retry-delay 5)
+if [ "${OCTANE_ALLOW_INSECURE:-0}" != "1" ]; then
+    case "${BINARY_URL}" in
+        https://*) ;;
+        *) die "only https:// update URLs are accepted" ;;
+    esac
+    CURL_OPTS+=(--proto '=https' --proto-redir '=https' --tlsv1.2)
+fi
 
 # ---- DOWNLOAD ----
-
-if [ "$1" == "manual" ]; then
-    if [ -f "/userdata/system/upgrade/boot.tar.xz" ]; then
-        size=$(xz --robot -l "/userdata/system/upgrade/boot.tar.xz" | tail -1 | awk '{print $5}')
-        size=$((size / 1024 / 1024))
-        echo "Using local file: /userdata/system/upgrade/boot.tar.xz (${size}MB uncompressed)"
-    else
-        echo "Error: Local file /userdata/system/upgrade/boot.tar.xz not found."
-        exit 1
-    fi
-else
-    mkdir -p /userdata/system/upgrade || exit 1
-
+if [ "${MODE}" = "net" ]; then
     echo "url: ${BINARY_URL}"
-    headers=$(curl -A "OctaneOS-upgrade/1.0" -sfIL "${BINARY_URL}")
-    test $? -eq 0 || exit 1
-    size=$(echo "$headers" | grep -i "Content-Length: " | tail -1 | sed -e s+'^Content-Length: \([0-9]*\).*$'+'\1'+I)
-    size=$((size / 1024 / 1024))
-    size=$((size * 105 / 100))
-    test $? -eq 0 || exit 1
-    echo "need to download and extract ~${size}mb"
-fi
+    headers=$("${CURL}" "${CURL_OPTS[@]}" -sfIL "${BINARY_URL}") || die "cannot reach ${BINARY_URL}"
+    size=$(echo "${headers}" | tr -d '\r' | grep -i "^Content-Length: " | tail -1 | sed -e 's/^[^:]*: *//')
+    [[ "${size}" =~ ^[0-9]+$ ]] && [ "${size}" -gt 0 ] || die "could not read the size of the update"
+    size_mb=$((size / 1024 / 1024))
+    echo "need to download and unpack ~$((size_mb * 22 / 10))mb"
 
-# ---- FREE SPACE CHECK ----
+    need=$((size_mb * 22 / 10 + 100))
+    [ "$(free_mb "${UPG}")" -ge "${need}" ] || die "not enough space in ${UPG} (need ${need}MB, have $(free_mb "${UPG}")MB)"
 
-if [ "$1" != "manual" ]; then
-    filesystems="/userdata/system /boot"
-else
-    filesystems="/boot"
-fi
-
-for fs in $filesystems
-do
-    freespace=$(df -m "${fs}" | tail -1 | awk '{print $4}')
-    test $? -eq 0 || exit 1
-    if test $((size + 10)) -gt "${freespace}"
-    then
-        echo "Not enough space on ${fs} to perform the update"
-        echo "Required: $((size + 10))MB | Available: ${freespace}MB"
-        exit 1
-    fi
-done
-
-# ---- DOWNLOAD BINARY ----
-
-if [ "$1" != "manual" ]; then
-    if [ $TERMINAL -eq 0 ]; then
-        touch "/userdata/system/upgrade/boot.tar.xz"
-        do_badgeines "${size}" &
-        GETPERPID=$!
-        curl -A "OctaneOS-upgrade/1.0" -sfL "${BINARY_URL}" -o "/userdata/system/upgrade/boot.tar.xz" || exit 1
-        do_upgmsg "Calculating md5 checksum ..."
-    else
-        curl -A "OctaneOS-upgrade/1.0" -fL "${BINARY_URL}" -o "/userdata/system/upgrade/boot.tar.xz" || exit 1
-        echo "Check proper file download, checking md5sum - please wait"
-    fi
-fi
-
-# ---- MD5 VALIDATION ----
-
-if [ "$1" != "manual" ]; then
-    curl -A "OctaneOS-upgrade/1.0" -sfL "${MD5_URL}" -o "/userdata/system/upgrade/boot.tar.xz.md5"
-fi
-if test -e "/userdata/system/upgrade/boot.tar.xz.md5"
-then
-    DISTMD5=$(cat "/userdata/system/upgrade/boot.tar.xz.md5")
-    CURRMD5=$(md5sum "/userdata/system/upgrade/boot.tar.xz" | sed -e s+' .*$'++)
-    if test "${DISTMD5}" = "${CURRMD5}"
-    then
-        do_upgmsg "Checksum validated ..." 2
-    else
-        do_upgmsg "Checksum error ..." 5
-        exit 1
-    fi
-else
-    do_upgmsg "Missing md5 file - proceed ..." 3
-fi
-
-# ---- EXTRACT TO /boot ----
-
-echo "remounting /boot in rw"
-if ! mount -o remount,rw /boot
-then
-    exit 1
-fi
-
-do_upgmsg "Backing up config files ..." 0.5
-BOOTFILES="config.txt batocera-boot.conf"
-for BOOTFILE in ${BOOTFILES}
-do
-    if test -e "/boot/${BOOTFILE}"
-    then
-        if ! cp "/boot/${BOOTFILE}" "/boot/${BOOTFILE}.upgrade"
-        then
-            exit 1
+    # keep a partial download so a dropped connection can resume; drop anything too big
+    [ -f "${FILE}" ] && [ "$(stat -c %s "${FILE}")" -gt "${size}" ] && rm -f "${FILE}"
+    if [ ! -f "${FILE}" ] || [ "$(stat -c %s "${FILE}")" -lt "${size}" ]; then
+        if [ $TERMINAL -eq 0 ]; then
+            touch "${FILE}"
+            do_badgeines "$((size_mb > 0 ? size_mb : 1))" &
+            GETPERPID=$!
+            disown "${GETPERPID}" 2>/dev/null   # so the shell does not print "Killed" when we stop it
+            "${CURL}" "${CURL_OPTS[@]}" -sfL -C - -o "${FILE}" "${BINARY_URL}" || die "download failed (run the update again to resume)"
+            kill -9 "${GETPERPID}" 2>/dev/null; GETPERPID=""
+        else
+            "${CURL}" "${CURL_OPTS[@]}" -fL -C - -o "${FILE}" "${BINARY_URL}" || die "download failed (run the update again to resume)"
         fi
     fi
-done
+    [ "$(stat -c %s "${FILE}")" -eq "${size}" ] || die "the downloaded file is not the size the server announced"
+else
+    [ -f "${FILE}" ] || die "local file ${FILE} not found"
+    echo "Using local file: ${FILE}"
+fi
 
-BOOT_BEFORE=$(find /boot -mindepth 1 | sed 's|^/boot/||' | grep -vE '^(boot/batocera|boot/batocera\.update|boot/rufomaculata|boot/rufomaculata\.update|boot/overlay|boot/overlay\.old|[^/]+\.upgrade|boot\.stale|.*ldlinux.*)$' | sort)
+# ---- CHECKSUM: required, every published one must match ----
+do_upgmsg "Checking checksums ..."
+rm -f "${FILE}.md5.dl" "${FILE}.sha256.dl"
+if [ "${MODE}" = "net" ]; then
+    "${CURL}" "${CURL_OPTS[@]}" -sfL -o "${FILE}.md5.dl" "${BINARY_URL}.md5" 2>/dev/null || rm -f "${FILE}.md5.dl"
+    "${CURL}" "${CURL_OPTS[@]}" -sfL -o "${FILE}.sha256.dl" "${BINARY_URL}.sha256" 2>/dev/null || rm -f "${FILE}.sha256.dl"
+    MD5_FILE="${FILE}.md5.dl"; SHA_FILE="${FILE}.sha256.dl"
+else
+    MD5_FILE="${FILE}.md5"; SHA_FILE="${FILE}.sha256"
+fi
 
+checked=0
+if [ -f "${SHA_FILE}" ]; then
+    want=$(read_sum "${SHA_FILE}" 64) || { rm -f "${FILE}" "${FILE}.md5.dl" "${FILE}.sha256.dl"; die "the published sha256 file is malformed"; }
+    got=$(sha256sum "${FILE}" | awk '{print $1}')
+    [ "${want}" = "${got}" ] || { rm -f "${FILE}" "${FILE}.md5.dl" "${FILE}.sha256.dl"; die "sha256 checksum does not match; the download was removed"; }
+    checked=1
+fi
+if [ -f "${MD5_FILE}" ]; then
+    want=$(read_sum "${MD5_FILE}" 32) || { rm -f "${FILE}" "${FILE}.md5.dl" "${FILE}.sha256.dl"; die "the published md5 file is malformed"; }
+    got=$(md5sum "${FILE}" | awk '{print $1}')
+    [ "${want}" = "${got}" ] || { rm -f "${FILE}" "${FILE}.md5.dl" "${FILE}.sha256.dl"; die "md5 checksum does not match; the download was removed"; }
+    checked=1
+fi
+rm -f "${FILE}.md5.dl" "${FILE}.sha256.dl"
+if [ "${checked}" -eq 0 ]; then
+    if [ "${MODE}" = "net" ]; then
+        die "no checksum is published for this update, so it will not be installed"
+    fi
+    echo "WARNING: no checksum file next to the update; installing it unverified (manual mode)"
+fi
+do_upgmsg "Checksum validated ..." 2
+
+xz -t "${FILE}" 2> /dev/null || die "the archive is damaged (it does not decompress)"
+
+# ---- UNPACK INTO A STAGING FOLDER; /boot IS NOT TOUCHED YET ----
+usize=$(xz --robot -l "${FILE}" | awk '/^totals/ {print $5}')
+[[ "${usize}" =~ ^[0-9]+$ ]] || die "cannot read the unpacked size of the archive"
+usize_mb=$((usize / 1024 / 1024))
+[ "$(free_mb "${UPG}")" -ge $((usize_mb + 100)) ] || die "not enough space in ${UPG} to unpack the update"
+
+rm -rf "${STAGE}"; mkdir -p "${STAGE}" || die "cannot create the staging folder"
 do_upgmsg "Extracting files ..."
-if ! (cd /boot && xz -dc < "/userdata/system/upgrade/boot.tar.xz" | tar xvf - --no-same-owner)
-then
-    exit 1
-fi
+( set -o pipefail; xz -dc < "${FILE}" | tar -xf - -C "${STAGE}" --no-same-owner ) || die "unpacking failed; /boot has not been touched"
+[ -z "$(find "${STAGE}" ! -type f ! -type d | head -1)" ] || die "the archive contains links or special files; refusing it"
 
-do_upgmsg "Generating stale file list ..."
-TARBALL_CONTENTS=$(xz -dc < "/userdata/system/upgrade/boot.tar.xz" | tar tf - | sed -e 's|^\./||' -e 's|/$||' | sort -u)
-comm -23 \
-    <(echo "$BOOT_BEFORE") \
-    <(echo "$TARBALL_CONTENTS") \
-    > /boot/boot.stale
-
-STALE_COUNT=$(wc -l < /boot/boot.stale)
-if [ "$STALE_COUNT" -eq 0 ]; then
-    echo "No stale files detected"
-    rm -f /boot/boot.stale
-else
-    echo "Stale files to be removed on next boot (${STALE_COUNT}):"
-    cat /boot/boot.stale
-fi
-
-do_upgmsg "Restoring config files ..." 0.5
-for BOOTFILE in ${BOOTFILES}
-do
-    if test -e "/boot/${BOOTFILE}.upgrade"
-    then
-        if ! mv "/boot/${BOOTFILE}.upgrade" "/boot/${BOOTFILE}"
-        then
-            echo "Outch" >&2
-        fi
-    fi
+# ---- CHECK WHAT WAS UNPACKED ----
+do_upgmsg "Checking the update ..."
+newboard=$(cat "${STAGE}/boot/batocera.board" 2>/dev/null)
+[ -n "${newboard}" ] || die "the update has no board name; /boot has not been touched"
+[ "${newboard}" = "${board}" ] || die "this update is for '${newboard}' but this device is '${board}'; /boot has not been touched"
+for need_file in boot/Image boot/initrd.lz4 boot/batocera.update boot/rufomaculata.update extlinux/extlinux.conf; do
+    [ -s "${STAGE}/${need_file}" ] || die "the update is missing ${need_file}; /boot has not been touched"
 done
+ls "${STAGE}"/boot/*.dtb > /dev/null 2>&1 || die "the update has no device tree; /boot has not been touched"
 
-do_upgmsg "Doing final cleanups ..." 0.5
-if ! mount -o remount,ro /boot
-then
-    exit 1
-fi
+biggest=$(find "${STAGE}" -type f -printf '%s\n' | sort -n | tail -1)
+[ "$(free_mb "${BOOT}")" -ge $((biggest / 1024 / 1024 + 64)) ] || die "not enough space on /boot to install the update"
 
-do_clean $TERMINAL
+# ---- INSTALL INTO /boot ----
+echo "remounting /boot in rw"
+"${MOUNT}" -o remount,rw "${BOOT}" || die "cannot make /boot writable"
+BOOT_RW=1
+
+# files that existed before and are not in the update get listed as stale (removed next boot)
+BOOT_BEFORE=$(cd "${BOOT}" && find . -mindepth 1 | sed 's|^\./||' | grep -vE '^(boot/batocera|boot/batocera\.update|boot/rufomaculata|boot/rufomaculata\.update|boot/overlay|boot/overlay\.old|[^/]+\.upgrade|boot\.stale|.*ldlinux.*|boot-custom\.sh|postshare\.sh|.*\.new)$' | sort)
+
+install_one() {
+    local rel="$1" dst="${BOOT}/$1"
+    # config.txt and batocera-boot.conf are the user's; keep them if they exist
+    case "${rel}" in
+        config.txt|batocera-boot.conf) [ -e "${dst}" ] && return 0 ;;
+    esac
+    mkdir -p "$(dirname "${dst}")" || return 1
+    if cp -f "${STAGE}/${rel}" "${dst}.new" && mv -f "${dst}.new" "${dst}"; then
+        return 0
+    fi
+    rm -f "${dst}.new"
+    return 1
+}
+
+install_list() {
+    local rel
+    while IFS= read -r rel; do
+        [ -n "${rel}" ] || continue
+        install_one "${rel}" || die "installing ${rel} failed; /boot may be half updated, run the update again"
+    done
+}
+
+( cd "${STAGE}" && find . -type d -mindepth 1 | sed 's|^\./||' ) | while IFS= read -r d; do mkdir -p "${BOOT}/${d}"; done
+
+ALL_FILES=$( cd "${STAGE}" && find . -type f | sed 's|^\./||' | sort )
+
+# install_list reads file names from stdin.  It must run in THIS shell (so that die really
+# stops the update), hence process substitution instead of a pipe into it.
+do_upgmsg "Installing system layers ..."
+install_list < <(echo "${ALL_FILES}" | grep -E '^boot/[^/]+\.update$')
+sync
+do_upgmsg "Installing kernel and boot files ..."
+install_list < <(echo "${ALL_FILES}" | grep -E '^boot/[^/]+$' | grep -vE '\.update$')
+install_list < <(echo "${ALL_FILES}" | grep -vE '^boot/[^/]+$' | grep -vxE 'extlinux/extlinux\.conf')
+install_list < <(echo "${ALL_FILES}" | grep -xE 'extlinux/extlinux\.conf')
 sync
 
-[ $TERMINAL -eq 0 ] && exit 0
-
-newboard=$(cat /boot/boot/batocera.board)
-if [ "$oldboard" != "$newboard" ]
-then
-    echo; echo "WARNING: Current board is ${oldboard}, applied update is for ${newboard}"
+do_upgmsg "Generating stale file list ..."
+TARBALL_CONTENTS=$(cd "${STAGE}" && find . -mindepth 1 | sed 's|^\./||' | sort -u)
+comm -23 <(echo "${BOOT_BEFORE}") <(echo "${TARBALL_CONTENTS}") > "${BOOT}/boot.stale"
+STALE_COUNT=$(wc -l < "${BOOT}/boot.stale")
+if [ "${STALE_COUNT}" -eq 0 ]; then
+    echo "No stale files detected"
+    rm -f "${BOOT}/boot.stale"
+else
+    echo "Stale files to be removed on next boot (${STALE_COUNT}):"
+    cat "${BOOT}/boot.stale"
 fi
 
+do_upgmsg "Doing final cleanups ..." 0.5
+rm -f "${FILE}"
+# manual mode: the checksum files next to the archive were put there by the user; remove them too
+[ "${MODE}" = "manual" ] && rm -f "${FILE}.md5" "${FILE}.sha256"
+do_clean
+sync
+
+if [ $TERMINAL -eq 0 ]; then
+    exit 0
+fi
+echo "Finally syncing of disk ...>>>100"
 echo; echo "Done. Please reboot so the changes take effect!"
 exit 0

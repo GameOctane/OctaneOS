@@ -21,8 +21,10 @@ are removed from the target so the shell never sees the braces.
 diff --git a/CMakeLists.txt b/CMakeLists.txt
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -224,6 +224,15 @@ endif()
-
+@@ -224,6 +224,17 @@
+ endforeach(def_name)
+ 
+ 
 +# Write FONTS and LOW_DPI_FONTS to a header to avoid bash brace-expansion
 +# of -DFONTS={...},{...} flags when make passes them through the shell.
 +if(DEFINED FONTS OR DEFINED LOW_DPI_FONTS)
@@ -37,15 +39,23 @@ diff --git a/CMakeLists.txt b/CMakeLists.txt
  # These variables are passed as C macro definitons if they exist.
  foreach(
    def_name
-@@ -233,8 +242,6 @@ foreach(
+@@ -233,8 +244,6 @@
+   PPU_Y
+   AUTOSCALE
    RES_DIR
 -  FONTS
 -  LOW_DPI_FONTS
    FILE_SYSTEM
-
+   CMDR_KEY_UP
+   CMDR_KEY_RIGHT
 diff --git a/resourceManager.cpp b/resourceManager.cpp
 --- a/resourceManager.cpp
 +++ b/resourceManager.cpp
-@@ -9,0 +9,1 @@
+@@ -6,6 +6,7 @@
+ #else
+ #include <SDL_rotozoom.h>
+ #endif
 +#include "fontconfig.h"
  #include "resourceManager.h"
+ #include "def.h"
+ #include "screen.h"
