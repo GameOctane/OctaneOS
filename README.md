@@ -84,7 +84,7 @@ Full hardware specification available in the [Octane Platform Spec v1.4](docs/Oc
 ## Updates and security
 
 - **Updating:** the device checks GameOctane's GitHub releases. The updater refuses a download without a matching checksum, unpacks into a staging folder, checks it is for your board, and only then replaces boot files. See [UPGRADING.md](UPGRADING.md) for what to do before updating and how to recover.
-- **Network defaults:** the file share hides the `system` folder (SSH keys, settings, Wi-Fi password) and RetroAchievements credential files from guests; NFS only runs if you export something; Syncthing's page is local-only unless you set `system.syncthing.lan=1`. SSH and file transfer stay on. The default SSH login is `root` / `linux` — change it. Design notes: [docs/security-design-phase1.md](docs/security-design-phase1.md).
+- **Network defaults:** the file share hides the `system` folder (SSH keys, settings, Wi-Fi password) and RetroAchievements credential files from guests; NFS only runs if you export something; Syncthing's page is local-only unless you set `system.syncthing.lan=1`. SSH and file transfer stay on. The default SSH login is `root` / `linux` — change it. **How to reach your files, set a real password and reopen Syncthing: [docs/network-and-security.md](docs/network-and-security.md).** Design notes: [docs/security-design-phase1.md](docs/security-design-phase1.md).
 - **Release notes:** each release lists whether it can be installed over the air and whether to back up first.
 
 ---
