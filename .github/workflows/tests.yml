@@ -1,0 +1,43 @@
+# Fast checks on every push to main and every pull request.  These are small scripts (seconds to a
+# few minutes); they do NOT build the OS image.  Images are built on the maintainer's own machine
+# (scripts/build.sh), because a full build is too big for GitHub's free runners.
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# The checks only read the repository.
+permissions:
+  contents: read
+
+jobs:
+  check-patches:
+    name: Check patches
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      # Catches patches with wrong hunk counts and patch folders Buildroot never applies.
+      - run: bash scripts/check-patches.sh
+
+  test-scripts:
+    name: Test the updater, release and network scripts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install what the tests need
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq xz-utils util-linux dash squashfs-tools > /dev/null
+      # The device updater against a fake /boot (a normal update, and every case where an update must
+      # be refused without touching /boot), plus the other script test suites.  No hardware needed.
+      - name: Run the test suites
+        run: |
+          set -e
+          for t in test-upgrade test-prune-overlay test-dev-key test-update-version \
+                   test-publish-release test-harden-network test-splash-trace; do
+            echo "::group::$t"
+            bash "scripts/$t.sh"
+            echo "::endgroup::"
+          done
