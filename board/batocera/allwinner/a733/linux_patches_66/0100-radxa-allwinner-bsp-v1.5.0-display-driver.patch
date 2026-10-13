@@ -6,7 +6,7 @@ Base:    branch cubie-aiot-v1.4.8 @ f9a496c24bf6b7cc31c4b5c716ece58b2c287f01
          (what scripts/setup-kernel-66.sh clones into bsp/)
 New:     branch cubie-aiot-v1.5.0 @ 6d5e93bf106ceb6591c49e0ddd2273881e58de56
          (tag aiot-linux-v1.5.0, released 2026-07-15, plus later fixes)
-Scope:   only files under drivers/drm that differ between the two branches (31 files:
+Scope:   only files under drivers/drm that differ between the two branches (36 files:
          DisplayPort controller and driver, display engine, HDMI, bridges, new DP HDCP
          files, Kconfig/Makefile). The GPU (pvr), Wi-Fi and everything else stay on v1.4.8.
 Why:     v1.5.0 enables the DP transmitter output before link training, enables
@@ -1363,6 +1363,47 @@ index 8f5871e..5c480fd 100644
 +MODULE_VERSION("1.0.1");
  MODULE_DESCRIPTION("eDP General Panel Driver");
  MODULE_LICENSE("GPL");
+diff --git a/bsp/drivers/drm/panel/panel-dsi.c b/bsp/drivers/drm/panel/panel-dsi.c
+index 84ad03f..a535ec3 100644
+--- a/bsp/drivers/drm/panel/panel-dsi.c
++++ b/bsp/drivers/drm/panel/panel-dsi.c
+@@ -105,7 +105,6 @@ static struct device *sunxi_of_get_child_panel(struct device *dev)
+ 	}
+ 
+ 	child_panel_dev = &pdev->dev;
+-	get_device(child_panel_dev);
+ 	platform_device_put(pdev);
+ 
+ CHILD_PANEL_PUT:
+@@ -592,7 +591,6 @@ static int panel_dsi_parse_dt(struct panel_dsi *dsi_panel)
+ 				kfree(gpio_name);
+ 				return ret;
+ 			}
+-			dsi_panel->enable_gpio[i] = NULL;
+ 		}
+ 		kfree(gpio_name);
+ 	}
+@@ -605,7 +603,6 @@ static int panel_dsi_parse_dt(struct panel_dsi *dsi_panel)
+ 			dev_err(dsi_panel->dev, "failed to request %s GPIO: %d\n", "reset", ret);
+ 			return ret;
+ 		}
+-		dsi_panel->reset_gpio = NULL;
+ 	}
+ 
+ 	of_property_read_u32(np, "dsc,vrr-setp", &dsi_panel->vrr_setp);
+@@ -876,8 +873,10 @@ static int panel_dsi_probe(struct mipi_dsi_device *dsi)
+ 		panel_drv = panel_dev->driver;
+ 		if (panel_drv && try_module_get(panel_drv->owner))
+ 			module_put(panel_drv->owner);
+-		else
+-			DRM_WARN("[DSI-PANEL] panel-dsi driver not yet probed, continue anyway\n");
++		else {
++			DRM_ERROR("[DSI-PANEL] panel-dsi driver not probe\n");
++			return -EPROBE_DEFER;
++		}
+ 
+ 		np = panel_dev->of_node;
+ 		dsi_panel->panel_dev = panel_dev;
 diff --git a/bsp/drivers/drm/sunxi_device/hardware/lowlevel_de/afbd/de_fbd_atw.c b/bsp/drivers/drm/sunxi_device/hardware/lowlevel_de/afbd/de_fbd_atw.c
 index 1ae6562..f96bcb8 100644
 --- a/bsp/drivers/drm/sunxi_device/hardware/lowlevel_de/afbd/de_fbd_atw.c
@@ -3913,6 +3954,58 @@ index 4d14ec9..147ae4b 100644
  
  #define HPD_EVENT_MASK					BIT(0)
  #define HPD_IRQ_MASK					BIT(1)
+diff --git a/bsp/drivers/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_avp.c b/bsp/drivers/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_avp.c
+index 346fe8f..1dfccff 100644
+--- a/bsp/drivers/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_avp.c
++++ b/bsp/drivers/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_avp.c
+@@ -750,15 +750,9 @@ int dw_audio_set_info(void *data)
+ {
+ 	struct dw_hdmi_dev_s *hdmi = dw_get_hdmi();
+ 	struct dw_audio_s *info = (struct dw_audio_s *)data;
+-	struct dw_audio_s *audio;
++	struct dw_audio_s *audio = dw_get_audio();
+ 	int ret = 0;
+ 
+-	if (!hdmi) {
+-		hdmi_err("hdmi dev is null, audio set info skip\n");
+-		return -ENODEV;
+-	}
+-
+-	audio = dw_get_audio();
+ 	mutex_lock(&hdmi->aud_lock_params);
+ 	ret = _dw_audio_param_reset(audio);
+ 	if (ret != 0) {
+@@ -815,14 +809,7 @@ int dw_audio_on(void)
+ {
+ 	int ret = 0;
+ 	struct dw_hdmi_dev_s *hdmi = dw_get_hdmi();
+-	struct dw_audio_s *audio;
+-
+-	if (!hdmi) {
+-		hdmi_err("hdmi dev is null, audio on skip\n");
+-		return -ENODEV;
+-	}
+-
+-	audio = &hdmi->audio_dev;
++	struct dw_audio_s *audio = &hdmi->audio_dev;
+ 
+ 	_dw_audio_param_print(audio);
+ 
+diff --git a/bsp/drivers/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_cec.c b/bsp/drivers/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_cec.c
+index 84eb7e1..818c90f 100644
+--- a/bsp/drivers/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_cec.c
++++ b/bsp/drivers/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_cec.c
+@@ -93,9 +93,8 @@ int dw_cec_set_enable(u8 enable)
+ 		/* set logical addr */
+ 		dw_cec_set_logical_addr(0x0);
+ 
+-		/* mask and clear all pending interrupt state */
++		/* clear all interrupt state */
+ 		dw_write(CEC_MASK, ~0);
+-		dw_mc_irq_clear_state(DW_MC_IRQ_CEC, ~0);
+ 
+ 		/* enable interrupt */
+ 		mask |= CEC_MASK_DONE_MASK;
 diff --git a/bsp/drivers/drm/sunxi_device/hardware/lowlevel_hdmi20/phy_inno.c b/bsp/drivers/drm/sunxi_device/hardware/lowlevel_hdmi20/phy_inno.c
 index 958b043..336283e 100644
 --- a/bsp/drivers/drm/sunxi_device/hardware/lowlevel_hdmi20/phy_inno.c
@@ -9472,6 +9565,93 @@ index 6241d23..bf54362 100644
  	return NULL;
  }
  #endif
+diff --git a/bsp/drivers/drm/sunxi_device/sunxi_hdmi.c b/bsp/drivers/drm/sunxi_device/sunxi_hdmi.c
+index c6e53e0..7816442 100644
+--- a/bsp/drivers/drm/sunxi_device/sunxi_hdmi.c
++++ b/bsp/drivers/drm/sunxi_device/sunxi_hdmi.c
+@@ -364,9 +364,11 @@ void sunxi_cec_enable(u8 state)
+ 	dw_cec_set_enable(state == SUNXI_HDMI_ENABLE ? 0x1 : 0x0);
+ }
+ 
+-int sunxi_cec_message_receive(u8 *buf, u8 buf_size)
++int sunxi_cec_message_receive(u8 *buf)
+ {
+-	return dw_cec_receive_msg(buf, buf_size);
++	int size = sizeof(buf);
++
++	return dw_cec_receive_msg(buf, size);
+ }
+ 
+ void sunxi_cec_message_send(u8 *buf, u8 len, u8 times)
+@@ -404,7 +406,25 @@ u8 sunxi_cec_get_irq_state(void)
+ 		return SUNXI_CEC_IRQ_NULL;
+ 
+ 	dw_mc_irq_clear_state(DW_MC_IRQ_CEC, state);
+-	return state;
++
++	switch (state) {
++	case IH_CEC_STAT0_DONE_MASK:
++	  return SUNXI_CEC_IRQ_DONE;
++	case IH_CEC_STAT0_EOM_MASK:
++	  return SUNXI_CEC_IRQ_EOM;
++	case IH_CEC_STAT0_NACK_MASK:
++	  return SUNXI_CEC_IRQ_NACK;
++	case IH_CEC_STAT0_ARB_LOST_MASK:
++	  return SUNXI_CEC_IRQ_ARB;
++	case IH_CEC_STAT0_ERROR_INITIATOR_MASK:
++	  return SUNXI_CEC_IRQ_ERR_INITIATOR;
++	case IH_CEC_STAT0_ERROR_FOLLOW_MASK:
++	  return SUNXI_CEC_IRQ_ERR_FOLLOW;
++	case IH_CEC_STAT0_WAKEUP_MASK:
++	  return SUNXI_CEC_IRQ_WAKEUP;
++	default:
++	  return SUNXI_CEC_IRQ_NULL;
++	}
+ }
+ /*******************************************************************************
+  * sunxi hdmi core audio function
+@@ -419,11 +439,6 @@ int sunxi_hdmi_audio_set_info(hdmi_audio_t *info)
+ 		return -1;
+ 	}
+ 
+-	if (!sunxi_hdmi) {
+-		hdmi_err("sunxi hdmi dev is null, audio set info skip\n");
+-		return -ENODEV;
+-	}
+-
+ 	data.mInterfaceType     = info->hw_intf;
+ 	data.mCodingType        = info->data_raw;
+ 	data.mSamplingFrequency = info->sample_rate;
+@@ -444,12 +459,6 @@ int sunxi_hdmi_audio_set_info(hdmi_audio_t *info)
+ int sunxi_hdmi_audio_enable(void)
+ {
+ 	int ret = 0;
+-
+-	if (!sunxi_hdmi) {
+-		hdmi_err("sunxi hdmi dev is null, audio enable skip\n");
+-		return -ENODEV;
+-	}
+-
+ 	mutex_lock(&sunxi_hdmi->lock_config);
+ 	ret = dw_audio_on();
+ 	mutex_unlock(&sunxi_hdmi->lock_config);
+diff --git a/bsp/drivers/drm/sunxi_device/sunxi_hdmi.h b/bsp/drivers/drm/sunxi_device/sunxi_hdmi.h
+index a7a45ad..08cd1bb 100644
+--- a/bsp/drivers/drm/sunxi_device/sunxi_hdmi.h
++++ b/bsp/drivers/drm/sunxi_device/sunxi_hdmi.h
+@@ -368,11 +368,10 @@ void sunxi_cec_enable(u8 state);
+ /**
+  * @desc: sunxi cec receive message
+  * @buf: point to message buffer
+- * @buf_size: receive message buffer size
+  * @return: -1 - failed
+  *       other - receive message length
+  */
+-int sunxi_cec_message_receive(u8 *buf, u8 buf_size);
++int sunxi_cec_message_receive(u8 *buf);
+ /**
+  * @desc: sunxi cec send message
+  * @buf: point to send message buffer
 diff --git a/bsp/drivers/drm/sunxi_drm_crtc.c b/bsp/drivers/drm/sunxi_drm_crtc.c
 index a9c0562..5bb52d3 100644
 --- a/bsp/drivers/drm/sunxi_drm_crtc.c
