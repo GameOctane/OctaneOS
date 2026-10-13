@@ -1,0 +1,22 @@
+#!/bin/sh
+# OctaneOS: the boot intro is no longer played from here.
+#
+# The upstream S28splash (package batocera-splash) starts mpv on the bare display before the compositor exists.
+# On this board the display link is often not up at that moment, so the intro had sound and no picture, and
+# the compositor's own start-up collided with it.  The intro is now played by usr/bin/octane-intro from labwc's
+# autostart, once the display is ready.  This file replaces the upstream one so nothing plays it a second time.
+
+case "$1" in
+    start)
+        printf 'Starting splash-mpv: SKIPPED (the intro is played inside the compositor, see octane-intro)\n'
+        ;;
+    stop)
+        start-stop-daemon -K -q -p /var/run/user-splash.pid 2>/dev/null
+        ;;
+    restart|reload)
+        ;;
+    *)
+        ;;
+esac
+
+exit 0

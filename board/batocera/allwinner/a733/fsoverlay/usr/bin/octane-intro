@@ -1,0 +1,58 @@
+#!/bin/bash
+# OctaneOS boot intro.
+#
+# Plays the splash video as a fullscreen window INSIDE the compositor, from labwc's autostart, just before
+# EmulationStation starts.  The upstream splash service (S28splash) played it straight on the display before
+# any compositor existed: at that moment the display link was often not up (mpv logged "Chosen connector is
+# disconnected") and the GPU buffer setup failed, so the intro had sound and no picture.  Here the compositor
+# has already set up the display, so the picture shows.
+#
+# Keeps the upstream rules: only when splash.screen.enabled=1 in /boot/batocera-boot.conf; a video the user put in
+# /userdata/splash wins (random pick if several), otherwise the default video.  Image splashes (fbv on /dev/fb0)
+# are not supported here.  A time limit makes sure a broken player can never hold up the boot.
+#
+# Usage: octane-intro [video-file]       (the file argument is for testing)
+
+LOG=/userdata/system/logs/display.log
+DEFAULT=/usr/share/batocera/splash/splash.mp4
+SPLASH_DIR=/userdata/splash
+MAXSECS="${OCTANE_INTRO_MAXSECS:-15}"
+
+log() { echo "Intro: $*" >> "$LOG" 2>/dev/null; }
+
+if [ -z "$1" ] && ! grep -qE '^[ ]*splash.screen.enabled[ ]*=[ ]*1[ ]*$' /boot/batocera-boot.conf 2>/dev/null; then
+    log "skipped (splash.screen.enabled is not 1)"
+    exit 0
+fi
+
+video="$1"
+if [ -z "$video" ]; then
+    mapfile -t mine < <(find "$SPLASH_DIR" -maxdepth 1 -iregex '.*\.mp4' -type f 2>/dev/null)
+    if [ "${#mine[@]}" -gt 0 ]; then
+        video="${mine[$((RANDOM % ${#mine[@]}))]}"
+    else
+        video="$DEFAULT"
+    fi
+fi
+if [ ! -f "$video" ]; then
+    log "skipped (no such video: $video)"
+    exit 0
+fi
+
+# Inside the compositor session these are already set (labwc-launch exports them to labwc and its children);
+# the defaults only matter when the script is run by hand.
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run}"
+export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-/usr/local/lib:/usr/lib}"
+export LIBGL_DRIVERS_PATH="${LIBGL_DRIVERS_PATH:-/usr/local/lib/dri}"
+export GBM_BACKENDS_PATH="${GBM_BACKENDS_PATH:-/usr/lib/gbm}"
+export MESA_LOADER_DRIVER_OVERRIDE="${MESA_LOADER_DRIVER_OVERRIDE:-pvr}"
+
+start=$SECONDS
+# gpu-next looked best on the PowerVR GPU; the others only run if it cannot start at all.
+timeout "$MAXSECS" mpv --no-config --really-quiet --fs --no-osc --no-osd-bar --no-input-default-bindings \
+    --cursor-autohide=always --keep-open=no --loop=no --ao=sdl --hwdec=auto \
+    --vo=gpu-next,gpu,wlshm --gpu-context=wayland "$video" > /dev/null 2>&1
+rc=$?
+log "played $video in $((SECONDS - start)) s (mpv exit status $rc)"
+exit 0
