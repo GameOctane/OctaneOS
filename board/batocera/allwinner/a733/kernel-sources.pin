@@ -1,0 +1,18 @@
+# Exact upstream commits the OctaneOS kernel is built from.  scripts/setup-kernel-66.sh fetches these and
+# refuses anything else, so two builds of the same OctaneOS commit use the same Radxa code.
+#
+# These are the commits v0.7.0 was built from.  To move to newer upstream code:
+#   1. ./scripts/setup-kernel-66.sh --check-upstream      shows the current branch tips
+#   2. put the new full 40-character hashes below
+#   3. ./scripts/setup-kernel-66.sh --reset               re-applies every patch; fix any that no longer apply
+#   4. rebuild and test on hardware before it goes anywhere near a release
+#
+# Format: KEY=VALUE, no spaces, no quotes.  scripts/check-kernel-pins.sh validates this file.
+
+KERNEL_REPO=https://github.com/radxa/kernel
+KERNEL_BRANCH=allwinner-aiot-linux-6.6
+KERNEL_COMMIT=61f3fe291c7a0ca97a038194bb242b133971b76e
+
+BSP_REPO=https://github.com/radxa/allwinner-bsp
+BSP_BRANCH=cubie-aiot-v1.4.8
+BSP_COMMIT=f9a496c24bf6b7cc31c4b5c716ece58b2c287f01
