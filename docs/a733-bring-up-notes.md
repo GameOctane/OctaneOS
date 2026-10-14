@@ -1,5 +1,8 @@
 # A733 Bring-Up Research Notes
 
+> Hard-won lessons and traps are collected in [a733-gotchas.md](a733-gotchas.md).
+
+
 Reference notes compiled during initial board config setup. Sources verified April 2026.
 
 ---
