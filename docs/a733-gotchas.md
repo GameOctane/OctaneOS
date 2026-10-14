@@ -94,6 +94,20 @@ test. Measured once; not shipped yet.
 There is no `devfreq`, so the kernel cannot throttle the GPU or memory. On a bare board with a DS game, the six small cores were held at 408 MHz
 (maximum throttle) while the two big cores ran at about 1200 MHz: menus and the compositor run on the small ones. The GPU runs at 600 MHz.
 
+**Measured (2026-10-13, same board, same script `thermal-load-test.sh`, 5 minutes with all 8 cores busy):**
+
+| | bare board | with a 14x14x7 pin-fin on the SoC and a 14x10x5 on the memory |
+|---|---|---|
+| idle at the menu, 10 min after power-on | 72-73 C | 62-63 C |
+| time to reach 80 C under load | 15 s | 15 s (the die heats fast whatever the heatsink) |
+| temperature after 5 minutes | **90 C and still rising** at the minimum 408 MHz | **80-82 C, held by the throttle** |
+| big-core speed during the load | 408 MHz (the floor) | about 900-1000 MHz on average |
+| temperature 90 s after the load | 79 C | 68 C |
+
+A bare board idles only about 8 C below the throttle trip, so everyday use sits on a performance cliff; with the throttle already at its floor the heat still climbed to 90 C,
+which is consistent with the shutoffs of the build that had no throttle at all. With heatsinks the idle headroom is about 17 C and the throttle regulates instead of running away.
+A fan and the sealed case are still untested.
+
 ### 14. Measure the UI frame rate instead of feeling it  *(verified)*
 `DrawFramerate` in `es_settings.cfg` (`<bool name="DrawFramerate" value="true" />`, set while EmulationStation is stopped) draws a frame counter. Readings on
 the same monitor: idle 22-45 fps, scrolling 43-47, opening Settings 6-17 depending on the setup (single readings read by eye: use them as orders of magnitude). GPU load and clock:
