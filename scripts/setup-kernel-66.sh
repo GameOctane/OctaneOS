@@ -11,7 +11,8 @@
 # Usage:
 #   ./scripts/setup-kernel-66.sh [--update | --reset]
 #
-#   --update   Force a git pull on existing clones (slow, rarely needed)
+#   --check-upstream  Only report whether the pinned Radxa commits (board/.../kernel-sources.pin) are behind
+#                     the branch tips; changes nothing.  (The old --update, which silently moved to the tip, is gone.)
 #   --reset    Throw away every change in the existing clones and re-apply the patches, the
 #              board device tree and the BSP fixes from scratch (no network, about a minute).
 #              scripts/build.sh does this by itself when the kernel inputs have changed.
@@ -23,55 +24,64 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KERNEL_DIR="${REPO_ROOT}/linux/kernel-66"
 STAMP="${KERNEL_DIR}/.octaneos_setup_done"
 
-KERNEL_REPO="https://github.com/radxa/kernel"
-KERNEL_BRANCH="allwinner-aiot-linux-6.6"
-
-BSP_REPO="https://github.com/radxa/allwinner-bsp"
-BSP_BRANCH="cubie-aiot-v1.4.8"
+# The upstream sources are pinned to exact commits in kernel-sources.pin, so a build never silently picks up
+# newer Radxa code.  See that file for how to move the pin.
+PIN_FILE="${REPO_ROOT}/board/batocera/allwinner/a733/kernel-sources.pin"
+# shellcheck source=lib-pin.sh
+. "${REPO_ROOT}/scripts/lib-pin.sh"
+KERNEL_REPO="$(read_pin "${PIN_FILE}" KERNEL_REPO)";   KERNEL_BRANCH="$(read_pin "${PIN_FILE}" KERNEL_BRANCH)"
+KERNEL_COMMIT="$(read_pin "${PIN_FILE}" KERNEL_COMMIT)"
+BSP_REPO="$(read_pin "${PIN_FILE}" BSP_REPO)";         BSP_BRANCH="$(read_pin "${PIN_FILE}" BSP_BRANCH)"
+BSP_COMMIT="$(read_pin "${PIN_FILE}" BSP_COMMIT)"
+for v in KERNEL_REPO KERNEL_BRANCH KERNEL_COMMIT BSP_REPO BSP_BRANCH BSP_COMMIT; do
+    [ -n "${!v}" ] || { echo "ERROR: ${v} is missing in ${PIN_FILE}" >&2; exit 1; }
+done
 
 PATCHES_DIR="${REPO_ROOT}/board/batocera/allwinner/a733/linux_patches_66"
 
-UPDATE=0
 RESET=0
-if [[ "${1:-}" == "--update" ]]; then
-    UPDATE=1
-elif [[ "${1:-}" == "--reset" ]]; then
-    RESET=1
-fi
+PIN_CHANGED=0
+case "${1:-}" in
+    --reset) RESET=1 ;;
+    --check-upstream)
+        check_one() {   # NAME URL BRANCH PINNED_COMMIT
+            local tip
+            tip="$(git ls-remote "$2" "refs/heads/$3" | cut -f1)"
+            if [ -z "${tip}" ]; then
+                echo "$1: could not reach $2 (branch $3)"
+            elif [ "${tip}" = "$4" ]; then
+                echo "$1: the pinned commit ${4:0:12} is still the tip of $3"
+            else
+                echo "$1: pinned ${4:0:12}, but the tip of $3 is now ${tip:0:12}  ($2)"
+            fi
+        }
+        check_one kernel "${KERNEL_REPO}" "${KERNEL_BRANCH}" "${KERNEL_COMMIT}"
+        check_one bsp    "${BSP_REPO}"    "${BSP_BRANCH}"    "${BSP_COMMIT}"
+        exit 0 ;;
+    --update)
+        echo "ERROR: --update is gone: the kernel and BSP are pinned (${PIN_FILE})." >&2
+        echo "       --check-upstream shows newer commits; to move the pin, edit the file and run --reset." >&2
+        exit 2 ;;
+    "") ;;
+    *) echo "unknown option: $1" >&2; exit 2 ;;
+esac
 
 # -----------------------------------------------------------------------------
 # 1. Clone or update the Radxa 6.6 kernel
 # -----------------------------------------------------------------------------
-echo "[kernel-66] Step 1: kernel source"
-if [ ! -d "${KERNEL_DIR}/.git" ]; then
-    echo "  Cloning ${KERNEL_REPO} (${KERNEL_BRANCH}) ..."
-    mkdir -p "$(dirname "${KERNEL_DIR}")"
-    git clone --depth=1 -b "${KERNEL_BRANCH}" "${KERNEL_REPO}" "${KERNEL_DIR}"
-else
-    echo "  Kernel already cloned."
-    if [ "${UPDATE}" -eq 1 ]; then
-        echo "  Pulling updates..."
-        git -C "${KERNEL_DIR}" fetch --depth=1 origin "${KERNEL_BRANCH}"
-        git -C "${KERNEL_DIR}" reset --hard "origin/${KERNEL_BRANCH}"
-        rm -f "${STAMP}"
-    fi
-fi
+echo "[kernel-66] Step 1: kernel source (pinned ${KERNEL_COMMIT:0:12})"
+pin_checkout "${KERNEL_DIR}" "${KERNEL_REPO}" "${KERNEL_BRANCH}" "${KERNEL_COMMIT}"
 
 # -----------------------------------------------------------------------------
-# 2. Clone or update allwinner-bsp into bsp/
+# 2. allwinner-bsp into bsp/
 # -----------------------------------------------------------------------------
-echo "[kernel-66] Step 2: allwinner-bsp overlay"
-if [ ! -d "${KERNEL_DIR}/bsp/.git" ]; then
-    echo "  Cloning ${BSP_REPO} (${BSP_BRANCH}) into bsp/ ..."
-    git clone --depth=1 -b "${BSP_BRANCH}" "${BSP_REPO}" "${KERNEL_DIR}/bsp"
-else
-    echo "  BSP already cloned."
-    if [ "${UPDATE}" -eq 1 ]; then
-        echo "  Pulling updates..."
-        git -C "${KERNEL_DIR}/bsp" fetch --depth=1 origin "${BSP_BRANCH}"
-        git -C "${KERNEL_DIR}/bsp" reset --hard "origin/${BSP_BRANCH}"
-        rm -f "${STAMP}"
-    fi
+echo "[kernel-66] Step 2: allwinner-bsp overlay (pinned ${BSP_COMMIT:0:12})"
+pin_checkout "${KERNEL_DIR}/bsp" "${BSP_REPO}" "${BSP_BRANCH}" "${BSP_COMMIT}"
+
+# The pin moved an existing checkout: the old patched tree is stale, redo everything from clean.
+if [ "${PIN_CHANGED}" -eq 1 ]; then
+    echo "[kernel-66] A pinned commit changed; redoing the setup from clean"
+    RESET=1
 fi
 
 # --reset: back to the clean checkouts, then fall through and redo every step below.
@@ -86,7 +96,7 @@ fi
 
 # Skip remaining steps if already done and not forced
 if [ -f "${STAMP}" ]; then
-    echo "[kernel-66] Already set up (stamp exists). Use --update to refresh."
+    echo "[kernel-66] Already set up (stamp exists). Use --reset to redo it."
     exit 0
 fi
 

@@ -143,7 +143,9 @@ sync_kernel_inputs() {
             cat "${a733}/dts/sun60i-a733-cubie-a7s.dts" \
                 "${a733}/linux-defconfig.config" \
                 "${a733}/linux-defconfig-fragment.config" \
-                "${REPO_ROOT}/scripts/setup-kernel-66.sh"
+                "${a733}/kernel-sources.pin" \
+                "${REPO_ROOT}/scripts/setup-kernel-66.sh" \
+                "${REPO_ROOT}/scripts/lib-pin.sh"
             # names as well as contents, so a rename or a move into obsolete/ counts
             find "${a733}/linux_patches_66" "${a733}/patches/linux" -maxdepth 1 -name '*.patch' | sort
             find "${a733}/linux_patches_66" "${a733}/patches/linux" -maxdepth 1 -name '*.patch' | sort | xargs cat
@@ -173,6 +175,12 @@ if [[ "${1:-}" == "--sync-kernel-only" ]]; then
     exit $?
 fi
 sync_kernel_inputs || exit 1
+
+# The kernel and BSP clones must be at exactly the commits in kernel-sources.pin (no silent drift).
+"${REPO_ROOT}/scripts/check-kernel-pins.sh" || {
+    echo "[ERROR] The kernel sources are not at the pinned commits. Run scripts/setup-kernel-66.sh --reset." >&2
+    exit 1
+}
 
 # Buildroot keeps target/ between builds and never deletes a file that was removed from our
 # overlay, so a deleted file would stay in the finished image.  Remove such files (unless a

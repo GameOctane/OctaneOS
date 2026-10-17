@@ -21,6 +21,8 @@ jobs:
       - uses: actions/checkout@v4
       # Catches patches with wrong hunk counts and patch folders Buildroot never applies.
       - run: bash scripts/check-patches.sh
+      # the kernel/BSP pins are well-formed (full hashes, https URLs); the clones are not present in CI
+      - run: bash scripts/check-kernel-pins.sh
 
   test-scripts:
     name: Test the updater, release and network scripts
@@ -36,7 +38,7 @@ jobs:
         run: |
           set -e
           for t in test-upgrade test-prune-overlay test-dev-key test-update-version \
-                   test-publish-release test-harden-network test-splash-trace; do
+                   test-publish-release test-harden-network test-splash-trace test-kernel-pins; do
             echo "::group::$t"
             bash "scripts/$t.sh"
             echo "::endgroup::"
