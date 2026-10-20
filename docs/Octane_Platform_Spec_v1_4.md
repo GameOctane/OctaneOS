@@ -172,7 +172,7 @@ In wireless streaming mode, the onboard WiFi radio is fully dedicated to streami
 
 - PCIe lane: Confirmed active in BSP — sun60iw2p1.dtsi defines pcie_rc at 0x6000000, Gen 3 explicitly, status = okay with GPIO-controlled power rails
 - Dual coexistence: AIC8800D80 on USB bus, MT7921K on PCIe bus — independent drivers, independent struct wiphy, zero shared state or exclusivity locks
-- FFC compatibility: A7S connector is Pi 5 PCIe FFC standard (16-pin, 0.5mm pitch) — off-the-shelf Pi 5 FFC-to-M.2 adapters confirmed working on A7A (same SoC)
+- FFC compatibility: A7S connector is Pi 5 PCIe FFC standard (16-pin, 0.5mm pitch) — off-the-shelf Pi 5 FFC-to-M.2 adapters confirmed working on A7A (same SoC); the adapter must be an **E-key** one for a Wi-Fi card (see the correction below)
 - Intel AX210 ruled out: LAR enforcement blocks 5 GHz AP mode on Linux — MT7921K has no such restriction
 - mt7921e driver in-kernel since Linux 5.12 — 5 GHz AP mode confirmed working on kernel 6.6
 - AP+STA simultaneous: wpa_supplicant on wlan0 + hostapd on wlan1 operate in fully independent kernel paths — confirmed clean
@@ -189,10 +189,18 @@ In wireless streaming mode, the onboard WiFi radio is fully dedicated to streami
 
 **M.2 Adapter Board**
 
-| Adapter | Price | Source |
+> ⚠️ **Correction (October 2026):** the official Raspberry Pi M.2 HAT+ listed in earlier versions of this document is **M-key only**
+> (made for SSDs and AI accelerators). It has an M-key slot and does **not** take Wi-Fi cards, which use an **A/E or E key** edge connector.
+> Use an **E-key adapter made for the Pi 5's 16-pin PCIe connector** instead (below). Prices were not re-checked; confirm current prices and the
+> exact product name before ordering.
+
+| Adapter | Key | Notes |
 |---|---|---|
-| Raspberry Pi M.2 HAT+ (official) | ~$12 | raspberrypi.com/products/m2-hat-plus/ |
-| Waveshare PCIe to M.2 Adapter Board (D) | ~$12–16 | PiShop.us |
+| Waveshare "PCIe to M.2 E Key HAT+" (also listed as "(D)") | E (A/E) | Made for the Pi 5; listed as taking 2230 Wi-Fi cards. The older name "PCIe to M.2 Adapter Board (D)" may refer to this product: verify the exact listing. |
+| 52Pi "M.2 E-Key HAT M01" | E | 2230 and 2242 cards, PCIe x1 Gen 2/3. |
+| ~~Raspberry Pi M.2 HAT+ (official)~~ | M | **Wrong for this card** (SSD/accelerator slot). |
+
+**Before ordering, check:** (1) the card itself is A/E or E key (look at the seller's photo; the RZ608 / AW-XB468NF listings did not state it in our search); (2) the FFC cable's contact side (below); (3) the adapter has its own 5 V → 3.3 V regulator.
 
 **Critical Hardware Note**
 
@@ -236,7 +244,7 @@ The streaming link uses Octane as the WiFi Access Point and the dock as the clie
 | Coin vibration motors 2× | Haptic rumble, 1 per grip | ~$2 |
 | NPN transistors 2× (2N2222) | Motor drivers | ~$0.50 |
 | MediaTek MT7921K M.2 2230 | PCIe WiFi card — dock streaming AP | ~$10–15 *(updated)* |
-| FFC-to-M.2 PCIe adapter | Pi 5 FFC compatible, opposite-side cable | ~$12 *(updated)* |
+| FFC-to-M.2 **E-key** PCIe adapter | Pi 5 FFC compatible, E-key (not the M-key Pi M.2 HAT+), opposite-side cable | ~$12 *(price not re-checked)* |
 | Misc wiring, connectors | Tactile switches, FFC cables, etc. | ~$8 |
 | 3D printed shell (filament) | Open sourced STL files | ~$8 |
 | **TOTAL** | | **~$210–230** |
@@ -438,7 +446,7 @@ Everything is open. No exceptions.
 ### 7.1 Immediate Next Steps
 
 - Source MediaTek MT7921K M.2 2230 card (AMD RZ608 on eBay, ~$10–15) — add to BOM
-- Source Pi 5 FFC-to-M.2 PCIe adapter (Raspberry Pi M.2 HAT+, ~$12) — verify opposite-side-contact cable
+- Source a Pi 5 FFC-to-M.2 **E-key** PCIe adapter (Waveshare PCIe to M.2 E Key HAT+ or 52Pi M.2 E-Key HAT M01; **not** the M-key Raspberry Pi M.2 HAT+) — verify opposite-side-contact cable and the card's key type
 - Order supporting components per Phase 1 BOM
 - Integrate aic8800-usb-dkms + aic8800-firmware into Batocera image build
 - Write hostapd systemd service for wlan1 with BindsTo device dependency

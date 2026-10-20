@@ -24,10 +24,18 @@ Do not buy it. Update the Platform Spec to remove this part number.
 
 The A7S PCIe FFC port is Pi 5 standard (16-pin, 0.5mm pitch). The FFC carries **5V only — no 3.3V**. M.2 cards need 3.3V. Off-the-shelf adapter boards include an onboard regulator — no extra wiring needed.
 
-| Adapter | Price | Source |
+> ⚠️ **Correction (October 2026):** the official Raspberry Pi M.2 HAT+ listed in earlier versions of this document is **M-key only**
+> (made for SSDs and AI accelerators). It has an M-key slot and does **not** take Wi-Fi cards, which use an **A/E or E key** edge connector.
+> Use an **E-key adapter made for the Pi 5's 16-pin PCIe connector** instead (below). Prices were not re-checked; confirm current prices and the
+> exact product name before ordering.
+
+| Adapter | Key | Notes |
 |---|---|---|
-| Raspberry Pi M.2 HAT+ (official) | $12 | raspberrypi.com/products/m2-hat-plus/ |
-| Waveshare PCIe to M.2 Adapter Board (D) | ~$12–16 | PiShop.us |
+| Waveshare "PCIe to M.2 E Key HAT+" (also listed as "(D)") | E (A/E) | Made for the Pi 5; listed as taking 2230 Wi-Fi cards. The older name "PCIe to M.2 Adapter Board (D)" may refer to this product: verify the exact listing. |
+| 52Pi "M.2 E-Key HAT M01" | E | 2230 and 2242 cards, PCIe x1 Gen 2/3. |
+| ~~Raspberry Pi M.2 HAT+ (official)~~ | M | **Wrong for this card** (SSD/accelerator slot). |
+
+**Before ordering, check:** (1) the card itself is A/E or E key (look at the seller's photo; the RZ608 / AW-XB468NF listings did not state it in our search); (2) the FFC cable's contact side (below); (3) the adapter has its own 5 V → 3.3 V regulator.
 
 **Cable:** FFC must be **opposite-side contact**. Same-side contact shorts the connector.
 
@@ -50,6 +58,8 @@ The A7S PCIe FFC port is Pi 5 standard (16-pin, 0.5mm pitch). The FFC carries **
 
 ### Action Items
 - [ ] Confirm A7S PCIe FFC pinout matches Pi5 standard before ordering adapters
+- [ ] Confirm the Wi-Fi card is A/E or E key and the adapter is an E-key one (NOT the M-key Raspberry Pi M.2 HAT+)
+- [ ] Run the private AP on a non-DFS 5 GHz channel (36–48 or 149–165): DFS channels (52–144) must hop on radar detection and would drop the stream
 - [ ] Run `lspci` on first hardware bring-up to verify PCIe Gen3 link speed
 - [ ] Test hostapd with `ieee80211ax=0` first, then attempt HE AP mode
 - [ ] Update Platform Spec v1.3 to remove FRU 04X6020, replace with RZ608 / AW-XB468NF
