@@ -104,6 +104,15 @@ This is comparable to current Pi Zero 2W street pricing, but in stock, with bett
 | Composite (RCA, 480i/576i) | Orange Pi Zero 2W expansion board | Included above |
 | Component (YPbPr, up to 1080i) | LiNKFOR active HDMI→YPbPr converter | Included above |
 
+### Receiver choice is still open (October 2026 note)
+
+Nothing here has been tested on hardware yet. Prices below are **unverified, reported by the project owner from retail listings**:
+
+- **Orange Pi Zero 2W:** about $40 (the $18-22 above is the August 2026 figure and is out of date). Its hardware H.264 decode (Cedrus) is reported not to work on the H616/H618 under mainline Linux, so the "decode 5-8 ms" latency figure is **unproven**. Software decode of a 480p stream on four Cortex-A53 cores is expected to be fine but is also unmeasured.
+- **Radxa Zero 3W (RK3566):** about $70-75 on Amazon (2GB, no eMMC), in stock. Mature Linux hardware decode, dual-band Wi-Fi 6, but **no composite output**.
+- **Raspberry Pi Zero 2 W:** believed to have **2.4 GHz Wi-Fi only**, which cannot join the private 5 GHz link. Verify on the product page; if true it is out.
+- **Next step:** buy one Orange Pi Zero 2W, test a software-decoded 480p stream first; consider the Radxa only if decode proves to be the problem.
+
 ### Alternatives Considered
 
 | Board | Price | Verdict |
