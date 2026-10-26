@@ -94,11 +94,24 @@
 		};
 	};
 
+	/*
+	 * Fan header J7 (schematic page 16): pin 1 GND, pin 2 = PJ27 (PWM1 channel 9) through a 1 k
+	 * resistor, pin 3 = VCC5V0_SYS wired straight to the system 5 V rail.  There is no switch or
+	 * regulator on the supply, so there is no fan-supply here (this node used to point at
+	 * reg_dc1sw1, which does not power the fan), and a fan always gets power whenever the board
+	 * is on.  The control pin only carries a logic-level signal, so the fan needs its own PWM
+	 * input (it cannot be a bare motor).
+	 *
+	 * The fan is meant to run all the time.  cooling-levels are PWM duty (0..255): level 0 is
+	 * the quiet base speed, not off, so the fan never has to restart from a stop.  The values
+	 * are a starting point: raise level 0 if the fan stalls, and tune the rest from heat logs.
+	 * With the control wire unconnected the tested fan runs at full speed, and pwm-fan starts at
+	 * the highest level until the thermal code picks one, so a failure is loud, not hot.
+	 */
 	fan0: pwm-fan {
 		compatible = "pwm-fan";
 		#cooling-cells = <2>;
-		cooling-levels = <0 50 102 170 255>;
-		fan-supply = <&reg_dc1sw1>;
+		cooling-levels = <100 140 180 220 255>;
 		pwms = <&pwm1 9 25000 0>;
 	};
 
@@ -905,11 +918,15 @@
  * not tuned data.  This unit has no heatsink, so the CPU frequency cooling starts at 80 C
  * here.  80 C is a starting point to be tuned from temperature logs, not a vendor limit.
  *
- * The board has a 3-pin 5 V PWM fan header (fan0, PWM1 channel 9) but it is NOT usable yet:
- * the kernel needs CONFIG_AW_PWM and CONFIG_SENSORS_PWM_FAN, and enabling AW_PWM also turns
- * on the legacy sunxi-disp2 display driver (AW_DISP2 depends on AW_PWM and defaults to y),
- * which does not build on 6.6 and would conflict with the DRM driver.  AW_DISP2 must be
- * forced off if the fan is ever enabled.
+ * The fan header (fan0, PWM1 channel 9) is driven by CONFIG_AW_PWM + CONFIG_SENSORS_PWM_FAN.
+ * AW_DISP2, the legacy display driver, depends on AW_PWM and used to default to y, so it is
+ * forced off in the kernel config, defaults to n in linux_patches_66/1014, and is checked by
+ * scripts/check-image.sh.
+ *
+ * Fan steps: four "active" trips per zone below the 80 C CPU throttle.  Each maps to one fan
+ * level (1..4); below the first trip the fan stays at level 0 (the base speed).  The fan is
+ * shared, so it runs at the highest level any zone asks for.  The temperatures are starting
+ * values to be tuned from heat logs with the fan fitted.
  */
 &cpul_target {
 	temperature = <80000>;
@@ -919,6 +936,138 @@
 &cpub_target {
 	temperature = <80000>;
 	hysteresis = <2000>;
+};
+
+&cpub_trips {
+	cpub_fan1: cpub-fan-1 {
+		temperature = <55000>;
+		hysteresis = <3000>;
+		type = "active";
+	};
+	cpub_fan2: cpub-fan-2 {
+		temperature = <60000>;
+		hysteresis = <3000>;
+		type = "active";
+	};
+	cpub_fan3: cpub-fan-3 {
+		temperature = <66000>;
+		hysteresis = <3000>;
+		type = "active";
+	};
+	cpub_fan4: cpub-fan-4 {
+		temperature = <72000>;
+		hysteresis = <3000>;
+		type = "active";
+	};
+};
+
+&cpub_thermal_zone {
+	cooling-maps {
+		fan-map-1 {
+			trip = <&cpub_fan1>;
+			cooling-device = <&fan0 1 1>;
+		};
+		fan-map-2 {
+			trip = <&cpub_fan2>;
+			cooling-device = <&fan0 2 2>;
+		};
+		fan-map-3 {
+			trip = <&cpub_fan3>;
+			cooling-device = <&fan0 3 3>;
+		};
+		fan-map-4 {
+			trip = <&cpub_fan4>;
+			cooling-device = <&fan0 4 4>;
+		};
+	};
+};
+
+&cpul_trips {
+	cpul_fan1: cpul-fan-1 {
+		temperature = <55000>;
+		hysteresis = <3000>;
+		type = "active";
+	};
+	cpul_fan2: cpul-fan-2 {
+		temperature = <60000>;
+		hysteresis = <3000>;
+		type = "active";
+	};
+	cpul_fan3: cpul-fan-3 {
+		temperature = <66000>;
+		hysteresis = <3000>;
+		type = "active";
+	};
+	cpul_fan4: cpul-fan-4 {
+		temperature = <72000>;
+		hysteresis = <3000>;
+		type = "active";
+	};
+};
+
+&cpul_thermal_zone {
+	cooling-maps {
+		fan-map-1 {
+			trip = <&cpul_fan1>;
+			cooling-device = <&fan0 1 1>;
+		};
+		fan-map-2 {
+			trip = <&cpul_fan2>;
+			cooling-device = <&fan0 2 2>;
+		};
+		fan-map-3 {
+			trip = <&cpul_fan3>;
+			cooling-device = <&fan0 3 3>;
+		};
+		fan-map-4 {
+			trip = <&cpul_fan4>;
+			cooling-device = <&fan0 4 4>;
+		};
+	};
+};
+
+&gpu_trips {
+	gpu_fan1: gpu-fan-1 {
+		temperature = <55000>;
+		hysteresis = <3000>;
+		type = "active";
+	};
+	gpu_fan2: gpu-fan-2 {
+		temperature = <60000>;
+		hysteresis = <3000>;
+		type = "active";
+	};
+	gpu_fan3: gpu-fan-3 {
+		temperature = <66000>;
+		hysteresis = <3000>;
+		type = "active";
+	};
+	gpu_fan4: gpu-fan-4 {
+		temperature = <72000>;
+		hysteresis = <3000>;
+		type = "active";
+	};
+};
+
+&gpu_thermal_zone {
+	cooling-maps {
+		fan-map-1 {
+			trip = <&gpu_fan1>;
+			cooling-device = <&fan0 1 1>;
+		};
+		fan-map-2 {
+			trip = <&gpu_fan2>;
+			cooling-device = <&fan0 2 2>;
+		};
+		fan-map-3 {
+			trip = <&gpu_fan3>;
+			cooling-device = <&fan0 3 3>;
+		};
+		fan-map-4 {
+			trip = <&gpu_fan4>;
+			cooling-device = <&fan0 4 4>;
+		};
+	};
 };
 
 &sdc2 {
