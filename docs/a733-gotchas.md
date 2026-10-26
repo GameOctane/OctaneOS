@@ -48,7 +48,11 @@ patch, so HDMI stays at 60 Hz. DisplayPort and HDMI are different drivers with d
 The boot line carried `drm.edid_firmware=DP-1:edid/smartglasses.bin`, so the board ignored the real monitor's capabilities and told everything it
 was a pair of 120 Hz glasses (`board/.../cubie-a7s/boot/extlinux.conf`). On an MSI G32C4W (165 Hz) the real EDID gives 60/120/144/165 Hz and the
 board reaches 120 Hz without any override. `labwc-launch` also applies a corrected EDID at runtime for the glasses' maker id (`506c`); the glasses
-themselves are **untested** since we do not have them. Do not change this path without someone who owns the glasses.
+themselves are **untested** since we do not have them.
+**Now:** the boot line no longer forces the profile, so each display is read for what it really is (`scripts/check-image.sh` fails a build that puts it back). A forced
+profile hides a monitor's or TV's real modes, and a screen that cannot do 1080p at 120 Hz is a risk of a black picture. The runtime quirk for the glasses' maker id stays,
+still untested. Someone who owns the glasses and needs the old behaviour can add `drm.edid_firmware=DP-1:edid/smartglasses.bin` to the `APPEND` line of
+`/boot/extlinux/extlinux.conf` (`mount -o remount,rw /boot` first, and `mount -o remount,ro /boot` afterwards).
 
 ### 7. The display link is negotiated at the monitor's maximum, not what we configured  *(verified, cause of blackouts is theory)*
 `edp_update_capacity()` in `sunxi_drm_edp.c` sets the rate to `min(source max, sink max)`; the device tree's `edp_lane_rate` is ignored. A monitor
