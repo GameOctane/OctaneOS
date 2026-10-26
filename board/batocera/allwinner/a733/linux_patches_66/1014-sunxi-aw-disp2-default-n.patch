@@ -1,0 +1,32 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jason Germino <jasongermino@gmail.com>
+Date: Mon, 26 Oct 2026 00:00:00 +0000
+Subject: [PATCH] video: sunxi: AW_DISP2 must not default to y
+
+AW_DISP2 is the legacy sunxi-disp2 framebuffer display driver.  It does not
+build on 6.6 and would conflict with the DRM display driver (sunxi-drm) that
+this board uses.  Its Kconfig entry says "depends on AW_PWM" and "default y",
+so it was off only because the PWM driver (AW_PWM) was off.  Turning AW_PWM on
+(needed for the fan header) would silently turn the legacy driver on as well.
+
+Make it opt-in.  The board config also lists it explicitly as not set, and
+scripts/check-image.sh fails a build if it is ever enabled.
+
+Signed-off-by: Jason Germino <jasongermino@gmail.com>
+---
+ bsp/drivers/video/sunxi/Kconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/bsp/drivers/video/sunxi/Kconfig b/bsp/drivers/video/sunxi/Kconfig
+index 1111111..2222222 100644
+--- a/bsp/drivers/video/sunxi/Kconfig
++++ b/bsp/drivers/video/sunxi/Kconfig
+@@ -18,7 +18,7 @@ config AW_DISP2
+ 	tristate "DISP Driver Support(sunxi-disp2)"
+ #	depends on (ARCH_SUNXI)
+ 	depends on AW_PWM
+-	default y
++	default n
+ 	select DMA_SHARED_BUFFER
+ 	help
+ 	  Display driver for sunxi based boards.
