@@ -83,7 +83,13 @@ unpatched baseline should be re-measured before concluding.) Do not "fix" it wit
 `Failed to import buffer for scan-out` / `drmPrimeFDToHandle failed` about every 25-44 ms while the menu animates: the display driver cannot import
 the GPU's buffers. It is logged at DEBUG level and `labwc -d` is always on, so the log grew 2.5 MB in seven minutes (constant SD-card writes).
 `WLR_SCENE_DISABLE_DIRECT_SCANOUT=1` (supported by wlroots 0.19) stops it: zero failures, a 38 KB log, and Settings went from about 12 to 17 fps in one
-test. Measured once; not shipped yet.
+test.
+**Measured on the main card, 2026-10-20 (live change, same DS title screen, fps read off RetroArch's counter by the player):** hovering 46-47 fps with dips to 41-45
+became hovering 50-51 with dips to 48; 161,664 failures in under an hour (a 30 MB log) became 0 and 41 KB. Turning off the DS bezel (the drawn console frame) gave
+another 51-54 fps. The scaling shader (`sharp-bilinear-simple`), the threaded renderer, and the audio buffer size made no measurable difference.
+**Now:** `labwc-launch` sets the variable, and new cards get `nds.bezel=none` (the player can switch the bezel back on under Decorations). We keep `labwc -d`: with
+the failures gone the log grows only a few KB a minute and is reset at every boot, and the debug lines are useful for the display problems.
+**Not fixed by this:** a DS game still sits about 10% under 60 fps; cooling and the graphics path are the next suspects.
 
 ---
 

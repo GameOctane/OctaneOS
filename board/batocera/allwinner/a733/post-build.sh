@@ -147,6 +147,15 @@ if [ -f "${DATAINIT_CONF}" ] && ! grep -q "^updates.url=" "${DATAINIT_CONF}"; th
     echo "[post-build] Set updates.url in datainit batocera.conf"
 fi
 
+# The Nintendo DS bezel (the drawn console frame around the two screens) costs about 3 fps on this board, and the DS
+# is the heaviest system we run (it sits near 50 of 60 fps).  New cards get it off; the player can switch it on
+# again under the DS system's Decorations setting.  Existing cards keep whatever they chose (this only seeds
+# the default file that a new card is made from).
+if [ -f "${DATAINIT_CONF}" ] && ! grep -q "^nds\.bezel=" "${DATAINIT_CONF}"; then
+    printf '# OctaneOS: the DS bezel costs about 3 fps on this board; Decorations in the DS settings turns it back on.\nnds.bezel=none\n' >> "${DATAINIT_CONF}"
+    echo "[post-build] Set nds.bezel=none in datainit batocera.conf"
+fi
+
 # Network defaults (phase 1 of docs/security-design-phase1.md): hide the system folder and the
 # credential files from guests of the file share, no NFS server unless something is exported,
 # Syncthing's page local-only by default, Wi-Fi on by default.  Fails the build if the upstream

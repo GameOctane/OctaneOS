@@ -107,6 +107,12 @@ check "updates.url points at the OctaneOS GitHub repo in the default settings" \
     grep -qx 'updates.url=https://raw.githubusercontent.com/GameOctane/OctaneOS/main/ota' \
     "${OUT}/target/usr/share/batocera/datainit/system/batocera.conf"
 
+# Performance: the compositor must not try (and fail) direct scan-out on every frame, and the DS bezel is off on a new card.
+check "compositor start: direct scan-out is disabled (WLR_SCENE_DISABLE_DIRECT_SCANOUT=1)" \
+    grep -q '^WLR_SCENE_DISABLE_DIRECT_SCANOUT=1 ' "${OUT}/target/usr/bin/labwc-launch"
+check "DS bezel is off by default on a new card (nds.bezel=none)" \
+    grep -qx 'nds.bezel=none' "${OUT}/target/usr/share/batocera/datainit/system/batocera.conf"
+
 # The intro must play once.  S28splash plays it; a second copy in the labwc autostart played it
 # again, inside the desktop, with a mouse cursor (the cause of the "intro plays twice" report).
 check "the intro is played by S28splash only (no second player in the labwc start-up files)" \
