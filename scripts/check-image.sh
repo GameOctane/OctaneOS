@@ -75,6 +75,9 @@ rm -f "${cfgcheck}"
 # AW_DISP2 is the legacy display driver. It builds only if AW_PWM is on, does not compile on
 # 6.6, and would conflict with the DRM driver.
 check "legacy display driver CONFIG_AW_DISP2 is off" bash -c "! grep -Eq '^CONFIG_AW_DISP2=(y|m)' '${CFG}'"
+# The fan header needs the PWM driver and the fan driver (docs/a733-gotchas.md, fan header).
+check "fan header: PWM driver and fan driver are built in (AW_PWM, SENSORS_PWM_FAN)" \
+    bash -c "grep -Eq '^CONFIG_AW_PWM=y' '${CFG}' && grep -Eq '^CONFIG_SENSORS_PWM_FAN=y' '${CFG}'"
 
 echo "== Device tree in the image"
 DTB="${OUT}/images/sun60i-a733-cubie-a7s.dtb"
@@ -83,6 +86,19 @@ if [ -x "${DTC}" ] && [ -f "${DTB}" ]; then
     check "120 Hz: fps_limit_60 = <0> on the eDP node" grep -q 'fps_limit_60 = <0x00>' <<<"${DTS}"
     zones="$(grep -c 'thermal_zone' <<<"${DTS}")"
     check "thermal zones present (5 expected, found ${zones})" test "${zones}" -ge 5
+    # Fan header J7: the fan's 5 V is the unswitched system rail (schematic page 16), so the node must
+    # not name a fan-supply; it needs duty levels and a PWM channel, and the CPU and GPU zones must
+    # each drive it in four steps (fan-map-1..4) with active trips.
+    fan_node="$(awk '/pwm-fan \{/{f=1} f{print} f&&/\};/{exit}' <<<"${DTS}")"
+    check "fan: pwm-fan node has cooling-levels and a pwms entry" \
+        bash -c "grep -q cooling-levels <<<\"\$1\" && grep -q 'pwms =' <<<\"\$1\"" _ "${fan_node}"
+    check "fan: pwm-fan node has no fan-supply (J7 pin 3 is the unswitched 5 V rail)" \
+        bash -c "! grep -q fan-supply <<<\"\$1\"" _ "${fan_node}"
+    fan_maps="$(grep -c 'fan-map-' <<<"${DTS}")"
+    check "fan: three zones (big CPU, little CPU, GPU) x four steps = 12 fan cooling maps (found ${fan_maps})" \
+        test "${fan_maps}" -ge 12
+    active_trips="$(grep -c 'type = "active"' <<<"${DTS}")"
+    check "fan: at least 12 active trip points (found ${active_trips})" test "${active_trips}" -ge 12
     for prop in ${OCTANE_CHECK_EXTRA_DTB_PROPS:-}; do
         check "extra property present: ${prop}" grep -q "${prop}" <<<"${DTS}"
     done

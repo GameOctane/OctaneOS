@@ -135,6 +135,21 @@ Keep them out of logs and screenshots; since 0.7.0 the file share hides the `sys
 
 ---
 
+## Fan header
+
+### 19. The fan header has no power switch, and turning its PWM driver on would have turned the old display driver on  *(verified in the schematic and the Kconfig; the fan itself is not yet tested on hardware)*
+Connector J7 (Radxa schematic V1.10, page 16): pin 1 ground, pin 2 the SoC's PWM1 channel 9 (pin PJ27) through a 1 kOhm resistor, pin 3 the system 5 V rail
+**wired straight through**, with no switch or regulator. Consequences:
+- The fan is powered whenever the board is. Our device tree used to say `fan-supply = <&reg_dc1sw1>`, which is a regulator that does not feed the fan; that line is gone.
+- The control pin only carries a logic signal through 1 kOhm, so the fan must have its **own PWM input** (three wires: 5 V, ground, control). A plain two-wire motor on this header just runs flat out.
+- `CONFIG_AW_PWM` (needed for the fan) is what `CONFIG_AW_DISP2` (the legacy display driver, which does not build on 6.6) *depends on*, and that entry says `default y`. It was off only because PWM was off. It is now listed as off in the config fragment, defaults to `n` in `linux_patches_66/1014`, and `scripts/check-image.sh` fails a build if it is on.
+- The thermal code does the control: four "active" trips (55, 60, 66 and 72 C) in the big-CPU, little-CPU and GPU zones step the fan through five duty levels; the fan never stops (level 0 is a base speed). The CPU throttle at 80 C is unchanged.
+
+Still to measure with a real fan: the lowest duty at which the fan spins, which PWM frequency it likes (the device tree says 25000 ns), and whether it changes speed smoothly.
+Details, wiring and the test plan: [fan-cooling.md](fan-cooling.md).
+
+---
+
 ## Things we believed that were wrong
 
 | We believed | Reality |
