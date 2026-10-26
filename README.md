@@ -175,6 +175,7 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 | Speedrun world records in game library | ✅ Complete |
 | 120Hz DisplayPort output | ✅ Complete |
 | Hardened OTA updater (checksum required, staged install, HTTPS only) | ✅ Complete — v0.7.0 |
+| Signed updates (Ed25519 signature from an offline key, no downgrades, backup key) — [docs/update-signing.md](docs/update-signing.md) | 🔨 Written and tested; the real keys are not created yet, so it is not in a release |
 | Safer network defaults (guests can't see `system`, NFS off, Syncthing local-only, Wi-Fi on) | ✅ Complete — v0.7.0 |
 | Kernel thermal management | ✅ Complete — v0.7.0 |
 | Nintendo 64: video flicker fix (found by testing the flickering ground in Ocarina of Time) and Hotkey + Start exit | ✅ Complete — v0.7.0 |

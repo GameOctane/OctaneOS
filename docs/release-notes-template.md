@@ -25,6 +25,7 @@ If a fresh install is needed, say so here in plain words and link
 ## Files
 
 - `boot.tar.xz` (+ `.md5`, `.sha256`): the over-the-air update. Devices fetch this.
+- `boot.tar.xz.manifest` and `boot.tar.xz.manifest.sig`: the signed description of that update (board, version, size, SHA-256). Devices with signature checking refuse an update without a valid signature (docs/update-signing.md).
 - `OctaneOS-<version>.img.gz`: a full image for a fresh install.
 - `SHA256SUMS`: check downloads with `sha256sum -c SHA256SUMS`.
 
@@ -52,4 +53,5 @@ told about the release. Run it from a fully committed tree.
 - The image was built with the developer SSH key (`OCTANE_DEV_KEY_FILE` was set).
 - `scripts/check-image.sh --release` does not pass.
 - The release has no `boot.tar.xz.md5` or `.sha256` (devices refuse to install it).
+- The release has no `boot.tar.xz.manifest` / `.manifest.sig`, or the signature was not checked by `scripts/publish-release.sh` (devices with signature checking refuse it).
 - The update has only been tried on a computer. Try it on a spare card first.
