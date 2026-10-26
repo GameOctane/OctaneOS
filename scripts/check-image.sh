@@ -106,6 +106,12 @@ else
     bad "device tree blob and dtc available (${DTB})"
 fi
 
+# The boot line must not force one display profile on every unit (docs/a733-gotchas.md, item 6).
+BOOTCONF="${OUT}/images/boot/extlinux/extlinux.conf"
+[ -f "${BOOTCONF}" ] || BOOTCONF="${REPO_ROOT}/board/batocera/allwinner/a733/cubie-a7s/boot/extlinux.conf"
+check "boot line does not force an EDID on every display (no drm.edid_firmware)" \
+    bash -c "! grep -q 'drm.edid_firmware' '${BOOTCONF}'"
+
 echo "== Image contents"
 check "kernel Image exists" test -s "${OUT}/images/Image"
 check "second filesystem layer rufomaculata exists" test -s "${OUT}/images/rufomaculata"
