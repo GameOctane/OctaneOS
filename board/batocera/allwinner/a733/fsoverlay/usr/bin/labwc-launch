@@ -174,6 +174,11 @@ serial "PVR render node: $PVR_RENDER_NODE"
 # PVR render node instead of the sunxi-drm render node (which can't do GLES2).
 # If labwc crashes within 5s (EGL init failure), fall back to pixman.
 
+# WLR_SCENE_DISABLE_DIRECT_SCANOUT=1: the display driver (sunxi-drm) cannot import the GPU's buffers,
+# so wlroots' direct scan-out attempt fails on every frame ("Failed to import buffer for scan-out", about
+# every 25-44 ms) and then falls back to compositing.  The failed attempt costs time and log writes.
+# Turning it off: zero failures, menus about 40% faster, a DS game about 3-4 fps faster
+# (docs/a733-gotchas.md, item 12).  Keep labwc -d: with the failures gone the log grows only a few KB a minute.
 serial "Attempting WLR_RENDERER=gles2 display=/dev/dri/$DISPLAY_CARD render=$PVR_RENDER_NODE"
 echo "=== labwc GLES2 attempt $(date) ===" > "$LABWC_GLES2_LOG"
 LD_LIBRARY_PATH="/usr/local/lib:/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
@@ -185,6 +190,7 @@ WLR_DRM_DEVICES="/dev/dri/$DISPLAY_CARD" \
 WLR_RENDER_DRM_DEVICE="$PVR_RENDER_NODE" \
 WLR_LIBINPUT_NO_DEVICES=1 \
 WLR_DRM_NO_MODIFIERS=1 \
+WLR_SCENE_DISABLE_DIRECT_SCANOUT=1 \
     /usr/bin/labwc -d -C $LABWC_CONF_DIR >> "$LABWC_GLES2_LOG" 2>&1 &
 LABWC_PID=$!
 
