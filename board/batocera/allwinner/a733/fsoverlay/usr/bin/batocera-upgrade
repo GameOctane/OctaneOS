@@ -6,9 +6,21 @@
 #   batocera-upgrade <https-url>     install from another https URL (the checksums are
 #                                    fetched from <url>.md5 and <url>.sha256)
 #   batocera-upgrade manual          install /userdata/system/upgrade/boot.tar.xz that you
-#                                    copied there yourself
+#                                    copied there yourself (with boot.tar.xz.manifest and
+#                                    boot.tar.xz.manifest.sig next to it)
+#   batocera-upgrade --allow-downgrade [...]   also accept an older version than the installed one
 #
 # What it guarantees, and why (each point was a gap in the previous version):
+#   - Every update must carry a signature.  A small manifest (board, version, size and SHA-256
+#     of the archive) is signed with a key that is kept offline; this script checks the signature
+#     against the public keys in /usr/share/octane/update-keys BEFORE it downloads the big file,
+#     and then checks that the archive matches the manifest.  A checksum published next to the
+#     file proves nothing against someone who controls where the file is published.
+#   - It refuses an older version than the installed one (a signed old release could otherwise be
+#     replayed to bring back a bug), unless --allow-downgrade is given on purpose.
+#   - Only a developer image (it has the file /usr/share/octane/allow-unsigned, which the release
+#     check rejects) may install an update that has no signature at all.  A signature that is
+#     present but wrong is always refused.
 #   - It refuses to install anything without a checksum that matches.  The old version
 #     printed "Missing md5 file - proceed" and went ahead.
 #   - The archive is unpacked into /userdata first and checked there: it must be for this
@@ -32,11 +44,18 @@ CURL="${OCTANE_CURL:-curl}"
 MOUNT="${OCTANE_MOUNT:-mount}"
 LOCKFILE="${OCTANE_LOCK:-/var/run/octane-upgrade.lock}"
 RELEASE_URL="${OCTANE_RELEASE_URL:-https://github.com/GameOctane/OctaneOS/releases/latest/download}"
+KEYS_DIR="${OCTANE_KEYS_DIR:-/usr/share/octane/update-keys}"
+UNSIGNED_FLAG="${OCTANE_ALLOW_UNSIGNED_FLAG:-/usr/share/octane/allow-unsigned}"
+VERSION_FILE="${OCTANE_VERSION_FILE:-/usr/share/batocera/octaneos.version}"
+OPENSSL="${OCTANE_OPENSSL:-openssl}"
 
 STAGE="${UPG}/stage"
 FILE="${UPG}/boot.tar.xz"
 BOOT_RW=0
 GETPERPID=""
+MODE=""
+MANIFEST=""
+MANIFEST_SIG=""
 [ -t 1 ] && TERMINAL=1 || TERMINAL=0
 TERMINAL="${OCTANE_TERMINAL:-${TERMINAL}}"
 
@@ -76,6 +95,7 @@ do_clean() {
     GETPERPID=""
     rm -f "${UPG}/upgrade_message.txt"
     rm -rf "${STAGE}"
+    [ "${MODE}" = "net" ] && [ -n "${MANIFEST}" ] && rm -f "${MANIFEST}" "${MANIFEST_SIG}"
     if [ "${BOOT_RW}" = "1" ]; then
         BOOT_RW=0
         "${MOUNT}" -o remount,ro "${BOOT}"
@@ -108,6 +128,16 @@ echo "Starting OctaneOS upgrade..."
 board=$(cat "${BOOT}/boot/batocera.board" 2>/dev/null) || die "cannot read this device's board name"
 [ -n "${board}" ] || die "this device's board name is empty"
 
+ALLOW_DOWNGRADE=0
+ARGS=()
+for a in "$@"; do
+    case "$a" in
+        --allow-downgrade) ALLOW_DOWNGRADE=1 ;;
+        *) ARGS+=("$a") ;;
+    esac
+done
+set -- "${ARGS[@]}"
+
 MODE=net
 [ "$1" = "manual" ] && MODE=manual
 BINARY_URL="${RELEASE_URL}/boot.tar.xz"
@@ -122,12 +152,71 @@ if [ "${OCTANE_ALLOW_INSECURE:-0}" != "1" ]; then
     CURL_OPTS+=(--proto '=https' --proto-redir '=https' --tlsv1.2)
 fi
 
+# ---- SIGNATURE: checked before the big download; the manifest names the exact file that is allowed ----
+MANIFEST="${FILE}.manifest"; MANIFEST_SIG="${FILE}.manifest.sig"
+if [ "${MODE}" = "net" ]; then
+    rm -f "${MANIFEST}" "${MANIFEST_SIG}"
+    "${CURL}" "${CURL_OPTS[@]}" -sfL -o "${MANIFEST}" "${BINARY_URL}.manifest" 2>/dev/null || rm -f "${MANIFEST}"
+    "${CURL}" "${CURL_OPTS[@]}" -sfL -o "${MANIFEST_SIG}" "${BINARY_URL}.manifest.sig" 2>/dev/null || rm -f "${MANIFEST_SIG}"
+fi
+do_upgmsg "Checking the signature ..."
+SIGNED=0
+sig_state=missing
+if [ -s "${MANIFEST}" ] && [ -s "${MANIFEST_SIG}" ]; then
+    [ "$(stat -c %s "${MANIFEST}")" -le 4096 ] || die "the release manifest is too large; refusing it"
+    sig_state=nokeys
+    for k in "${KEYS_DIR}"/*.pem; do
+        [ -f "${k}" ] || continue
+        sig_state=bad
+        if "${OPENSSL}" pkeyutl -verify -pubin -inkey "${k}" -rawin -in "${MANIFEST}" -sigfile "${MANIFEST_SIG}" >/dev/null 2>&1; then
+            sig_state=good; break
+        fi
+    done
+fi
+case "${sig_state}" in
+    good) SIGNED=1 ;;
+    bad)  die "the signature on this update does not match any key in this image; it will not be installed" ;;
+    nokeys)
+        [ -e "${UNSIGNED_FLAG}" ] || die "this image has no update keys, so it cannot check the signature on an update"
+        echo "WARNING: this image has no update keys; installing the update unchecked (developer image)" ;;
+    *)
+        [ -e "${UNSIGNED_FLAG}" ] || die "this update is not signed, so it will not be installed"
+        echo "WARNING: this update has no signature; installing it because this is a developer image" ;;
+esac
+
+if [ "${SIGNED}" = "1" ]; then
+    # only a manifest with every required key exactly once is accepted; each value is checked
+    m_get() { awk -F= -v k="$1" '$1==k {n++; v=substr($0, length(k)+2)} END {if (n==1) print v}' "${MANIFEST}"; }
+    m_magic=$(m_get octaneos-manifest); m_board=$(m_get board); m_version=$(m_get version)
+    m_file=$(m_get file); m_size=$(m_get size); m_sha=$(m_get sha256)
+    [ "${m_magic}" = "1" ] || die "the signed manifest has an unknown format"
+    [[ "${m_board}" =~ ^[a-z0-9][a-z0-9-]*$ ]] || die "the signed manifest has no valid board name"
+    [[ "${m_version}" =~ ^[0-9]+(\.[0-9]+)*$ ]] || die "the signed manifest has no valid version"
+    [[ "${m_size}" =~ ^[0-9]+$ ]] && [ "${m_size}" -gt 0 ] || die "the signed manifest has no valid size"
+    [[ "${m_sha}" =~ ^[0-9a-f]{64}$ ]] || die "the signed manifest has no valid sha256"
+    [ "${m_board}" = "${board}" ] || die "this update is signed for '${m_board}' but this device is '${board}'"
+    want_name=$(basename "${BINARY_URL}")
+    [ "${m_file}" = "${want_name}" ] || die "the signed manifest is for '${m_file}', not '${want_name}'"
+    cur=$(awk 'NR==1 {sub(/^v/, "", $1); print $1}' "${VERSION_FILE}" 2>/dev/null)
+    if [[ "${cur}" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+        if [ "${m_version}" != "${cur}" ] && [ "$(printf '%s\n%s\n' "${cur}" "${m_version}" | sort -V | head -1)" = "${m_version}" ]; then
+            [ "${ALLOW_DOWNGRADE}" = "1" ] || die "this update is version ${m_version}, older than the installed ${cur}; refusing the downgrade (batocera-upgrade --allow-downgrade overrides)"
+            echo "WARNING: installing the older version ${m_version} over ${cur} because --allow-downgrade was given"
+        fi
+    else
+        [ "${ALLOW_DOWNGRADE}" = "1" ] || die "cannot read the installed version, so the downgrade check cannot be done"
+    fi
+    echo "signature valid: ${m_file} version ${m_version} for ${m_board}"
+    do_upgmsg "Signature valid for version ${m_version} ..." 1
+fi
+
 # ---- DOWNLOAD ----
 if [ "${MODE}" = "net" ]; then
     echo "url: ${BINARY_URL}"
     headers=$("${CURL}" "${CURL_OPTS[@]}" -sfIL "${BINARY_URL}") || die "cannot reach ${BINARY_URL}"
     size=$(echo "${headers}" | tr -d '\r' | grep -i "^Content-Length: " | tail -1 | sed -e 's/^[^:]*: *//')
     [[ "${size}" =~ ^[0-9]+$ ]] && [ "${size}" -gt 0 ] || die "could not read the size of the update"
+    [ "${SIGNED}" = "0" ] || [ "${size}" = "${m_size}" ] || die "the server's file is not the size the signed manifest says"
     size_mb=$((size / 1024 / 1024))
     echo "need to download and unpack ~$((size_mb * 22 / 10))mb"
 
@@ -152,6 +241,7 @@ if [ "${MODE}" = "net" ]; then
 else
     [ -f "${FILE}" ] || die "local file ${FILE} not found"
     echo "Using local file: ${FILE}"
+    [ "${SIGNED}" = "0" ] || [ "$(stat -c %s "${FILE}")" = "${m_size}" ] || die "the local file is not the size the signed manifest says"
 fi
 
 # ---- CHECKSUM: required, every published one must match ----
@@ -176,6 +266,11 @@ if [ -f "${MD5_FILE}" ]; then
     want=$(read_sum "${MD5_FILE}" 32) || { rm -f "${FILE}" "${FILE}.md5.dl" "${FILE}.sha256.dl"; die "the published md5 file is malformed"; }
     got=$(md5sum "${FILE}" | awk '{print $1}')
     [ "${want}" = "${got}" ] || { rm -f "${FILE}" "${FILE}.md5.dl" "${FILE}.sha256.dl"; die "md5 checksum does not match; the download was removed"; }
+    checked=1
+fi
+if [ "${SIGNED}" = "1" ]; then
+    got=$(sha256sum "${FILE}" | awk '{print $1}')
+    [ "${got}" = "${m_sha}" ] || { rm -f "${FILE}" "${FILE}.md5.dl" "${FILE}.sha256.dl"; die "the update does not match the signed manifest; the download was removed"; }
     checked=1
 fi
 rm -f "${FILE}.md5.dl" "${FILE}.sha256.dl"
@@ -273,7 +368,7 @@ fi
 do_upgmsg "Doing final cleanups ..." 0.5
 rm -f "${FILE}"
 # manual mode: the checksum files next to the archive were put there by the user; remove them too
-[ "${MODE}" = "manual" ] && rm -f "${FILE}.md5" "${FILE}.sha256"
+[ "${MODE}" = "manual" ] && rm -f "${FILE}.md5" "${FILE}.sha256" "${MANIFEST}" "${MANIFEST_SIG}"
 do_clean
 sync
 

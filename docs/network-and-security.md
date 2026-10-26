@@ -86,7 +86,8 @@ Set your Wi-Fi country in Network Settings. We do not preset it, because the rig
 ## Updates
 
 Updates come from this project's GitHub releases over HTTPS and are refused unless their checksum matches. See
-[UPGRADING.md](../UPGRADING.md). Signed updates, which would also protect against a tampered release, are planned.
+[UPGRADING.md](../UPGRADING.md). Signed updates, which also protect against a tampered release, are written and tested but not released yet:
+see [update-signing.md](update-signing.md). (Devices on 0.7.0 do not check signatures, so the first signed release reaches them unprotected.)
 
 ## Reporting a problem
 

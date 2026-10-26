@@ -13,7 +13,14 @@ trap 'rm -rf "${T:?}"' EXIT
 PASS=0; FAIL=0
 check() { if eval "$2"; then PASS=$((PASS+1)); printf '  PASS  %s\n' "$1"; else FAIL=$((FAIL+1)); printf '  FAIL  %s\n        %s\n' "$1" "$2"; fi; }
 
-mkdir -p "${T}/bin"
+mkdir -p "${T}/bin" "${T}/keys" "${T}/priv"
+command -v openssl >/dev/null || { echo "openssl is needed for these tests" >&2; exit 2; }
+# throw-away update keys: two the project trusts, one it does not
+for k in primary backup rogue; do
+    openssl genpkey -algorithm ED25519 -out "${T}/priv/${k}.pem" 2>/dev/null
+    openssl pkey -in "${T}/priv/${k}.pem" -pubout -out "${T}/priv/${k}.pub.pem" 2>/dev/null
+done
+cp "${T}/priv/primary.pub.pem" "${T}/priv/backup.pub.pem" "${T}/keys/"
 export CALLS="${T}/calls.log" STORE="${T}/store" PUBLIC="${T}/public"
 
 cat > "${T}/bin/fakegh" <<'FAKE'
@@ -90,6 +97,13 @@ esac
 FAKE
 chmod +x "${T}"/bin/*
 
+# sign (or re-sign) the manifest of the current fake build with the given key (default: primary)
+sign_build() {
+    local d="${T}/out/images/batocera/images/cubie-a7s" key="${1:-primary}"
+    bash "${REPO_ROOT}/scripts/make-manifest.sh" cubie-a7s 0.9.1 "${d}/boot.tar.xz" "${d}/boot.tar.xz.manifest" >/dev/null
+    openssl pkeyutl -sign -inkey "${T}/priv/${key}.pem" -rawin -in "${d}/boot.tar.xz.manifest" -out "${d}/boot.tar.xz.manifest.sig"
+}
+
 # a finished build with consistent files
 new_build() {
     rm -rf "${T:?}/out" "${T:?}/store" "${T:?}/public"; : > "${CALLS}"
@@ -102,6 +116,7 @@ new_build() {
         md5sum "${d}/${f}" | awk '{print $1}' > "${d}/${f}.md5"; sha256sum "${d}/${f}" | awk '{print $1}' > "${d}/${f}.sha256"
     done
     ( cd "${d}" && sha256sum boot.tar.xz OctaneOS-*.img.gz > SHA256SUMS )
+    sign_build primary
     cat > "${T}/notes.md" <<'EOF'
 ## Compatibility
 - **Update over the air:** yes
@@ -113,7 +128,7 @@ EOF
 run() {
     OUT_TXT=$(OCTANE_OUT="${T}/out" OCTANE_GH="${T}/bin/fakegh" OCTANE_CURL="${T}/bin/fakecurl" \
         OCTANE_CHECK_IMAGE="${T}/bin/fakecheck" OCTANE_BUMP="${T}/bin/fakebump" OCTANE_GIT="${T}/bin/fakegit" \
-        OCTANE_RETRY_WAIT=0 bash "${PUBLISH}" "$@" 2>&1)
+        OCTANE_UPDATE_KEYS="${KEYS_UNDER_TEST:-${T}/keys}" OCTANE_RETRY_WAIT=0 bash "${PUBLISH}" "$@" 2>&1)
     RC=$?
 }
 called() { grep -q -- "$1" "${CALLS}"; }
@@ -132,10 +147,37 @@ check "order: check, view, create draft, view assets, download, publish, bump, c
   [ "$(line_of "release edit")" -lt "$(line_of "^bump")" ] &&
   [ "$(line_of "^bump")" -lt "$(line_of "git commit")" ]'
 check "created as a draft, then published as the latest release" 'called "release create v0.9.1 .*--draft" && called "release edit v0.9.1 .*--draft=false --latest"'
-check "all seven files were attached" '[ "$(ls ${STORE}/v0.9.1/files | wc -l)" = 7 ]'
+check "all nine files were attached (the update, its two checksums, the signed manifest and signature, the image, its two checksums, SHA256SUMS)" '[ "$(ls ${STORE}/v0.9.1/files | wc -l)" = 9 ]'
+check "the manifest and the signature on GitHub are identical to the local ones" '
+  d="${T}/out/images/batocera/images/cubie-a7s"
+  cmp -s "${STORE}/v0.9.1/files/boot.tar.xz.manifest" "${d}/boot.tar.xz.manifest" && cmp -s "${STORE}/v0.9.1/files/boot.tar.xz.manifest.sig" "${d}/boot.tar.xz.manifest.sig"'
 check "the release records the commit it was built from" 'called "--target abc1234def"'
 check "it does not push anything" '! called "git push"'
 check "it says the version file must reach main" 'echo "${OUT_TXT}" | grep -q "no device is told"'
+
+echo "== the signature gate"
+new_build; d="${T}/out/images/batocera/images/cubie-a7s"; rm -f "${d}/boot.tar.xz.manifest" "${d}/boot.tar.xz.manifest.sig"; run --notes "${T}/notes.md"
+check "never signed: the manifest is written, the script stops and says how to sign, nothing is published" \
+    '[ "${RC}" = 1 ] && no_publish && [ -s "${d}/boot.tar.xz.manifest" ] && echo "${OUT_TXT}" | grep -q "NOT SIGNED YET" && echo "${OUT_TXT}" | grep -q "sign-release.sh"'
+openssl pkeyutl -sign -inkey "${T}/priv/backup.pem" -rawin -in "${d}/boot.tar.xz.manifest" -out "${d}/boot.tar.xz.manifest.sig"; run --notes "${T}/notes.md"
+check "...then signed (with the backup key) and run again: it publishes" '[ "${RC}" = 0 ] && called "release edit .*--draft=false --latest"'
+new_build; d="${T}/out/images/batocera/images/cubie-a7s"; rm -f "${d}/boot.tar.xz.manifest.sig"; run --notes "${T}/notes.md" --dry-run
+check "even a dry run needs the signature" '[ "${RC}" = 1 ] && no_publish && echo "${OUT_TXT}" | grep -q "NOT SIGNED YET"'
+new_build; sign_build rogue; run --notes "${T}/notes.md"
+check "signed with a key the project does not have -> refused, nothing published" '[ "${RC}" = 1 ] && no_publish && echo "${OUT_TXT}" | grep -q "does not match any key"'
+new_build; d="${T}/out/images/batocera/images/cubie-a7s"; echo "extra" >> "${d}/boot.tar.xz"
+md5sum "${d}/boot.tar.xz" | awk '{print $1}' > "${d}/boot.tar.xz.md5"; sha256sum "${d}/boot.tar.xz" | awk '{print $1}' > "${d}/boot.tar.xz.sha256"
+( cd "${d}" && sha256sum boot.tar.xz OctaneOS-*.img.gz > SHA256SUMS ); run --notes "${T}/notes.md"
+check "the archive changed after it was signed -> refused (the manifest does not describe this build)" '[ "${RC}" = 1 ] && no_publish && echo "${OUT_TXT}" | grep -q "does not describe this build"'
+new_build; d="${T}/out/images/batocera/images/cubie-a7s"; sed -i 's/^version=0.9.1/version=0.9.0/' "${d}/boot.tar.xz.manifest"
+openssl pkeyutl -sign -inkey "${T}/priv/primary.pem" -rawin -in "${d}/boot.tar.xz.manifest" -out "${d}/boot.tar.xz.manifest.sig"; run --notes "${T}/notes.md"
+check "a validly signed manifest for another version -> refused" '[ "${RC}" = 1 ] && no_publish && echo "${OUT_TXT}" | grep -q "does not describe this build"'
+mkdir -p "${T}/onekey"; cp "${T}/priv/primary.pub.pem" "${T}/onekey/"
+new_build; KEYS_UNDER_TEST="${T}/onekey" run --notes "${T}/notes.md"
+check "only one public key in the project -> refused (a backup key is required)" '[ "${RC}" = 1 ] && no_publish && echo "${OUT_TXT}" | grep -q "at least two"'
+mkdir -p "${T}/nokeys"
+new_build; KEYS_UNDER_TEST="${T}/nokeys" run --notes "${T}/notes.md"
+check "no public keys in the project -> refused" '[ "${RC}" = 1 ] && no_publish && echo "${OUT_TXT}" | grep -q "at least two"'
 
 echo "== refused before anything is created"
 new_build; run --notes "${T}/notes.md" --dry-run

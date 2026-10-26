@@ -174,6 +174,36 @@ else
     pass "no developer SSH key in the image"
 fi
 
+# Update signing: the updater refuses an update unless it is signed by one of the keys in the image.
+UPKEYS="${OUT}/target/usr/share/octane/update-keys"
+UNSIGNED_FLAG="${OUT}/target/usr/share/octane/allow-unsigned"
+shopt -s nullglob
+img_keys=("${UPKEYS}"/*.pem)
+repo_keys=("${REPO_ROOT}"/keys/update/*.pub.pem)
+shopt -u nullglob
+if [ -e "${UNSIGNED_FLAG}" ]; then
+    if [ "${RELEASE}" -eq 1 ]; then
+        bad "no 'accepts unsigned updates' marker in a release image (it comes from OCTANE_DEV_KEY_FILE)"
+    else
+        echo "  NOTE  this image accepts updates without a signature (developer image); never release it"
+    fi
+else
+    pass "this image does not accept unsigned updates"
+fi
+if [ "${#img_keys[@]}" -ge 2 ]; then
+    pass "update signature keys are in the image (${#img_keys[@]})"
+    same=1
+    for rk in "${repo_keys[@]}"; do
+        cmp -s "${rk}" "${UPKEYS}/$(basename "${rk%.pub.pem}").pem" || same=0
+    done
+    [ "${#repo_keys[@]}" -eq "${#img_keys[@]}" ] || same=0
+    check "the keys in the image are exactly the project's keys (keys/update)" test "${same}" -eq 1
+elif [ "${RELEASE}" -eq 1 ]; then
+    bad "a release image needs the primary and the backup update key (found ${#img_keys[@]}); see docs/update-signing.md"
+else
+    echo "  NOTE  this image has ${#img_keys[@]} update key(s), so it can install updates only if it is a developer image"
+fi
+
 echo "== Checksums"
 shopt -s nullglob
 files=("${IMG_DIR}"/boot.tar.xz "${IMG_DIR}"/*.img.gz)
