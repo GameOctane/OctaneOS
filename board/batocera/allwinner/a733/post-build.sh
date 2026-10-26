@@ -128,6 +128,36 @@ else
 fi
 
 # =============================================================================
+# Update signature keys (docs/update-signing.md).  The updater installs an update only if its
+# manifest is signed by one of the public keys in /usr/share/octane/update-keys: the primary key
+# and the backup key, kept in keys/update/*.pub.pem in the repo.  The folder is rebuilt from the
+# repo on every build, so a key that was removed does not linger in target/.
+# A DEVELOPER image (built with OCTANE_DEV_KEY_FILE) also gets /usr/share/octane/allow-unsigned,
+# which lets that test image install an update that has no signature at all (a wrong signature
+# is still refused).  The marker is deleted on every other build, and check-image.sh --release
+# fails if it is present.
+# =============================================================================
+UPDATE_KEYS_SRC="${REPO_ROOT_FOR_SCRIPTS}/../keys/update"
+rm -rf "${TARGET_DIR}/usr/share/octane/update-keys"
+mkdir -p "${TARGET_DIR}/usr/share/octane/update-keys"
+update_keys=0
+for k in "${UPDATE_KEYS_SRC}"/*.pub.pem; do
+    [ -f "${k}" ] || continue
+    install -m 0644 "${k}" "${TARGET_DIR}/usr/share/octane/update-keys/$(basename "${k%.pub.pem}").pem"
+    update_keys=$((update_keys + 1))
+done
+echo "[post-build] update signature keys installed: ${update_keys}"
+if [ "${update_keys}" -lt 2 ]; then
+    echo "[post-build] WARNING: fewer than two update keys in keys/update, so this image cannot install signed updates (see docs/update-signing.md)"
+fi
+if [ -n "${OCTANE_DEV_KEY_FILE:-}" ]; then
+    : > "${TARGET_DIR}/usr/share/octane/allow-unsigned"
+    echo "[post-build] WARNING: developer image: it may install unsigned updates. Do not release it."
+else
+    rm -f "${TARGET_DIR}/usr/share/octane/allow-unsigned"
+fi
+
+# =============================================================================
 # OctaneOS defaults — injected into datainit batocera.conf
 # Layers on top of the upstream file without maintaining a full copy.
 # =============================================================================

@@ -20,6 +20,11 @@ bad()  { FAIL=$((FAIL+1)); printf '  FAIL  %s\n' "$1"; [ -n "${2:-}" ] && printf
 check() { if eval "$2"; then ok "$1"; else bad "$1" "$2"; fi; }
 
 mkdir -p "${T}/bin" "${T}/serve"
+# These tests cover the checksum, board and unpacking checks.  They run as a DEVELOPER image (the flag
+# file exists), which may install an update without a signature; scripts/test-update-signing.sh covers
+# the signature itself, including what a normal image does with an unsigned update.
+: > "${T}/allow-unsigned"
+echo "0.7.0" > "${T}/installed.version"
 
 # fake curl: serves $FAKE_SERVE_DIR/<basename of the url>, records its calls in $FAKE_LOG
 cat > "${T}/bin/fakecurl" <<'FAKE'
@@ -92,6 +97,8 @@ run_upgrade() {
     OUT=$(OCTANE_BOOT_DIR="${T}/boot" OCTANE_UPGRADE_DIR="${T}/upg" OCTANE_CURL="${T}/bin/fakecurl" \
           OCTANE_MOUNT="${T}/bin/fakemount" OCTANE_LOCK="${T}/lock" OCTANE_TERMINAL="${TERM_MODE:-1}" \
           OCTANE_RELEASE_URL="https://example.invalid/dl" FAKE_SERVE_DIR="${T}/serve" FAKE_LOG="${T}/curl.log" \
+          OCTANE_ALLOW_UNSIGNED_FLAG="${T}/allow-unsigned" OCTANE_KEYS_DIR="${T}/no-keys" \
+          OCTANE_VERSION_FILE="${T}/installed.version" \
           FAKE_MOUNT_LOG="${T}/mount.log" FAKE_HEAD_EXTRA="${FAKE_HEAD_EXTRA:-0}" PATH="${EXTRA_PATH:-}:${PATH}" \
           bash "${UPGRADE}" "$@" 2>&1)
     RC=$?

@@ -10,7 +10,11 @@
 # script makes the release complete and verified first, and only then bumps the version file:
 #
 #   1  check the build: scripts/check-image.sh --release (no developer SSH key, all checks pass)
-#   2  check the files: all present, checksums consistent, the release notes filled in
+#   2  check the files: all present, checksums consistent, the release notes filled in, and the
+#      update is SIGNED: a manifest (board, version, size and sha256 of boot.tar.xz) with a valid
+#      signature from one of the keys in keys/update (docs/update-signing.md).  The signing is done
+#      by hand on an offline machine: the first run writes the manifest and stops, you sign it and
+#      copy the .sig back, the second run goes on.
 #   3  refuse if this version already has a release (a release is never overwritten)
 #   4  create the release as a DRAFT (invisible to devices) with every file attached
 #   5  check what GitHub holds: every file the right size, the small checksum files identical
@@ -82,7 +86,38 @@ echo "version ${VERSION}, release tag ${TAG}"
 step "2. checking the files and the release notes"
 IMG="$(basename "$(ls "${IMG_DIR}"/OctaneOS-*.img.gz 2>/dev/null | head -1)" 2>/dev/null || true)"
 [ -n "${IMG}" ] || die "no OctaneOS-*.img.gz in ${IMG_DIR}"
-ASSETS=(boot.tar.xz boot.tar.xz.md5 boot.tar.xz.sha256 "${IMG}" "${IMG}.md5" "${IMG}.sha256" SHA256SUMS)
+
+# ---- the signature gate (devices refuse an update without a valid signature) ----
+KEYS_REPO="${OCTANE_UPDATE_KEYS:-${REPO_ROOT}/keys/update}"
+MAKE_MANIFEST="${OCTANE_MAKE_MANIFEST:-${REPO_ROOT}/scripts/make-manifest.sh}"
+VERIFY_SIG="${OCTANE_VERIFY_SIG:-${REPO_ROOT}/scripts/verify-signature.sh}"
+shopt -s nullglob
+PUBKEYS=("${KEYS_REPO}"/*.pub.pem)
+shopt -u nullglob
+[ "${#PUBKEYS[@]}" -ge 2 ] || die "need at least two update public keys (primary and backup) in ${KEYS_REPO}; see docs/update-signing.md"
+[ -s "${IMG_DIR}/boot.tar.xz" ] || die "missing or empty: ${IMG_DIR}/boot.tar.xz"
+MAN="${IMG_DIR}/boot.tar.xz.manifest"; MAN_SIG="${MAN}.sig"
+WANT_MAN="$(mktemp)"
+"${MAKE_MANIFEST}" cubie-a7s "${VERSION}" "${IMG_DIR}/boot.tar.xz" "${WANT_MAN}" >/dev/null || die "cannot make the manifest"
+if [ ! -s "${MAN}" ]; then
+    cp "${WANT_MAN}" "${MAN}"; rm -f "${MAN_SIG}"
+    echo "wrote ${MAN}"
+elif ! cmp -s "${WANT_MAN}" "${MAN}"; then
+    rm -f "${WANT_MAN}"
+    die "the manifest ${MAN} does not describe this build (an older one left over?). Delete it and the .sig next to it and run again."
+fi
+rm -f "${WANT_MAN}"
+if [ ! -s "${MAN_SIG}" ]; then
+    echo "NOT SIGNED YET.  On your OFFLINE machine:" >&2
+    echo "    copy ${MAN} there, then run" >&2
+    echo "    scripts/sign-release.sh boot.tar.xz.manifest <your-private-key.pem>" >&2
+    echo "    and copy the resulting boot.tar.xz.manifest.sig back to ${IMG_DIR}/" >&2
+    echo "Then run this script again." >&2
+    exit 1
+fi
+"${VERIFY_SIG}" "${MAN}" "${MAN_SIG}" "${PUBKEYS[@]}" || die "the signature does not match any key in ${KEYS_REPO}; nothing was published"
+
+ASSETS=(boot.tar.xz boot.tar.xz.md5 boot.tar.xz.sha256 boot.tar.xz.manifest boot.tar.xz.manifest.sig "${IMG}" "${IMG}.md5" "${IMG}.sha256" SHA256SUMS)
 for a in "${ASSETS[@]}"; do
     [ -s "${IMG_DIR}/${a}" ] || die "missing or empty: ${IMG_DIR}/${a}"
 done
@@ -162,7 +197,7 @@ for a in "${ASSETS[@]}"; do
 done
 echo "all ${#ASSETS[@]} files are present on GitHub with the right size"
 TMP="$(mktemp -d)"
-for a in boot.tar.xz.md5 boot.tar.xz.sha256 SHA256SUMS; do
+for a in boot.tar.xz.md5 boot.tar.xz.sha256 boot.tar.xz.manifest boot.tar.xz.manifest.sig SHA256SUMS; do
     "${GH}" release download "${TAG}" --repo "${REPO}" --dir "${TMP}" --pattern "${a}" \
         || die "cannot download ${a} from the draft"
     cmp -s "${TMP}/${a}" "${IMG_DIR}/${a}" || die "${a} on GitHub differs from the local file"
@@ -179,7 +214,7 @@ DRAFT_CREATED=0
 step "7. checking what a device would download"
 check_public() {
     local f len want
-    for f in boot.tar.xz.md5 boot.tar.xz.sha256; do
+    for f in boot.tar.xz.md5 boot.tar.xz.sha256 boot.tar.xz.manifest boot.tar.xz.manifest.sig; do
         "${CURL}" -sfL "${PUBLIC_BASE}/${f}" -o "${TMP:-/dev/null}.pub" 2>/dev/null || return 1
         cmp -s "${TMP:-/dev/null}.pub" "${IMG_DIR}/${f}" || return 1
     done
