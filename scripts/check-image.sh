@@ -134,6 +134,8 @@ check "compositor start: direct scan-out is disabled (WLR_SCENE_DISABLE_DIRECT_S
     grep -q '^WLR_SCENE_DISABLE_DIRECT_SCANOUT=1 ' "${OUT}/target/usr/bin/labwc-launch"
 check "DS vsync is off by default on a new card (nds.retroarch.video_vsync=false)" \
     grep -qx 'nds.retroarch.video_vsync=false' "${OUT}/target/usr/share/batocera/datainit/system/batocera.conf"
+check "existing cards get the DS vsync default once: the migration is in the init script" \
+    grep -q "BEGIN migration ds-vsync-off" "${OUT}/target/etc/init.d/S13octane-init"
 check "no DS bezel setting is forced in the default settings (the bezel stays on)" \
     bash -c "! grep -q '^nds\\.bezel=' '${OUT}/target/usr/share/batocera/datainit/system/batocera.conf'"
 

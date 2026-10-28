@@ -90,6 +90,23 @@ case "$1" in
         echo "updates.url=https://raw.githubusercontent.com/GameOctane/OctaneOS/main/ota" >> "$BATOCERA_CONF"
     fi
 
+    # BEGIN migration ds-vsync-off
+    # One-time migration: the Nintendo DS needs RetroArch's vsync OFF on a 120 Hz screen, otherwise a slightly late
+    # frame waits for the next slot, the game hovers at about 50 of 60 fps and the audio has gaps about 14% of the
+    # time (docs/a733-gotchas.md, item 20).  A new card gets this from the default settings file, but an existing
+    # card keeps its own batocera.conf through an update, so it is added here, ONCE.  A marker file records that
+    # it was done, so a user who later deletes the line or sets it to true is not overridden again, and a value
+    # the user already set is never touched.  If batocera.conf does not exist yet nothing is done (S12populateshare
+    # creates the full default file, which already has the line).
+    MIGRATE_DIR=/userdata/system/.octane-migrations
+    if [ ! -e "$MIGRATE_DIR/ds-vsync-off" ] && [ -f "$BATOCERA_CONF" ]; then
+        if ! grep -q "^nds.retroarch.video_vsync=" "$BATOCERA_CONF" 2>/dev/null; then
+            echo "nds.retroarch.video_vsync=false" >> "$BATOCERA_CONF"
+        fi
+        mkdir -p "$MIGRATE_DIR" 2>/dev/null && : > "$MIGRATE_DIR/ds-vsync-off" 2>/dev/null
+    fi
+    # END migration ds-vsync-off
+
     # Enable RetroAchievements by default. The user just needs to add their
     # retroachievements.org credentials via Game Settings in the ES menu.
     # Hardcore mode off by default — friendlier for first-time users.

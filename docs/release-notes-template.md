@@ -21,6 +21,8 @@ If a fresh install is needed, say so here in plain words and link
 - Fixes:
 - New:
 - Known issues:
+- **Settings changed on existing cards** (written once at the first boot after the update; a value the player already set is never touched, and a player who changes it afterwards is not overridden):
+  - Nintendo DS: `nds.retroarch.video_vsync=false`. On a 120 Hz screen this removes the audio warble and the 50 fps hover (docs/a733-gotchas.md, item 20). To turn vsync back on: set the line to `nds.retroarch.video_vsync=true` in `/userdata/system/batocera.conf`.
 
 ## Files
 
