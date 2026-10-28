@@ -177,13 +177,18 @@ if [ -f "${DATAINIT_CONF}" ] && ! grep -q "^updates.url=" "${DATAINIT_CONF}"; th
     echo "[post-build] Set updates.url in datainit batocera.conf"
 fi
 
-# The Nintendo DS bezel (the drawn console frame around the two screens) costs about 3 fps on this board, and the DS
-# is the heaviest system we run (it sits near 50 of 60 fps).  New cards get it off; the player can switch it on
-# again under the DS system's Decorations setting.  Existing cards keep whatever they chose (this only seeds
-# the default file that a new card is made from).
-if [ -f "${DATAINIT_CONF}" ] && ! grep -q "^nds\.bezel=" "${DATAINIT_CONF}"; then
-    printf '# OctaneOS: the DS bezel costs about 3 fps on this board; Decorations in the DS settings turns it back on.\nnds.bezel=none\n' >> "${DATAINIT_CONF}"
-    echo "[post-build] Set nds.bezel=none in datainit batocera.conf"
+# Nintendo DS on a 120 Hz screen: with RetroArch's vsync ON, a frame that is slightly late waits for the next slot, so the
+# game hovers at about 50 of 60 fps and the audio has gaps about 14% of the time (the "warble").  With vsync OFF it runs at
+# 58-60 fps with 0.1-0.5% gaps, and the bezel then costs nothing (docs/a733-gotchas.md, item 20).  batocera.conf lines of the
+# form <system>.retroarch.<key> are copied straight into retroarch.cfg.  New cards get this here; an existing card keeps what
+# it has (this only seeds the default file that a new card is made from).
+# An earlier build of this script also forced nds.bezel=none; that is removed again, because the target folder keeps old files.
+if [ -f "${DATAINIT_CONF}" ]; then
+    sed -i -e '/^# OctaneOS: the DS bezel costs about 3 fps/d' -e '/^nds\.bezel=none$/d' "${DATAINIT_CONF}"
+    if ! grep -q "^nds\.retroarch\.video_vsync=" "${DATAINIT_CONF}"; then
+        printf '# OctaneOS: DS audio and frame pacing on a 120 Hz screen (docs/a733-gotchas.md, item 20).\nnds.retroarch.video_vsync=false\n' >> "${DATAINIT_CONF}"
+        echo "[post-build] Set nds.retroarch.video_vsync=false in datainit batocera.conf"
+    fi
 fi
 
 # Network defaults (phase 1 of docs/security-design-phase1.md): hide the system folder and the

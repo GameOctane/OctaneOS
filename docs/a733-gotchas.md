@@ -90,10 +90,10 @@ the GPU's buffers. It is logged at DEBUG level and `labwc -d` is always on, so t
 test.
 **Measured on the main card, 2026-10-20 (live change, same DS title screen, fps read off RetroArch's counter by the player):** hovering 46-47 fps with dips to 41-45
 became hovering 50-51 with dips to 48; 161,664 failures in under an hour (a 30 MB log) became 0 and 41 KB. Turning off the DS bezel (the drawn console frame) gave
-another 51-54 fps. The scaling shader (`sharp-bilinear-simple`), the threaded renderer, and the audio buffer size made no measurable difference.
-**Now:** `labwc-launch` sets the variable, and new cards get `nds.bezel=none` (the player can switch the bezel back on under Decorations). We keep `labwc -d`: with
+another 51-54 fps (with vsync on; with vsync off the bezel costs nothing, see item 20). The scaling shader (`sharp-bilinear-simple`), the threaded renderer, and the audio buffer size made no measurable difference.
+**Now:** `labwc-launch` sets the variable. (A `nds.bezel=none` default was tried for new cards and dropped again: see item 20.) We keep `labwc -d`: with
 the failures gone the log grows only a few KB a minute and is reset at every boot, and the debug lines are useful for the display problems.
-**Not fixed by this:** a DS game still sits about 10% under 60 fps; cooling and the graphics path are the next suspects.
+**Not fixed by this:** a DS game still sat about 10% under 60 fps. The cause turned out to be vsync timing, item 20.
 
 ---
 
@@ -157,6 +157,33 @@ Connector J7 (Radxa schematic V1.10, page 16): pin 1 ground, pin 2 the SoC's PWM
 
 Still to measure with a real fan: the lowest duty at which the fan spins, which PWM frequency it likes (the device tree says 25000 ns), and whether it changes speed smoothly.
 Details, wiring and the test plan: [fan-cooling.md](fan-cooling.md).
+
+---
+
+## Frame timing
+
+### 20. On a 120 Hz screen, vsync turns a slightly late frame into a 40 fps frame  *(measured; the mechanism is our explanation)*
+With RetroArch's vsync on, melonDS (the DS) hovered at **50-53 fps with dips to 40-46**, and the audio had **about 14% silence**, in short gaps exactly one audio
+buffer (512 samples, 10.7 ms) long, even on a cool, unthrottled board with the emulator using only about 65% of one core. A 60 fps game on a 120 Hz screen needs a frame every
+second refresh (16.7 ms); a frame that misses that slot waits for the next one (25 ms, 40 fps); a mix averages about 50. This also explains why the 60 Hz mode was *worse* (46-50:
+a late frame there waits to 33 ms) and why heat, the shader, the bezel and the audio buffer size each moved the numbers only a little.
+
+**Measured 2026-10-27 (test card, same Chrono Trigger scene, fps read by the player, audio recorded from the PipeWire output by `analyse-gaps.py`):**
+
+| | fps | audio silence | hottest zone |
+|---|---|---|---|
+| untouched main card (2026-10-20) | 46-47 | 14-19% | about 77 C |
+| scan-out fix and bezel off | 51-54 | 11% | about 77 C |
+| new image, no fan | 50, dropping to 40 | 11.9% | 80-81 C, throttling |
+| new image, fan an inch away | 50-53 | 14.2% | 42 C, no throttling |
+| fan, **vsync off**, bezel off | 58-60 | **0.5%** | 42 C |
+| fan, **vsync off**, bezel **on** | 59-61 | **0.1%** | 43-49 C |
+
+The player heard the difference at once ("so much better") and saw no tearing. A light system (SNES, about 40% of a core) had 1.4% silence with vsync on, and none of the lighter
+systems has been reported as a problem.
+**Now:** the DS gets `nds.retroarch.video_vsync=false` on new cards (batocera.conf lines `<system>.retroarch.<key>` are copied into retroarch.cfg), and the bezel is left on.
+**Not covered:** existing cards keep their settings (they need the line added by hand, or a one-time migration); the other systems are unchanged; standalone emulators (PPSSPP, Flycast, DuckStation, the
+standalone N64) have their own vsync setting and were not tested; tearing on fast scrolling in other systems is untested. In RetroArch the switch is Settings > Video > Synchronization > Vertical Sync.
 
 ---
 
