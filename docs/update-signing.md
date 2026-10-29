@@ -62,6 +62,8 @@ openssl pkey -pubin -in backup.pub.pem  -outform DER | sha256sum
 
 ## Every release
 
+The whole release, step by step (build, sign, publish, test on a device, announce): [releasing.md](releasing.md). The signing part:
+
 1. Build the image as usual, then run `scripts/publish-release.sh --notes <file>`. On the first run it writes
    `boot.tar.xz.manifest` next to the archive and **stops**, printing the commands below.
 2. Copy `boot.tar.xz.manifest` (a 5-line text file) to the offline machine and sign it with the **primary** key:
