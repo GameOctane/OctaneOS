@@ -129,11 +129,15 @@ check "updates.url points at the OctaneOS GitHub repo in the default settings" \
     grep -qx 'updates.url=https://raw.githubusercontent.com/GameOctane/OctaneOS/main/ota' \
     "${OUT}/target/usr/share/batocera/datainit/system/batocera.conf"
 
-# Performance: the compositor must not try (and fail) direct scan-out on every frame, and the DS bezel is off on a new card.
+# Performance: the compositor must not try (and fail) direct scan-out on every frame, and the DS runs with vsync off on a new card.
 check "compositor start: direct scan-out is disabled (WLR_SCENE_DISABLE_DIRECT_SCANOUT=1)" \
     grep -q '^WLR_SCENE_DISABLE_DIRECT_SCANOUT=1 ' "${OUT}/target/usr/bin/labwc-launch"
-check "DS bezel is off by default on a new card (nds.bezel=none)" \
-    grep -qx 'nds.bezel=none' "${OUT}/target/usr/share/batocera/datainit/system/batocera.conf"
+check "DS vsync is off by default on a new card (nds.retroarch.video_vsync=false)" \
+    grep -qx 'nds.retroarch.video_vsync=false' "${OUT}/target/usr/share/batocera/datainit/system/batocera.conf"
+check "existing cards get the DS vsync default once: the migration is in the init script" \
+    grep -q "BEGIN migration ds-vsync-off" "${OUT}/target/etc/init.d/S13octane-init"
+check "no DS bezel setting is forced in the default settings (the bezel stays on)" \
+    bash -c "! grep -q '^nds\\.bezel=' '${OUT}/target/usr/share/batocera/datainit/system/batocera.conf'"
 
 # The intro must play once.  S28splash plays it; a second copy in the labwc autostart played it
 # again, inside the desktop, with a mouse cursor (the cause of the "intro plays twice" report).
