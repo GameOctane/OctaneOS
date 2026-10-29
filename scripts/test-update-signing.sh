@@ -14,6 +14,11 @@ S="${REPO_ROOT}/scripts"
 T="$(mktemp -d)"
 [ -n "${T}" ] && [ -d "${T}" ] || { echo "cannot create a temporary folder" >&2; exit 2; }
 trap 'rm -rf "${T:?}"' EXIT
+
+# The signing scripts look for the project's public keys next to themselves (../keys/update). Run them from a copy with an EMPTY keys
+# folder, so these tests do not change behaviour when the real keys are committed to keys/update.
+SB="${T}/sandbox"; mkdir -p "${SB}/scripts" "${SB}/keys/update"
+cp "${S}/make-manifest.sh" "${S}/sign-release.sh" "${S}/verify-signature.sh" "${SB}/scripts/"
 command -v openssl >/dev/null || { echo "openssl is needed for these tests" >&2; exit 2; }
 
 PASS=0; FAIL=0
@@ -86,11 +91,11 @@ publish() {
         md5sum "${T}/serve/boot.tar.xz" | awk '{print $1}' > "${T}/serve/boot.tar.xz.md5"
         sha256sum "${T}/serve/boot.tar.xz" | awk '{print $1}' > "${T}/serve/boot.tar.xz.sha256"
     fi
-    bash "${S}/make-manifest.sh" "${board}" "${version}" "${T}/serve/boot.tar.xz" "${T}/serve/boot.tar.xz.manifest" >/dev/null
-    bash "${S}/sign-release.sh" "${T}/serve/boot.tar.xz.manifest" "${T}/priv/${key}.pem" "${T}/serve/boot.tar.xz.manifest.sig" >/dev/null 2>&1
+    bash "${SB}/scripts/make-manifest.sh" "${board}" "${version}" "${T}/serve/boot.tar.xz" "${T}/serve/boot.tar.xz.manifest" >/dev/null
+    bash "${SB}/scripts/sign-release.sh" "${T}/serve/boot.tar.xz.manifest" "${T}/priv/${key}.pem" "${T}/serve/boot.tar.xz.manifest.sig" >/dev/null 2>&1
 }
 # re-sign the (edited) manifest with <key>
-resign() { bash "${S}/sign-release.sh" "${T}/serve/boot.tar.xz.manifest" "${T}/priv/$1.pem" "${T}/serve/boot.tar.xz.manifest.sig" >/dev/null 2>&1; }
+resign() { bash "${SB}/scripts/sign-release.sh" "${T}/serve/boot.tar.xz.manifest" "${T}/priv/$1.pem" "${T}/serve/boot.tar.xz.manifest.sig" >/dev/null 2>&1; }
 
 reset_device() {
     rm -rf "${T:?}/boot" "${T:?}/upg" "${T:?}/mount.log" "${T:?}/curl.log" "${T:?}/lock" "${T:?}/allow-unsigned"
@@ -125,19 +130,19 @@ refused() { [ "${RC}" -ne 0 ] && grep -q -- "$1" <<<"${OUT}" && boot_untouched &
 
 echo "== manifest, signing and verification scripts"
 echo "payload" > "${T}/blob.bin"
-bash "${S}/make-manifest.sh" cubie-a7s 0.8.0 "${T}/blob.bin" >/dev/null 2>&1
+bash "${SB}/scripts/make-manifest.sh" cubie-a7s 0.8.0 "${T}/blob.bin" >/dev/null 2>&1
 check "make-manifest writes the five fields" \
     '[ "$(cut -d= -f1 "${T}/blob.bin.manifest" | tr "\n" " ")" = "octaneos-manifest board version file size sha256 " ]'
 check "make-manifest records the real size and sha256" \
     'grep -qx "size=8" "${T}/blob.bin.manifest" && grep -qx "sha256=$(sha256sum "${T}/blob.bin" | cut -d" " -f1)" "${T}/blob.bin.manifest"'
-check "make-manifest refuses a bad version" '! bash "${S}/make-manifest.sh" cubie-a7s 0.8.x "${T}/blob.bin" "${T}/m1" >/dev/null 2>&1'
-check "make-manifest refuses a bad board name" '! bash "${S}/make-manifest.sh" "Cubie A7S" 0.8.0 "${T}/blob.bin" "${T}/m2" >/dev/null 2>&1'
-bash "${S}/sign-release.sh" "${T}/blob.bin.manifest" "${T}/priv/primary.pem" "${T}/blob.sig" >/dev/null 2>&1
+check "make-manifest refuses a bad version" '! bash "${SB}/scripts/make-manifest.sh" cubie-a7s 0.8.x "${T}/blob.bin" "${T}/m1" >/dev/null 2>&1'
+check "make-manifest refuses a bad board name" '! bash "${SB}/scripts/make-manifest.sh" "Cubie A7S" 0.8.0 "${T}/blob.bin" "${T}/m2" >/dev/null 2>&1'
+bash "${SB}/scripts/sign-release.sh" "${T}/blob.bin.manifest" "${T}/priv/primary.pem" "${T}/blob.sig" >/dev/null 2>&1
 check "the signature is 64 bytes" '[ "$(stat -c %s "${T}/blob.sig")" = 64 ]'
-check "verify-signature accepts the right key" 'bash "${S}/verify-signature.sh" "${T}/blob.bin.manifest" "${T}/blob.sig" "${T}/priv/rogue.pub.pem" "${T}/priv/primary.pub.pem" >/dev/null 2>&1'
-check "verify-signature refuses a key that did not sign" '! bash "${S}/verify-signature.sh" "${T}/blob.bin.manifest" "${T}/blob.sig" "${T}/priv/rogue.pub.pem" >/dev/null 2>&1'
+check "verify-signature accepts the right key" 'bash "${SB}/scripts/verify-signature.sh" "${T}/blob.bin.manifest" "${T}/blob.sig" "${T}/priv/rogue.pub.pem" "${T}/priv/primary.pub.pem" >/dev/null 2>&1'
+check "verify-signature refuses a key that did not sign" '! bash "${SB}/scripts/verify-signature.sh" "${T}/blob.bin.manifest" "${T}/blob.sig" "${T}/priv/rogue.pub.pem" >/dev/null 2>&1'
 cp "${T}/blob.bin.manifest" "${T}/edited.manifest"; echo "extra=1" >> "${T}/edited.manifest"
-check "verify-signature refuses a manifest edited after signing" '! bash "${S}/verify-signature.sh" "${T}/edited.manifest" "${T}/blob.sig" "${T}/priv/primary.pub.pem" >/dev/null 2>&1'
+check "verify-signature refuses a manifest edited after signing" '! bash "${SB}/scripts/verify-signature.sh" "${T}/edited.manifest" "${T}/blob.sig" "${T}/priv/primary.pub.pem" >/dev/null 2>&1'
 # sign-release checks the result against the project's public keys when they sit next to it
 mkdir -p "${T}/proj/scripts" "${T}/proj/keys/update"
 cp "${S}/sign-release.sh" "${S}/verify-signature.sh" "${T}/proj/scripts/"; cp "${T}/priv/primary.pub.pem" "${T}/proj/keys/update/primary.pub.pem"
