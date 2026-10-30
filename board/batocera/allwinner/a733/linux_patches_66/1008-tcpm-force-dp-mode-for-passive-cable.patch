@@ -68,7 +68,7 @@ diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
  		if (ret < 0) {
  			tcpm_set_state(port, SRC_UNATTACHED, 0);
  		} else if (port->vbus_present) {
-@@ -4198,6 +4209,28 @@
+@@ -4198,6 +4209,31 @@
  		 * port type-c and the spec does not clearly say whether PD is
  		 * possible when type-c is connected to Type-A/B
  		 */
@@ -84,9 +84,12 @@ diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
 +		 * Switch the mux to 4-lane DP (STATE_E) directly instead of
 +		 * waiting for VDMs that will never come.
 +		 */
++		tcpm_log(port, "OctaneOS 1008: SRC_READY pd_capable=%d vbus_present=%d self_powered=%d",
++			 port->pd_capable, port->vbus_present, port->ufp_self_powered);
 +		if (!port->pd_capable && port->ufp_self_powered) {
 +			enum typec_orientation orientation;
 +
++			tcpm_log(port, "OctaneOS 1008: non-PD self-powered sink, forcing DP mode");
 +			if (port->polarity == TYPEC_POLARITY_CC1)
 +				orientation = TYPEC_ORIENTATION_NORMAL;
 +			else
