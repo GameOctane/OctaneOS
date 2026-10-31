@@ -15,7 +15,8 @@
 #      signature from one of the keys in keys/update (docs/update-signing.md).  The signing is done
 #      by hand on an offline machine: the first run writes the manifest and stops, you sign it and
 #      copy the .sig back, the second run goes on.
-#   3  refuse if this version already has a release (a release is never overwritten)
+#   3  refuse if this version already has a release (a release is never overwritten), and if the commit the build was
+#      made from is not on GitHub yet (a release must point at a commit GitHub has: push the branch first)
 #   4  create the release as a DRAFT (invisible to devices) with every file attached
 #   5  check what GitHub holds: every file the right size, the small checksum files identical
 #   6  publish the draft as the latest release
@@ -159,6 +160,9 @@ if [ "${DIRTY_OK}" != "1" ]; then
         die "uncommitted changes in the repo; commit them first or use --allow-dirty"
     fi
 fi
+# The last step commits the version file. If git has no name or email that fails AFTER the release is public, so check now.
+repo_git var GIT_COMMITTER_IDENT >/dev/null 2>&1 \
+    || die "git has no name or email set, so the version-file commit at the very end could not be made (after the release is public). Set them first: git config --global user.name \"Your Name\"; git config --global user.email \"you@example.com\""
 echo "built from commit ${COMMIT}"
 echo "files: ${ASSETS[*]}"
 
@@ -176,6 +180,9 @@ step "3. making sure ${TAG} does not exist yet"
 if "${GH}" release view "${TAG}" --repo "${REPO}" >/dev/null 2>&1; then
     die "a release ${TAG} already exists on ${REPO}; releases are never overwritten (bump the version)"
 fi
+# GitHub refuses a release whose target commit it does not have ("target_commitish is invalid").  Say so in plain words, before the draft.
+"${GH}" api "repos/${REPO}/commits/${COMMIT}" --jq .sha >/dev/null 2>&1 \
+    || die "the commit this build was made from (${COMMIT}) is not on GitHub, so a release cannot point at it. Push the branch you built from (git push origin <branch>) and run this again. Nothing was published."
 
 # ---------------------------------------------------------------- 4. draft with every file
 step "4. creating the draft release (devices cannot see it)"
