@@ -12,11 +12,15 @@ runs and the typec mux stays in TYPEC_STATE_USB forever.
 
 Detect this case at SRC_READY:
   - pd_capable == false: no GoodCRC was ever received
-  - vbus_present == true: UFP is sourcing Vbus (self-powered display)
+  - ufp_self_powered == true: Vbus was already present when we entered
+    SRC_ATTACHED, i.e. the UFP sources Vbus itself (self-powered display)
 
-An ordinary non-PD USB peripheral would not source Vbus back at the
-DFP, so the combination is a reliable fingerprint for a passive DP
-cable connected to a powered display.
+ufp_self_powered is recorded in SRC_ATTACHED right after
+tcpm_src_attach(), using the same signal as the preceding patch.  It
+cannot be derived from port->vbus_present at SRC_READY: by then our own
+Vbus supply has made vbus_present true for every attached device, so
+that test would also match ordinary non-PD USB peripherals and force
+them into DP mode.
 
 When detected, call tcpm_mux_set() with TYPEC_DP_STATE_E (4-lane DP,
 no USB SuperSpeed) directly, bypassing the VDM negotiation path that
@@ -29,9 +33,6 @@ DisplayPort link training.
 
 Signed-off-by: Jason Germino <jasongermino@gmail.com>
 ---
- drivers/usb/typec/tcpm/tcpm.c | 21 +++++++++++++++++++++
- 1 file changed, 21 insertions(+)
-
 diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
 --- a/drivers/usb/typec/tcpm/tcpm.c
 +++ b/drivers/usb/typec/tcpm/tcpm.c
@@ -43,23 +44,47 @@ diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
  
  #include <uapi/linux/sched/types.h>
  
-@@ -4198,6 +4199,28 @@
+@@ -337,6 +338,15 @@
+ 	bool vbus_present;
+ 
+ 	/*
++	 * Set on SRC_ATTACHED when Vbus was already present before our own
++	 * regulator could have raised it, i.e. the attached UFP is self-powered
++	 * and sources Vbus itself (e.g. a DP display).  Our own supply also makes
++	 * vbus_present true later on, so vbus_present alone cannot tell the two
++	 * cases apart once the port is in SRC_READY.
++	 */
++	bool ufp_self_powered;
++
++	/*
+ 	 * Set to true when vbus is less than VSAFE0V max.
+ 	 * Set to false when vbus is greater than VSAFE0V max.
+ 	 */
+@@ -4035,6 +4045,7 @@
+ 
+ 	case SRC_ATTACHED:
+ 		ret = tcpm_src_attach(port);
++		port->ufp_self_powered = ret >= 0 && port->vbus_present;
+ 		if (ret < 0) {
+ 			tcpm_set_state(port, SRC_UNATTACHED, 0);
+ 		} else if (port->vbus_present) {
+@@ -4198,6 +4209,28 @@
  		 * port type-c and the spec does not clearly say whether PD is
  		 * possible when type-c is connected to Type-A/B
  		 */
 +
 +		/*
-+		 * Passive USB-C→DisplayPort cable: pd_capable stays false
++		 * Passive USB-C->DisplayPort cable: pd_capable stays false
 +		 * because the display has no PD controller (every
 +		 * Source_Capabilities TX returns TCPC_TX_FAILED, no GoodCRC).
-+		 * vbus_present is true because the self-powered display sources
-+		 * 5 V on Vbus back through the cable.  This combination
-+		 * reliably identifies the cable; an ordinary non-PD USB
-+		 * peripheral would not source Vbus back at the DFP.  Switch
-+		 * the mux to 4-lane DP (STATE_E) directly instead of waiting
-+		 * for VDMs that will never come.
++		 * The self-powered display already had Vbus up when we attached
++		 * (ufp_self_powered); this is what separates it from an ordinary
++		 * non-PD peripheral.  port->vbus_present cannot be used here: by
++		 * SRC_READY it is true for every attach because of our own supply.
++		 * Switch the mux to 4-lane DP (STATE_E) directly instead of
++		 * waiting for VDMs that will never come.
 +		 */
-+		if (!port->pd_capable && port->vbus_present) {
++		if (!port->pd_capable && port->ufp_self_powered) {
 +			enum typec_orientation orientation;
 +
 +			if (port->polarity == TYPEC_POLARITY_CC1)
