@@ -167,6 +167,8 @@ check "N64 default: polygon offset on in the seeded mupen64plus.cfg" \
     "${OUT}/target/usr/share/batocera/datainit/system/configs/mupen64/mupen64plus.cfg"
 check "EmulationStation knows the player's RetroAchievements Web API key (scripts/apply-es-patches.sh ran before the build)" \
     grep -aq "global.retroachievements.apikey" "${OUT}/target/usr/bin/emulationstation"
+check "every system's default emulator and core exists in the image (known upstream quirks: scripts/default-emulators-accepted.txt)" \
+    python3 -I "${REPO_ROOT}/scripts/audit-default-emulators.py" "${OUT}/target" --accepted "${REPO_ROOT}/scripts/default-emulators-accepted.txt"
 
 # A build started with OCTANE_DEV_KEY_FILE set gives the key's holder root SSH on every device.
 DEVKEY="${OUT}/target/usr/share/octane/dev-ssh-key.pub"
