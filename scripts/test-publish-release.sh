@@ -59,6 +59,9 @@ case "$1 $2" in
         [ -n "${FAKE_PUBLIC_BAD:-}" ] && echo wrong > "${PUBLIC}/boot.tar.xz.md5"
         exit 0 ;;
     "release delete") tag="$3"; rm -rf "${STORE:?}/${tag:?}"; exit 0 ;;
+    "api repos/"*"/commits/"*)
+        [ -z "${FAKE_COMMIT_MISSING:-}" ] && { echo abc1234def; exit 0; }
+        echo '{"message":"No commit found for SHA: abc1234def","status":"422"}'; exit 1 ;;
     "api repos/"*)
         latest=""
         for d in "${STORE}"/*/; do [ -f "${d}state" ] && [ "$(cat "${d}state")" = published ] && latest="$(printf '%s\n%s\n' "${latest#v}" "$(basename "${d}" | sed s/^v//)" | sort -V | tail -1)"; done
@@ -91,6 +94,7 @@ cat > "${T}/bin/fakegit" <<'FAKE'
 echo "git $*" >> "${CALLS}"
 case "$1" in
     rev-parse) echo abc1234def ;;
+    var) [ -n "${FAKE_NO_IDENTITY:-}" ] && { echo "fatal: unable to auto-detect email address" >&2; exit 128; }; echo "Test <t@example.com> 0 +0000" ;;
     status) [ -n "${FAKE_DIRTY:-}" ] && echo " M scripts/build.sh"; echo " m batocera"; exit 0 ;;
     *) exit 0 ;;
 esac
@@ -224,6 +228,18 @@ echo "== failure after publishing"
 new_build; FAKE_PUBLIC_BAD=1 run --notes "${T}/notes.md"
 check "public download differs -> exits non-zero, NO version bump, and says devices are not told" '[ "${RC}" = 1 ] && called "release edit" && ! called "^bump" && ! called "git commit" && echo "${OUT_TXT}" | grep -q "devices are not being told"'
 check "a published release is NOT deleted when only the public check fails" '! called "release delete"'
+
+echo "== before anything is public: the commit is on GitHub, and git has an identity"
+new_build; FAKE_COMMIT_MISSING=1 run --notes "${T}/notes.md"
+check "the build's commit is not on GitHub -> refused before the draft, nothing created" '[ "${RC}" = 1 ] && no_publish && ! called "release create"'
+check "...and the message says to push the branch (not a cryptic GitHub error)" 'echo "${OUT_TXT}" | grep -q "not on GitHub" && echo "${OUT_TXT}" | grep -q "git push origin"'
+new_build; FAKE_NO_IDENTITY=1 run --notes "${T}/notes.md"
+check "git has no name or email -> refused before anything is published" '[ "${RC}" = 1 ] && no_publish && ! called "release create"'
+check "...and the message says how to set it" 'echo "${OUT_TXT}" | grep -q "git config --global user.name"'
+new_build; FAKE_NO_IDENTITY=1 run --notes "${T}/notes.md" --dry-run
+check "even a dry run reports the missing git identity" '[ "${RC}" = 1 ] && echo "${OUT_TXT}" | grep -q "no name or email"'
+new_build; run --notes "${T}/notes.md"
+check "with both in place the release still goes through" '[ "${RC}" = 0 ] && called "release edit .*--draft=false --latest"'
 
 echo
 echo "${PASS} passed, ${FAIL} failed"

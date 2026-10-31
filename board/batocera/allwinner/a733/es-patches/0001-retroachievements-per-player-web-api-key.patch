@@ -1,0 +1,66 @@
+OctaneOS patch for batocera-emulationstation (applied to the source by scripts/apply-es-patches.sh at build time).
+
+RetroAchievements statistics and the home-carousel entry call retroachievements.org/API/..., which needs a Web API key.  Batocera compiles
+in a private developer key (CHEEVOS_DEV_LOGIN); community builds have none, so the site answers 401 and the menu says "Unauthorized".
+The player's login token is NOT accepted as a key (checked against the live API).  This patch lets each player use their own key
+(retroachievements.org > Settings > Keys), stored per profile by batocera-profiles as global.retroachievements.apikey.
+
+ - getApiUrl: with a username and a key set, the call carries z=<username>&y=<key>
+ - getGameInfoAndUserProgress: no longer returns early when only the player's key is available
+ - isScriptingSupported(RETROACHIEVEMENTS): always true, so the settings screen (where the key is typed) is reachable
+ - RetroAchievement settings screen: a masked WEB API KEY row below PASSWORD
+
+--- a/es-app/src/RetroAchievements.cpp
++++ b/es-app/src/RetroAchievements.cpp
+@@ -141,6 +141,15 @@
+ 
+ std::string RetroAchievements::getApiUrl(const std::string& method, const std::string& parameters)
+ {
++	// OctaneOS: RetroAchievements' Web API needs an API key (z=<user>&y=<key>).  Without a built-in developer key (CHEEVOS_DEV_LOGIN),
++	// use the player's own Web API key (retroachievements.org > Settings > Keys).  The login token is NOT a Web API key (the site answers 401).
++	{
++		auto raUser = SystemConf::getInstance()->get("global.retroachievements.username");
++		auto raKey = SystemConf::getInstance()->get("global.retroachievements.apikey");
++		if (!raUser.empty() && !raKey.empty())
++			return "https://retroachievements.org/API/" + method + ".php?z=" + HttpReq::urlEncode(raUser) + "&y=" + HttpReq::urlEncode(raKey) + "&" + parameters;
++	}
++
+ #ifdef CHEEVOS_DEV_LOGIN
+ 	auto options = std::string(CHEEVOS_DEV_LOGIN);
+ 	return "https://retroachievements.org/API/"+ method +".php?"+ options +"&" + parameters;
+@@ -219,7 +228,8 @@
+ 	ret.ID = 0;
+ 
+ #ifndef CHEEVOS_DEV_LOGIN
+-	return ret;
++	if (SystemConf::getInstance()->get("global.retroachievements.apikey").empty())
++		return ret;
+ #endif
+ 
+ 	auto options = getHttpOptions();
+--- a/es-app/src/ApiSystem.cpp
++++ b/es-app/src/ApiSystem.cpp
+@@ -1732,10 +1732,9 @@
+ 	case ApiSystem::THEMESDOWNLOADER:
+ 		return true;
+ 	case ApiSystem::RETROACHIVEMENTS:
+-#ifdef CHEEVOS_DEV_LOGIN
++		// OctaneOS: always available, so the settings entry where the player types their own Web API key is reachable even
++		// without a built-in developer key (CHEEVOS_DEV_LOGIN).
+ 		return true;
+-#endif
+-		break;
+ 	case ApiSystem::KODI:
+ 		executables.push_back("kodi");
+ 		break;
+--- a/es-app/src/guis/GuiRetroAchievementsSettings.cpp
++++ b/es-app/src/guis/GuiRetroAchievementsSettings.cpp
+@@ -25,6 +25,8 @@
+ 	// retroachievements, username, password
+ 	addInputTextConfigRow(_("USERNAME"), "global.retroachievements.username", false);
+ 	addInputTextConfigRow(_("PASSWORD"), "global.retroachievements.password", true);
++	// OctaneOS: personal Web API key (retroachievements.org > Settings > Keys); needed for the statistics screens and the carousel entry
++	addInputTextConfigRow(_("WEB API KEY"), "global.retroachievements.apikey", true);
+ 
+ 	addGroup(_("OPTIONS"));
+ 

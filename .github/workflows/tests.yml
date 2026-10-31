@@ -39,7 +39,7 @@ jobs:
           set -e
           for t in test-upgrade test-prune-overlay test-dev-key test-update-version \
                    test-publish-release test-harden-network test-splash-trace test-kernel-pins \
-                   test-update-signing test-migrations test-default-emulators; do
+                   test-update-signing test-migrations test-profiles test-es-patches test-default-emulators; do
             echo "::group::$t"
             bash "scripts/$t.sh"
             echo "::endgroup::"
