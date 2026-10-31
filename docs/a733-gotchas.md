@@ -187,6 +187,19 @@ standalone N64) have their own vsync setting and were not tested; tearing on fas
 
 ---
 
+## GameCube and Wii
+
+### 21. GameCube and Wii: the default emulator is not built, and the one that is stalls on this GPU  *(measured 2026-10-29)*
+**Symptom 1:** any GameCube game fell straight back to EmulationStation. The launch log said `env: 'dolphin-emu-nogui': No such file or directory`, exit 127.
+**Cause:** Batocera's `configgen-defaults.yml` makes `gamecube` and `wii` run the standalone Dolphin; this image builds only the libretro core (`BR2_PACKAGE_LIBRETRO_DOLPHIN`). `es_systems.cfg` offers only `libretro`, so EmulationStation hides the emulator menu and the player cannot pick another.
+**Symptom 2 (after pointing the defaults at libretro/dolphin by hand, four lines in `batocera.conf`):** the game starts, draws the GameCube bezel and sometimes the game's first logo, then stops. Five runs of the same game: black picture and dead hotkeys (2), logo crawling at a frame every couple of seconds (2), frozen after the logo (1). When it stalls the process has used about 7 s of CPU in total, the main thread waits in the PowerVR driver (`LinuxEventObjectWait`, then `futex_wait`), the GPU is cool (36 C), nothing else is busy, and SIGTERM is ignored. Hotkey+Start does nothing. The same on a monitor straight from the board and through a USB-C dock, so the dock is not the cause. The audio-wait setting made no difference.
+**What RetroArch's log says (`log_to_file`):** the GPU is `PowerVR B-Series BXM-4-64`, OpenGL ES 3.2 (24.2); RetroArch is built for GLES, so Dolphin's requests for OpenGL 3.0, OpenGL Core and OpenGL ES 3.2 are refused and it runs on **OpenGL ES 3.1**; Dolphin reports missing `PinnedMemory`, `ClipControl` and `DepthClamp`, and "Failed to create shared context for shader compiling" (so every shader is built on the render thread).
+**Decision (2026-10-31): the defaults are NOT changed.** Pointing them at libretro Dolphin would turn an instant error into a freeze that needs a power cycle. The audit (`scripts/audit-default-emulators.py`) lists both systems as accepted, with this reason; `scripts/fix-default-emulators.py` is kept, tested and unwired, for the day Dolphin works.
+**To try it yourself** (at your own risk, expect a freeze): add to `batocera.conf` `gamecube.emulator=libretro`, `gamecube.core=dolphin`, `wii.emulator=libretro`, `wii.core=dolphin`; for a log, `gamecube.retroarch.log_to_file=true`, `gamecube.retroarch.log_verbosity=true`, `gamecube.retroarch.log_dir=/tmp`. The GameCube BIOS goes in `bios/GC/<USA|EUR|JAP>/IPL.bin`.
+**Where it could improve:** Vulkan. The image has the vendor Vulkan driver (`libVK_IMG.so`) but it fails to initialise (it needs `libX11-xcb.so.1`, `libX11.so.6`, `libxcb.so.1`, which a Wayland-only image does not have, and with stand-ins it still returns "initialization failed"); the system's own check reports "Vulkan not found" simply because `vulkaninfo` is not installed. An open driver for this exact GPU exists (github.com/TumRedSun/apercel, tested only on the Orange Pi 4 Pro; not tried here).
+
+---
+
 ## Things we believed that were wrong
 
 | We believed | Reality |

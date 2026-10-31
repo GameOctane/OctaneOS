@@ -1,0 +1,15 @@
+# Systems whose default emulator or core (in Batocera's configgen-defaults.yml) is not offered by this image's system list, and that we
+# have looked at and accept.  scripts/audit-default-emulators.py lists them as ACCEPTED instead of failing.  A NEW mismatch still fails
+# the image check.  Format: <system>  # why.   Remove a line once the underlying problem is gone (the audit says when it is).
+#
+# GameCube and Wii: the default is the STANDALONE Dolphin, which this image does not build (only the libretro core).  Deliberately NOT
+# "fixed": libretro Dolphin on the Cubie A7S starts and then stalls in the GPU driver (4 of 5 test runs; Hotkey+Start stops working), so
+# pointing the default at it would turn an instant error into a freeze.  See docs/a733-gotchas.md item 21 for the evidence and how to try it.
+gamecube     # default emulator 'dolphin' (standalone) is not offered; libretro Dolphin stalls on this GPU driver
+wii          # same as gamecube
+#
+# These four are upstream Batocera data quirks on obscure systems; not fixed here because none of them is used on this board yet.
+bk           # default core 'bk' is not offered for libretro (the image offers: mame)
+enterprise   # default emulator 'clk' is not offered (the image offers: libretro, mame)
+rott         # default core is empty for emulator 'taradino'
+rtcw         # default core 'taradino' is not offered for emulator 'iortcw'
