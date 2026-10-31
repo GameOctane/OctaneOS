@@ -37,7 +37,10 @@ Batocera is an incredible foundation. OctaneOS builds on top of it with features
 | PC streaming via Moonlight (Big Picture) | ❌ | ✅ |
 | ROM transfer over WiFi (no PC software needed) | ❌ | ✅ |
 | Checked, staged OTA updates (checksum required, boot partition always re-locked) | ❌ | ✅ |
+| Signed OTA updates (Ed25519 signature from an offline key, no downgrades) | ❌ | ✅ |
 | Kernel thermal throttling at 80 °C on A733 | ❌ | ✅ |
+| Fan support, with a printable bracket (a DS game stays around 42 °C instead of throttling at 80 °C) | ❌ | ✅ |
+| Nintendo DS without audio warble on 120 Hz screens | ❌ | ✅ |
 | Nintendo 64: video flicker fix (found testing the ground in Ocarina of Time) and Hotkey + Start exit | ❌ | ✅ |
 | Box art default (TheGamesDB + ScreenScraper) | ❌ | ✅ |
 | RetroAchievements | ✅ | ✅ |
@@ -83,7 +86,7 @@ Full hardware specification available in the [Octane Platform Spec v1.4](docs/Oc
 
 ## Updates and security
 
-- **Updating:** the device checks GameOctane's GitHub releases. The updater refuses a download without a matching checksum, unpacks into a staging folder, checks it is for your board, and only then replaces boot files. See [UPGRADING.md](UPGRADING.md) for what to do before updating and how to recover.
+- **Updating:** the device checks GameOctane's GitHub releases. Since 0.8.0 every update is **signed** with a key that is kept offline: the updater checks the signature before it downloads anything, refuses an update for another board or an older version, checks the size and hash, unpacks into a staging folder, and only then replaces boot files. Devices still on 0.7.0 only check the checksum, so the first signed update reaches them without that protection; every update after it is checked. Details: [docs/update-signing.md](docs/update-signing.md). See [UPGRADING.md](UPGRADING.md) for what to do before updating and how to recover.
 - **Network defaults:** the file share hides the `system` folder (SSH keys, settings, Wi-Fi password) and RetroAchievements credential files from guests; NFS only runs if you export something; Syncthing's page is local-only unless you set `system.syncthing.lan=1`. SSH and file transfer stay on. The default SSH login is `root` / `linux` — change it. **How to reach your files, set a real password and reopen Syncthing: [docs/network-and-security.md](docs/network-and-security.md).** Design notes: [docs/security-design-phase1.md](docs/security-design-phase1.md).
 - **Release notes:** each release lists whether it can be installed over the air and whether to back up first.
 
@@ -130,7 +133,7 @@ gunzip OctaneOS-a733-cubie-a7s-*.img.gz
 dd if=OctaneOS-a733-cubie-a7s-*.img of=/dev/sdX bs=4M status=progress
 ```
 
-Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or `.sha256` file before flashing.
+Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or `.sha256` file (or `sha256sum -c SHA256SUMS`) before flashing.
 
 **USB-C cable requirement** — DisplayPort Alt Mode requires a Full-Featured USB-C cable (also called "USB-C DP Alt Mode" or "Thunderbolt" cable). Standard charging cables do not carry video. If you see no display, the cable is the first thing to check.
 
@@ -175,12 +178,14 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 | Speedrun world records in game library | ✅ Complete |
 | 120Hz DisplayPort output | ✅ Complete |
 | Hardened OTA updater (checksum required, staged install, HTTPS only) | ✅ Complete — v0.7.0 |
-| Signed updates (Ed25519 signature from an offline key, no downgrades, backup key) — [docs/update-signing.md](docs/update-signing.md) | 🔨 Written and tested; the real keys are not created yet, so it is not in a release |
+| Signed updates (Ed25519 signature from an offline key, no downgrades, backup key) — [docs/update-signing.md](docs/update-signing.md) | ✅ Complete — v0.8.0 |
 | Safer network defaults (guests can't see `system`, NFS off, Syncthing local-only, Wi-Fi on) | ✅ Complete — v0.7.0 |
 | Kernel thermal management | ✅ Complete — v0.7.0 |
 | Nintendo 64: video flicker fix (found by testing the flickering ground in Ocarina of Time) and Hotkey + Start exit | ✅ Complete — v0.7.0 |
+| Fan cooling: kernel fan driver, thermal steps and a printable bracket — [docs/fan-cooling.md](docs/fan-cooling.md), [hardware/fan-bracket](hardware/fan-bracket/README.md). Fan wired to 5 V and ground is measured (peak 45 °C, no throttling); speed control through the board's fan header is untested | ✅ Complete — v0.8.0 |
+| Your display's own modes (the forced 120 Hz profile is gone) | ✅ Complete — v0.8.0 (tested on one 144 Hz monitor) |
+| Nintendo DS: vsync off by default, fixes the audio warble on 120 Hz screens (existing cards get it once) | ✅ Complete — v0.8.0 |
 | Device password + first-boot screen | ⏳ Next |
-| Signed updates | ⏳ Planned |
 | **Phase 1 software platform** | ✅ **Complete — v0.7.0** |
 | Physical handheld hardware build | ⏳ Phase 2 |
 | Three mode system | ⏳ Phase 2 |
