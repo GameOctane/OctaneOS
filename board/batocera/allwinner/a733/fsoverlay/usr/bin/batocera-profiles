@@ -6,6 +6,8 @@
 #   states/                  — save states    (via /userdata/states symlink)
 #   retroachievements.conf   — per-profile settings:
 #                               username=, password=, token=
+#                               apikey=  (the player's own RetroAchievements Web API key, retroachievements.org > Settings > Keys;
+#                                         it belongs to the account, so it is saved and loaded with the username)
 #                               ra_enabled= (0 or 1)
 #                               display_name= (optional friendly label)
 #
@@ -13,10 +15,12 @@
 # (empty = default; default profile data lives in .default/ and
 #  .default-retroachievements.conf, both hidden from ls)
 
-PROFILES_DIR="/userdata/profiles"
-CURRENT_FILE="/userdata/system/.batocera-profiles.current"
-RETROARCH_CFG="/userdata/system/configs/retroarch/retroarchcustom.cfg"
-BATOCERA_CONF="/userdata/system/batocera.conf"
+# The paths can be redirected with OCTANE_USERDATA (used by scripts/test-profiles.sh so the tests never touch a real /userdata).
+USERDATA="${OCTANE_USERDATA:-/userdata}"
+PROFILES_DIR="${USERDATA}/profiles"
+CURRENT_FILE="${USERDATA}/system/.batocera-profiles.current"
+RETROARCH_CFG="${USERDATA}/system/configs/retroarch/retroarchcustom.cfg"
+BATOCERA_CONF="${USERDATA}/system/batocera.conf"
 
 set_retroarch_key() {
     local key="$1" val="$2"
@@ -39,14 +43,14 @@ read_conf_field() {
 }
 
 # Write all per-profile fields to a conf file, preserving display_name.
-# Args: file username password token ra_enabled
+# Args: file username password token ra_enabled apikey
 write_profile_conf() {
-    local file="$1" user="$2" pass="$3" token="$4" ra_enabled="$5"
+    local file="$1" user="$2" pass="$3" token="$4" ra_enabled="$5" apikey="$6"
     local dn
     dn=$(read_conf_field "${file}" "display_name")
     {
-        printf 'username=%s\npassword=%s\ntoken=%s\nra_enabled=%s\n' \
-            "${user}" "${pass}" "${token}" "${ra_enabled}"
+        printf 'username=%s\npassword=%s\ntoken=%s\napikey=%s\nra_enabled=%s\n' \
+            "${user}" "${pass}" "${token}" "${apikey}" "${ra_enabled}"
         [ -n "${dn}" ] && printf 'display_name=%s\n' "${dn}"
     } > "${file}"
 }
@@ -70,9 +74,10 @@ case "$1" in
         RA_USER=$(get_batocera_key "global.retroachievements.username")
         RA_PASS=$(get_batocera_key "global.retroachievements.password")
         RA_ENABLED=$(get_batocera_key "global.retroachievements")
+        RA_APIKEY=$(get_batocera_key "global.retroachievements.apikey")
         write_profile_conf \
             "${PROFILES_DIR}/${NAME}/retroachievements.conf" \
-            "${RA_USER}" "${RA_PASS}" "" "${RA_ENABLED:-1}"
+            "${RA_USER}" "${RA_PASS}" "" "${RA_ENABLED:-1}" "${RA_APIKEY}"
         echo "Profile '${NAME}' created."
         ;;
 
@@ -88,15 +93,16 @@ case "$1" in
         CUR_USER=$(get_batocera_key "global.retroachievements.username")
         CUR_PASS=$(get_batocera_key "global.retroachievements.password")
         CUR_TOKEN=$(get_batocera_key "global.retroachievements.token")
+        CUR_APIKEY=$(get_batocera_key "global.retroachievements.apikey")
         CUR_RA_ENABLED=$(get_batocera_key "global.retroachievements")
         if [ -n "${ACTIVE}" ] && [ -d "${PROFILES_DIR}/${ACTIVE}" ]; then
             write_profile_conf \
                 "${PROFILES_DIR}/${ACTIVE}/retroachievements.conf" \
-                "${CUR_USER}" "${CUR_PASS}" "${CUR_TOKEN}" "${CUR_RA_ENABLED:-1}"
+                "${CUR_USER}" "${CUR_PASS}" "${CUR_TOKEN}" "${CUR_RA_ENABLED:-1}" "${CUR_APIKEY}"
         else
             write_profile_conf \
                 "${PROFILES_DIR}/.default-retroachievements.conf" \
-                "${CUR_USER}" "${CUR_PASS}" "${CUR_TOKEN}" "${CUR_RA_ENABLED:-1}"
+                "${CUR_USER}" "${CUR_PASS}" "${CUR_TOKEN}" "${CUR_RA_ENABLED:-1}" "${CUR_APIKEY}"
         fi
 
         # --- One-time migration of pre-profiles saves into .default ---
@@ -106,17 +112,17 @@ case "$1" in
         # once so they aren't stranded. Any old /userdata/saves symlinks from
         # a pre-Variant-C install are cleaned up here too.
         mkdir -p "${PROFILES_DIR}/.default/saves" "${PROFILES_DIR}/.default/states"
-        if [ -L "/userdata/saves" ]; then
-            rm -f /userdata/saves
-        elif [ -d "/userdata/saves" ]; then
-            cp -a /userdata/saves/. "${PROFILES_DIR}/.default/saves/" 2>/dev/null || true
-            rm -rf /userdata/saves
+        if [ -L "${USERDATA}/saves" ]; then
+            rm -f "${USERDATA}/saves"
+        elif [ -d "${USERDATA}/saves" ]; then
+            cp -a "${USERDATA}/saves/." "${PROFILES_DIR}/.default/saves/" 2>/dev/null || true
+            rm -rf "${USERDATA}/saves"
         fi
-        if [ -L "/userdata/states" ]; then
-            rm -f /userdata/states
-        elif [ -d "/userdata/states" ]; then
-            cp -a /userdata/states/. "${PROFILES_DIR}/.default/states/" 2>/dev/null || true
-            rm -rf /userdata/states
+        if [ -L "${USERDATA}/states" ]; then
+            rm -f "${USERDATA}/states"
+        elif [ -d "${USERDATA}/states" ]; then
+            cp -a "${USERDATA}/states/." "${PROFILES_DIR}/.default/states/" 2>/dev/null || true
+            rm -rf "${USERDATA}/states"
         fi
 
         # --- Load target profile's credentials and settings ---
@@ -132,9 +138,10 @@ case "$1" in
             RA_USER=$(read_conf_field "${RA_CONF}" "username")
             RA_PASS=$(read_conf_field "${RA_CONF}" "password")
             RA_TOKEN=$(read_conf_field "${RA_CONF}" "token")
+            RA_APIKEY=$(read_conf_field "${RA_CONF}" "apikey")
             RA_ENABLED=$(read_conf_field "${RA_CONF}" "ra_enabled")
         else
-            RA_USER="" ; RA_PASS="" ; RA_TOKEN="" ; RA_ENABLED=""
+            RA_USER="" ; RA_PASS="" ; RA_TOKEN="" ; RA_APIKEY="" ; RA_ENABLED=""
         fi
 
         if [ -n "${RA_USER}" ]; then
@@ -148,6 +155,9 @@ case "$1" in
         # Always write token — empty string clears a stale one
         batocera-settings-set global.retroachievements.token "${RA_TOKEN}"
         set_retroarch_key "cheevos_token" "${RA_TOKEN}"
+        # Always write the Web API key too: it belongs to the account, so a profile without one must not keep the previous profile's
+        # key (RetroAchievements answers 401 for a key that does not match the username).  RetroArch does not use it, only EmulationStation.
+        batocera-settings-set global.retroachievements.apikey "${RA_APIKEY}"
         # Restore RA enabled/disabled if the profile has a saved value
         if [ -n "${RA_ENABLED}" ]; then
             batocera-settings-set global.retroachievements "${RA_ENABLED}"

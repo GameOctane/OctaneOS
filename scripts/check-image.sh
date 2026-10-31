@@ -165,6 +165,8 @@ check "N64 exit: hotkey+start is mapped to Esc" \
 check "N64 default: polygon offset on in the seeded mupen64plus.cfg" \
     grep -qx 'force_polygon_offset = True' \
     "${OUT}/target/usr/share/batocera/datainit/system/configs/mupen64/mupen64plus.cfg"
+check "EmulationStation knows the player's RetroAchievements Web API key (scripts/apply-es-patches.sh ran before the build)" \
+    grep -aq "global.retroachievements.apikey" "${OUT}/target/usr/bin/emulationstation"
 
 # A build started with OCTANE_DEV_KEY_FILE set gives the key's holder root SSH on every device.
 DEVKEY="${OUT}/target/usr/share/octane/dev-ssh-key.pub"

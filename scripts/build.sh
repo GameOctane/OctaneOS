@@ -114,6 +114,10 @@ MAKE_EXTRA_ARGS=()
 # --recurse-submodules into batocera/dl/batocera-emulationstation/git.
 ES_SRCDIR="${REPO_ROOT}/batocera/dl/batocera-emulationstation/git"
 if [ -d "${ES_SRCDIR}" ]; then
+    # Buildroot does not apply package patches to an override source tree, so the OctaneOS changes to EmulationStation (see
+    # board/batocera/allwinner/a733/es-patches/) are applied here, on every build (already-applied patches are skipped; a patch that no
+    # longer applies stops the build).
+    "${REPO_ROOT}/scripts/apply-es-patches.sh" "${ES_SRCDIR}" || exit 1
     MAKE_EXTRA_ARGS+=(BATOCERA_EMULATIONSTATION_OVERRIDE_SRCDIR="${ES_SRCDIR}")
 fi
 
