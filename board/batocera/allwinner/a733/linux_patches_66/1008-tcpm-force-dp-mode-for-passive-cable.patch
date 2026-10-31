@@ -43,7 +43,7 @@ diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
  
  #include <uapi/linux/sched/types.h>
  
-@@ -4198,6 +4199,28 @@
+@@ -4198,6 +4199,31 @@
  		 * port type-c and the spec does not clearly say whether PD is
  		 * possible when type-c is connected to Type-A/B
  		 */
@@ -59,9 +59,12 @@ diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
 +		 * the mux to 4-lane DP (STATE_E) directly instead of waiting
 +		 * for VDMs that will never come.
 +		 */
++		tcpm_log(port, "OctaneOS 1008: SRC_READY pd_capable=%d vbus_present=%d",
++			 port->pd_capable, port->vbus_present);
 +		if (!port->pd_capable && port->vbus_present) {
 +			enum typec_orientation orientation;
 +
++			tcpm_log(port, "OctaneOS 1008: non-PD partner with Vbus, forcing DP mode");
 +			if (port->polarity == TYPEC_POLARITY_CC1)
 +				orientation = TYPEC_ORIENTATION_NORMAL;
 +			else
