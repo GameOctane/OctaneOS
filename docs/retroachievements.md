@@ -41,3 +41,22 @@ RetroAchievements account, enter that account's key in the settings screen.
 Written and unit-tested; **not yet run in a built image on a device**. The first build after this change is the first real test: enter a key,
 open the RetroAchievements page in the menu, and check the home screen for the RetroAchievements entry. If the site's answer to a valid key
 is something other than the user summary, the log of EmulationStation (debug mode) will show it.
+
+## The project's own keys (developer logins)
+Batocera's builds compile in developer logins for ScreenScraper and RetroAchievements; ours has none unless `keys.txt` is created, so by default
+there is no ScreenScraper scraping and the RetroAchievements pages need the player's own key (above).
+
+`batocera/package/batocera/emulationstation/batocera-emulationstation/keys.txt` (gitignored; never commit it, never paste it anywhere) is read
+by the package recipe at build time:
+```
+SCREENSCRAPER_DEV_LOGIN=devid=<devid>&devpassword=<devpassword>
+CHEEVOS_DEV_LOGIN=z=<project account>&y=<project Web API key>
+```
+Whatever is in it is compiled into the program, and anyone can read it back out of a downloaded image with a text search. So:
+- **ScreenScraper dev login:** meant to be embedded in software; fine in a release.
+- **RetroAchievements key:** an account credential. For test images only. `scripts/check-image.sh --release` FAILS an image that contains it, unless
+  you build with `OCTANE_ALLOW_SHARED_RA_KEY=1` after deciding, with RetroAchievements' agreement, to ship a shared key.
+- A player's own key (set in the menu) is always used first, so a revoked project key never breaks players who set their own.
+- `scripts/check-embedded-keys.sh` does the checking, prints key names only (never values), and also fails a stale build (a key in `keys.txt` that the built
+  EmulationStation does not contain: rebuild `batocera-emulationstation`).
+- Keep a copy of `keys.txt` in a password manager. Do not store it with the update-signing keys.
