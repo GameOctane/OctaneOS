@@ -175,6 +175,7 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 | ROM transfer over WiFi | ✅ Complete |
 | RetroAchievements friends activity feed | ✅ Complete |
 | Site-wide RA completions & masteries feed | ✅ Complete |
+| **Player profiles (OctaneOS feature, not in stock Batocera; [proposed upstream](https://github.com/batocera-linux/batocera-emulationstation/pull/2207)):** switch, create and delete profiles from the main menu; each profile keeps its own saves, save states and RetroAchievements login and Web API key, and switching needs no password — [spec](docs/batocera-profiles-spec-v0.1.md), [docs/retroachievements.md](docs/retroachievements.md) | ✅ Complete |
 | Speedrun world records in game library | ✅ Complete |
 | 120Hz DisplayPort output | ✅ Complete |
 | Hardened OTA updater (checksum required, staged install, HTTPS only) | ✅ Complete — v0.7.0 |

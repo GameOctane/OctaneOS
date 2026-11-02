@@ -3,6 +3,7 @@
 **Status:** Draft v0.3
 **Author:** Jason (GameOctane)
 **Scope:** Minimal viable per-user profile switching for Batocera
+**Upstream:** proposed to Batocera as [batocera-emulationstation#2207](https://github.com/batocera-linux/batocera-emulationstation/pull/2207) (proof of concept, looking for design feedback). Open and unmerged as of 2026-11-02; last activity 2026-09-05, no maintainer review yet. OctaneOS ships the feature either way.
 
 ## Problem
 
