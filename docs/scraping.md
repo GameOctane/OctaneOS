@@ -29,5 +29,7 @@ about quotas. Check ScreenScraper's own pages for the current rules.
 
 ## Known gaps
 - The daily limits for anonymous scraping are unmeasured. If you hit a limit, adding your own account is the first thing to try.
-- Whether a player account is actually used by this build was not confirmed on 2026-11-02 (the account's profile statistics did not change
-  that day, which may just be a delay on the website). Treat it as unverified until checked.
+- Whether a player account is counted on the ScreenScraper website was not confirmed. The EmulationStation source (`es-app/src/scrapers/ScreenScraper.cpp`)
+  adds `&ssid=<user>&sspassword=<password>` to its requests when both fields are filled in, and it asks ScreenScraper for the account's thread count.
+  On 2026-11-02 the website's profile page showed no new scrape for the account, a day later, so the page may simply not show these requests.
+  A way to see whether the account is used: enter a deliberately wrong password and scrape; we expect a bad login to be rejected while an anonymous request works, but this has not been tried.
