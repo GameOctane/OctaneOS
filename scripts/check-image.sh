@@ -12,7 +12,7 @@
 # writes hold only the hash, so "sha256sum -c" cannot read them.
 #
 # Usage: scripts/check-image.sh [--release] [--no-sums]
-#   --release   also fail if the developer SSH key is in the image (a release must not have it)
+#   --release   also fail if the developer SSH key is in the image (a release must not have it), or the project's RetroAchievements key
 #   --no-sums   do not write SHA256SUMS
 #   exit status 0 = every check passed, 1 = at least one failed
 #
@@ -169,6 +169,12 @@ check "EmulationStation knows the player's RetroAchievements Web API key (script
     grep -aq "global.retroachievements.apikey" "${OUT}/target/usr/bin/emulationstation"
 check "every system's default emulator and core exists in the image (known upstream quirks: scripts/default-emulators-accepted.txt)" \
     python3 -I "${REPO_ROOT}/scripts/audit-default-emulators.py" "${OUT}/target" --accepted "${REPO_ROOT}/scripts/default-emulators-accepted.txt"
+
+# Developer logins (keys.txt) compiled into EmulationStation: the RetroAchievements account key is for test images only (docs/retroachievements.md).
+KEYS_ARGS=("${REPO_ROOT}/batocera/package/batocera/emulationstation/batocera-emulationstation/keys.txt" "${OUT}/target/usr/bin/emulationstation")
+[ "${RELEASE}" -eq 1 ] && KEYS_ARGS+=(--release)
+KEYS_OUT="$("${REPO_ROOT}/scripts/check-embedded-keys.sh" "${KEYS_ARGS[@]}" 2>&1)" || fail=1
+printf '%s\n' "${KEYS_OUT}"
 
 # A build started with OCTANE_DEV_KEY_FILE set gives the key's holder root SSH on every device.
 DEVKEY="${OUT}/target/usr/share/octane/dev-ssh-key.pub"
