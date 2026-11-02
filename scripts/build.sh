@@ -121,6 +121,18 @@ if [ -d "${ES_SRCDIR}" ]; then
     MAKE_EXTRA_ARGS+=(BATOCERA_EMULATIONSTATION_OVERRIDE_SRCDIR="${ES_SRCDIR}")
 fi
 
+# The same for configgen (the Python that starts each emulator): its source is rsynced from the Batocera submodule (OVERRIDE_SRCDIR), so
+# Buildroot applies no patches to it either.  The OctaneOS changes live in board/batocera/allwinner/a733/configgen-patches/.  When a patch is
+# newly applied, drop Buildroot's "already synced" stamp so the changed files really reach the image (check-image.sh also checks).
+CONFIGGEN_SRCDIR="${REPO_ROOT}/batocera/package/batocera/core/batocera-configgen/configgen"
+if [ -d "${CONFIGGEN_SRCDIR}" ]; then
+    CG_OUT="$("${REPO_ROOT}/scripts/apply-es-patches.sh" "${CONFIGGEN_SRCDIR}" "${REPO_ROOT}/board/batocera/allwinner/a733/configgen-patches")" || { echo "${CG_OUT}"; exit 1; }
+    echo "${CG_OUT}"
+    if echo "${CG_OUT}" | grep -q '^\[es-patches\] applied:'; then
+        rm -f "${REPO_ROOT}"/batocera/output/*/build/batocera-configgen-*/.stamp_rsynced 2>/dev/null || true
+    fi
+fi
+
 # -----------------------------------------------------------------------------
 # Keep the kernel source tree, and Buildroot's compiled copy of it, in step with their inputs.
 #
