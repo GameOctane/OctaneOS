@@ -185,6 +185,10 @@ Replace `/dev/sdX` with your SD card device. Verify with the included `.md5` or 
 | Fan cooling: kernel fan driver, thermal steps and a printable bracket — [docs/fan-cooling.md](docs/fan-cooling.md), [hardware/fan-bracket](hardware/fan-bracket/README.md). Fan wired to 5 V and ground is measured (peak 45 °C, no throttling); speed control through the board's fan header is untested | ✅ Complete — v0.8.0 |
 | Your display's own modes (the forced 120 Hz profile is gone) | ✅ Complete — v0.8.0 (tested on one 144 Hz monitor) |
 | Nintendo DS: vsync off by default, fixes the audio warble on 120 Hz screens (existing cards get it once) | ✅ Complete — v0.8.0 |
+| RetroAchievements menu pages work again: your own Web API key, kept per profile — [docs/retroachievements.md](docs/retroachievements.md) | ✅ Complete — v0.8.1 |
+| Game art and info scraping (ScreenScraper) with the project's developer login; works without an account — [docs/scraping.md](docs/scraping.md) | ✅ Complete — v0.8.1 |
+| Help with display problems: the kernel logs what the port sees at every connection, and there is an issue form for "no picture / wrong picture" (the way the picture is chosen is unchanged) | ✅ Complete — v0.8.1 |
+| Release safety checks: no private keys or developer passwords in the repository, notes and versions must agree, the project's RetroAchievements key stays out of releases | ✅ Complete — v0.8.1 |
 | Device password + first-boot screen | ⏳ Next |
 | **Phase 1 software platform** | ✅ **Complete — v0.7.0** |
 | Physical handheld hardware build | ⏳ Phase 2 |
@@ -221,7 +225,7 @@ All skill levels welcome. If you're learning Linux through this project, you're 
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a PR.
 
-**Checks before a PR:** `scripts/check-patches.sh` validates the kernel patches, and the `scripts/test-*.sh` suites (updater, release publishing, network hardening, and others) run in CI. `scripts/check-image.sh` verifies a finished build before it is released.
+**Checks before a PR:** `scripts/check-patches.sh` validates the kernel patches, and the `scripts/test-*.sh` suites (updater, release publishing, network hardening, and others) run in CI. `scripts/check-image.sh` verifies a finished build before it is released. CI also runs a secret guard (`scripts/check-repo-hygiene.sh`: no private keys, `keys.txt` or developer passwords in the repository) and a release-consistency check (`scripts/check-release-consistency.sh`: the version, the release notes and the version file must agree).
 
 ---
 
