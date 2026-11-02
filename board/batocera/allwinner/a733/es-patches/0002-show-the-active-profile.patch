@@ -1,0 +1,322 @@
+Show which profile is playing: a line in the main menu footer, a short message when EmulationStation starts, and a permanent badge.
+
+Nothing is added when profiles are not in use (no named profile exists and the default one is active), so single-user setups see
+nothing new.  The name comes from GuiProfilesSettings::getActiveProfileLabel(), which reads the same files as the profile screen
+(display_name, then the RetroAchievements username, then the folder name).
+
+* Main menu footer: "PROFILE: <name>" next to the version text.
+* Start-up message: a six-second alert when EmulationStation starts.
+* Badge: a permanent alert-style label ("PROFILE: <name>") in the FIRST slot of the notification stack, so the other alerts (now
+  playing, update available) appear below it.  It uses the menu theme's own background, font and colours, so it follows whatever theme
+  is installed.  Hidden while a menu or dialog is open.  Setting "ProfileBadge" (auto / on / off), in the user interface settings:
+  auto shows it when there are profiles, on shows it always, off never.  It is kept out of the alert list so the power saver still
+  resumes, and it is not read aloud.
+
+One patch on purpose: the pieces change the same lines, and the applier detects "already applied" by reverse-checking each patch.
+diff --git a/es-app/src/guis/GuiMenu.cpp b/es-app/src/guis/GuiMenu.cpp
+index 4a7015d57..7f19b018a 100644
+--- a/es-app/src/guis/GuiMenu.cpp
++++ b/es-app/src/guis/GuiMenu.cpp
+@@ -283,6 +283,11 @@ void GuiMenu::addVersionInfo()
+ 		}		
+ 	}
+ 		
++	// which profile is playing (nothing is added when profiles are not in use)
++	std::string profileLabel = GuiProfilesSettings::getActiveProfileLabel();
++	if (!profileLabel.empty())
++		label += std::string(label.empty() ? "" : "   -   ") + _("PROFILE") + ": " + profileLabel;
++
+ 	if (!label.empty())
+ 	{
+ 		if (Renderer::ScreenSettings::fullScreenMenus())
+@@ -4029,6 +4034,8 @@ void GuiMenu::openUISettings()
+ 	if (Utils::Platform::queryBatteryInformation().hasBattery)
+ 		s->addOptionList(_("SHOW BATTERY STATUS"), { { _("NO"), "" },{ _("ICON"), "icon" },{ _("ICON AND TEXT"), "text" } }, "ShowBattery", true);
+ 
++	s->addOptionList(_("SHOW PROFILE NAME"), { { _("AUTO (WHEN THERE ARE PROFILES)"), "auto" }, { _("ALWAYS"), "on" }, { _("NEVER"), "off" } }, "ProfileBadge", true);
++
+ 	s->addGroup(_("GAMELIST OPTIONS"));
+ 	s->addSwitch(_("SHOW FAVORITES ON TOP"), "FavoritesFirst", true, [s] { s->setVariable("reloadAll", true); });
+ 	s->addSwitch(_("SHOW HIDDEN FILES"), "ShowHiddenFiles", true, [s] { s->setVariable("reloadAll", true); });
+diff --git a/es-app/src/guis/GuiProfilesSettings.cpp b/es-app/src/guis/GuiProfilesSettings.cpp
+index dd1adc53e..dab17cba9 100644
+--- a/es-app/src/guis/GuiProfilesSettings.cpp
++++ b/es-app/src/guis/GuiProfilesSettings.cpp
+@@ -2,9 +2,11 @@
+ #include "guis/GuiMsgBox.h"
+ #include "guis/GuiTextEditPopupKeyboard.h"
+ #include "LocaleES.h"
++#include "Settings.h"
+ #include <cctype>
+ #include <cstdio>
+ #include <cstdlib>
++#include <dirent.h>
+ #include <string>
+ #include <vector>
+ 
+@@ -76,6 +78,53 @@ static std::string profileDisplayName(const std::string& confPath, const std::st
+ 	return fallback;
+ }
+ 
++std::string GuiProfilesSettings::getActiveProfileLabel()
++{
++	std::string current;
++	FILE* f = fopen("/userdata/system/.batocera-profiles.current", "r");
++	if (f)
++	{
++		char line[256] = "";
++		if (fgets(line, sizeof(line), f))
++			current = line;
++		fclose(f);
++	}
++	while (!current.empty() && (current.back() == '\n' || current.back() == '\r' || current.back() == ' '))
++		current.pop_back();
++
++	bool anyNamed = false;
++	DIR* d = opendir("/userdata/profiles");
++	if (d)
++	{
++		struct dirent* e;
++		while ((e = readdir(d)) != nullptr)
++			if (e->d_name[0] != '.')
++			{
++				anyNamed = true;
++				break;
++			}
++		closedir(d);
++	}
++
++	if (!anyNamed && current.empty())
++		return "";
++	if (current.empty())
++		return profileDisplayName("/userdata/profiles/.default-retroachievements.conf", _("DEFAULT"));
++	return profileDisplayName("/userdata/profiles/" + current + "/retroachievements.conf", current);
++}
++
++void GuiProfilesSettings::refreshProfileBadge(Window* window)
++{
++	std::string mode = Settings::getInstance()->getString("ProfileBadge");
++	std::string label = getActiveProfileLabel();
++
++	std::string text;
++	if (mode == "on" || (mode != "off" && !label.empty()))
++		text = _("PROFILE") + ": " + (label.empty() ? _("DEFAULT") : label);
++
++	window->setProfileBadge(text);
++}
++
+ // Open the rename keyboard for a given profile conf file.
+ static void openRenameKeyboard(Window* window, const std::string& confPath)
+ {
+diff --git a/es-app/src/guis/GuiProfilesSettings.h b/es-app/src/guis/GuiProfilesSettings.h
+index 2b74b3350..116cfd890 100644
+--- a/es-app/src/guis/GuiProfilesSettings.h
++++ b/es-app/src/guis/GuiProfilesSettings.h
+@@ -1,6 +1,7 @@
+ #pragma once
+ 
+ #include "GuiSettings.h"
++#include <string>
+ 
+ class Window;
+ 
+@@ -8,4 +9,11 @@ class GuiProfilesSettings : public GuiSettings
+ {
+ public:
+ 	GuiProfilesSettings(Window* window);
++
++	// Name of the active profile, for showing elsewhere (main menu footer, start-up message).  Empty when profiles are not in use
++	// (no named profile exists and the default one is active), so single-user setups see nothing new.
++	static std::string getActiveProfileLabel();
++
++	// Set or clear the permanent profile badge according to the "ProfileBadge" setting (auto / on / off).  Cheap: call it every second or two.
++	static void refreshProfileBadge(Window* window);
+ };
+diff --git a/es-app/src/main.cpp b/es-app/src/main.cpp
+index f0bde675a..c2612fc2a 100644
+--- a/es-app/src/main.cpp
++++ b/es-app/src/main.cpp
+@@ -4,6 +4,7 @@
+ #include "services/HttpServerThread.h"
+ #include "guis/GuiDetectDevice.h"
+ #include "guis/GuiMsgBox.h"
++#include "guis/GuiProfilesSettings.h"
+ #include "utils/FileSystemUtil.h"
+ #include "views/ViewController.h"
+ #include "CollectionSystemManager.h"
+@@ -621,6 +622,11 @@ int main(int argc, char* argv[])
+ 			window.renderSplashScreen(_("Loading theme"));
+ 
+ 		ViewController::get()->goToStart(true);
++
++		// say which profile is playing (nothing is shown when profiles are not in use)
++		std::string profileLabel = GuiProfilesSettings::getActiveProfileLabel();
++		if (!profileLabel.empty())
++			window.displayNotificationMessage(_("PROFILE") + ": " + profileLabel, 6000);
+ 	}
+ 
+ 	threadPool->wait();
+@@ -785,6 +791,15 @@ int main(int argc, char* argv[])
+ 		if(deltaTime < 0)
+ 			deltaTime = 1000;
+ 
++		// the profile badge (a permanent alert showing who is playing) follows the active profile
++		static int profileBadgeTimer = 2000;
++		profileBadgeTimer += deltaTime;
++		if (profileBadgeTimer >= 2000)
++		{
++			profileBadgeTimer = 0;
++			GuiProfilesSettings::refreshProfileBadge(&window);
++		}
++
+ 		TRYCATCH("Window.update" ,window.update(deltaTime))	
+ 		TRYCATCH("Window.render", window.render())
+ 
+diff --git a/es-core/src/Settings.cpp b/es-core/src/Settings.cpp
+index 88b41b96e..1286c1bc0 100644
+--- a/es-core/src/Settings.cpp
++++ b/es-core/src/Settings.cpp
+@@ -191,6 +191,7 @@ void Settings::setDefaults()
+ 	mBoolMap["MoveCarousel"] = true;
+ 	mBoolMap["SaveGamelistsOnExit"] = true;
+ 	mStringMap["ShowBattery"] = "text";
++	mStringMap["ProfileBadge"] = "auto";
+ 	mBoolMap["CheckBiosesAtLaunch"] = true;
+ 	mBoolMap["RemoveMultiDiskContent"] = true;
+ 	mBoolMap["PackGamelists"] = false;
+diff --git a/es-core/src/Window.cpp b/es-core/src/Window.cpp
+index 54aeef008..be2caf429 100644
+--- a/es-core/src/Window.cpp
++++ b/es-core/src/Window.cpp
+@@ -48,6 +48,7 @@ Window::Window() : mNormalizeNextUpdate(false), mFrameTimeElapsed(0), mFrameCoun
+ 
+ Window::~Window()
+ {
++	delete mProfileBadge;
+ 	resetMenuBackgroundShader();
+ 
+ 	for (auto extra : mScreenExtras)
+@@ -344,8 +345,26 @@ void Window::stopNotificationPopups()
+ 	PowerSaver::resume();
+ }
+ 
++void Window::setProfileBadge(const std::string& text)
++{
++	if (text == mProfileBadgeText && (mProfileBadge != nullptr) == !text.empty())
++		return;
++
++	delete mProfileBadge;
++	mProfileBadge = nullptr;
++	mProfileBadgeText = text;
++
++	if (!text.empty())
++		mProfileBadge = new GuiInfoPopup(this, text, 0, false);
++
++	layoutNotificationPopups();
++}
++
+ void Window::updateNotificationPopups(int deltaTime)
+ {
++	if (mProfileBadge != nullptr)
++		mProfileBadge->update(deltaTime);
++
+ 	bool changed = false;
+ 
+ 	for (int i = mNotificationPopups.size() - 1 ; i >= 0 ; i--)
+@@ -380,6 +399,10 @@ void Window::layoutNotificationPopups()
+ 	float posY = Renderer::getScreenHeight() * 0.02f;
+ 	int paddingY = (int)posY;
+ 
++	// the profile badge takes the first slot; the alerts start below it
++	if (mProfileBadge != nullptr)
++		posY += mProfileBadge->getSize().y() + paddingY;
++
+ 	for (auto popup : mNotificationPopups)
+ 	{
+ 		float fadingOut = popup->getFadeOut();
+@@ -759,6 +782,9 @@ void Window::render()
+ 	// Render notifications
+ 	if (!mRenderScreenSaver)
+ 	{
++		if (mProfileBadge != nullptr && mGuiStack.size() < 2)
++			mProfileBadge->render(transform);
++
+ 		for (auto popup : mNotificationPopups)
+ 			popup->render(transform);
+ 
+diff --git a/es-core/src/Window.h b/es-core/src/Window.h
+index 8b8f65b2f..972da64c9 100644
+--- a/es-core/src/Window.h
++++ b/es-core/src/Window.h
+@@ -52,6 +52,10 @@ public:
+ 
+ 	void pushGui(GuiComponent* gui);
+ 	void displayNotificationMessage(std::string message, int duration = -1); 
++
++	// A permanent alert-style label in the first slot of the notification stack ("PROFILE: <name>"); other alerts appear below it.
++	// An empty text removes it.  Hidden while a menu or dialog is open.
++	void setProfileBadge(const std::string& text);
+ 	void removeGui(GuiComponent* gui);
+ 	GuiComponent* peekGui();
+ 	inline int getGuiStackSize() { return (int)mGuiStack.size(); }
+@@ -131,6 +135,8 @@ private:
+ 	std::vector<PostedFunction> mFunctions;
+ 
+ 	std::vector<GuiInfoPopup*> mNotificationPopups;
++	GuiInfoPopup* mProfileBadge = nullptr;     // kept out of mNotificationPopups so it does not hold back the power saver
++	std::string mProfileBadgeText;
+ 	void updateNotificationPopups(int deltaTime);
+ 	void layoutNotificationPopups();
+ 
+diff --git a/es-core/src/guis/GuiInfoPopup.cpp b/es-core/src/guis/GuiInfoPopup.cpp
+index 6f0ba2db7..a36eba6eb 100644
+--- a/es-core/src/guis/GuiInfoPopup.cpp
++++ b/es-core/src/guis/GuiInfoPopup.cpp
+@@ -6,12 +6,13 @@
+ #include <SDL_timer.h>
+ #include "TextToSpeech.h"
+ 
+-GuiInfoPopup::GuiInfoPopup(Window* window, std::string message, int duration) :
++GuiInfoPopup::GuiInfoPopup(Window* window, std::string message, int duration, bool speak) :
+ 	GuiComponent(window), mMessage(message), mDuration(duration), mRunning(true), mFadeOut(0)
+ {
+ 	auto theme = ThemeData::getMenuTheme();
+ 
+-	TextToSpeech::getInstance()->say(message, true);
++	if (speak)
++		TextToSpeech::getInstance()->say(message, true);
+ 
+ 	mFrame = new NinePatchComponent(window);
+ 	float maxWidth = Renderer::getScreenWidth() * 0.9f;
+@@ -87,7 +88,7 @@ void GuiInfoPopup::update(int deltaTime)
+ 	// we only init the actual time when we first start to render
+ 	if (mStartTime == 0)
+ 		mStartTime = curTime;
+-	else if (curTime - mStartTime > mDuration || curTime < mStartTime)
++	else if (mDuration > 0 && (curTime - mStartTime > mDuration || curTime < mStartTime))
+ 	{
+ 		// If we're past the popup duration, no need to render or if SDL reset : Stop
+ 		mRunning = false;
+@@ -102,7 +103,7 @@ void GuiInfoPopup::update(int deltaTime)
+ 
+ 	if (curTime - mStartTime <= FADE_DURATION)
+ 		alpha = ((curTime - mStartTime) * 255 / FADE_DURATION);
+-	else if (curTime - mStartTime >= mDuration - FADE_DURATION)
++	else if (mDuration > 0 && curTime - mStartTime >= mDuration - FADE_DURATION)
+ 	{
+ 		alpha = ((-(curTime - mStartTime - mDuration) * 255) / FADE_DURATION);
+ 		mFadeOut = (float) (255 - alpha) / 255.0;
+diff --git a/es-core/src/guis/GuiInfoPopup.h b/es-core/src/guis/GuiInfoPopup.h
+index 0cf00217a..a55db2713 100644
+--- a/es-core/src/guis/GuiInfoPopup.h
++++ b/es-core/src/guis/GuiInfoPopup.h
+@@ -11,7 +11,8 @@ class NinePatchComponent;
+ class GuiInfoPopup : public GuiComponent
+ {
+ public:
+-	GuiInfoPopup(Window* window, std::string message, int duration);
++	// duration <= 0: the popup stays until it is deleted (used for the profile badge); speak=false: do not read it aloud
++	GuiInfoPopup(Window* window, std::string message, int duration, bool speak = true);
+ 
+ 	void render(const Transform4x4f& parentTrans) override;	
+ 	void update(int deltaTime) override;

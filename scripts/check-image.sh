@@ -169,6 +169,8 @@ check "EmulationStation knows the player's RetroAchievements Web API key (script
     grep -aq "global.retroachievements.apikey" "${OUT}/target/usr/bin/emulationstation"
 check "EmulationStation can show the active profile (scripts/apply-es-patches.sh ran before the build)" \
     grep -aq "batocera-profiles.current" "${OUT}/target/usr/bin/emulationstation"
+check "EmulationStation has the profile badge setting (scripts/apply-es-patches.sh ran before the build)" \
+    grep -aq "ProfileBadge" "${OUT}/target/usr/bin/emulationstation"
 check "every system's default emulator and core exists in the image (known upstream quirks: scripts/default-emulators-accepted.txt)" \
     python3 -I "${REPO_ROOT}/scripts/audit-default-emulators.py" "${OUT}/target" --accepted "${REPO_ROOT}/scripts/default-emulators-accepted.txt"
 
