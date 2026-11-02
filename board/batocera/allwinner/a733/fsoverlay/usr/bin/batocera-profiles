@@ -55,6 +55,34 @@ write_profile_conf() {
     } > "${file}"
 }
 
+# Move a flat pre-profiles folder (saves or states) into the default profile WITHOUT ever risking the player's files.
+#   copy (never overwrite what is already there) -> check every file arrived unchanged -> only then RENAME the original to <name>.migrated.
+# If any step fails the original is left exactly where it was and a warning is printed.  Nothing is deleted.  Returns 0 when the folder is
+# safely migrated (or there was nothing to do), 1 when it was left in place.
+verify_copy() {
+    local src="$1" dst="$2" f
+    while IFS= read -r -d '' f; do
+        cmp -s "${src}/${f}" "${dst}/${f}" || return 1
+    done < <(cd "${src}" && find . -type f -print0)
+    return 0
+}
+migrate_flat_dir() {
+    local src="$1" dst="$2" keep n=0
+    if [ -L "${src}" ]; then rm -f "${src}"; return 0; fi      # an old symlink from a pre-profiles install: remove only the link
+    [ -d "${src}" ] || return 0
+    mkdir -p "${dst}" || { echo "WARNING: cannot create ${dst}; ${src} left in place" >&2; return 1; }
+    if ! cp -a -n "${src}/." "${dst}/"; then
+        echo "WARNING: copying ${src} failed; it was left in place and nothing was deleted" >&2; return 1
+    fi
+    if ! verify_copy "${src}" "${dst}"; then
+        echo "WARNING: ${src} was not copied completely (or ${dst} already holds a different file of the same name); it was left in place" >&2; return 1
+    fi
+    keep="${src}.migrated"
+    while [ -e "${keep}" ]; do n=$((n+1)); keep="${src}.migrated.${n}"; done
+    mv "${src}" "${keep}" || { echo "WARNING: could not rename ${src}; it was left in place" >&2; return 1; }
+    echo "Moved ${src} into the default profile; the original is kept as ${keep} (delete it when you are sure)."
+}
+
 case "$1" in
     list)
         [ -d "${PROFILES_DIR}" ] && ls "${PROFILES_DIR}" 2>/dev/null || true
@@ -106,23 +134,27 @@ case "$1" in
         fi
 
         # --- One-time migration of pre-profiles saves into .default ---
-        # configgen (batoceraPaths.SAVES) now reads .batocera-profiles.current
-        # directly and sets savefile_directory/savestate_directory per-profile.
-        # No symlinks needed. We only migrate existing flat saves into .default
-        # once so they aren't stranded. Any old /userdata/saves symlinks from
-        # a pre-Variant-C install are cleaned up here too.
+        # configgen (batoceraPaths.SAVES) reads .batocera-profiles.current directly and sets savefile_directory/savestate_directory per
+        # profile.  No symlinks are needed.  The flat /userdata/saves and /userdata/states of a pre-profiles install are moved into
+        # .default ONCE (copy, verify, rename: see migrate_flat_dir).  A marker file makes it once: emulators that write straight to
+        # /userdata/saves/<name> recreate that folder later, and it must never be swept into .default on every switch.
         mkdir -p "${PROFILES_DIR}/.default/saves" "${PROFILES_DIR}/.default/states"
-        if [ -L "${USERDATA}/saves" ]; then
-            rm -f "${USERDATA}/saves"
-        elif [ -d "${USERDATA}/saves" ]; then
-            cp -a "${USERDATA}/saves/." "${PROFILES_DIR}/.default/saves/" 2>/dev/null || true
-            rm -rf "${USERDATA}/saves"
+        MIGRATED_MARK="${PROFILES_DIR}/.flat-folders-migrated"
+        PENDING_MARK="${PROFILES_DIR}/.flat-folders-pending"      # a migration was tried and failed: try again at the next switch
+        if [ ! -e "${MIGRATED_MARK}" ] && [ -e "${CURRENT_FILE}" ] && [ ! -e "${PENDING_MARK}" ]; then
+            # Profiles were already in use before the markers existed (an older version of this script ran its own migration): whatever
+            # sits in /userdata/saves now belongs to emulators that write there directly, so it is not ours to move.
+            : > "${MIGRATED_MARK}"
         fi
-        if [ -L "${USERDATA}/states" ]; then
-            rm -f "${USERDATA}/states"
-        elif [ -d "${USERDATA}/states" ]; then
-            cp -a "${USERDATA}/states/." "${PROFILES_DIR}/.default/states/" 2>/dev/null || true
-            rm -rf "${USERDATA}/states"
+        if [ ! -e "${MIGRATED_MARK}" ]; then
+            MIG_OK=1
+            migrate_flat_dir "${USERDATA}/saves" "${PROFILES_DIR}/.default/saves" || MIG_OK=0
+            migrate_flat_dir "${USERDATA}/states" "${PROFILES_DIR}/.default/states" || MIG_OK=0
+            if [ "${MIG_OK}" = 1 ]; then
+                : > "${MIGRATED_MARK}"; rm -f "${PENDING_MARK}"
+            else
+                : > "${PENDING_MARK}"       # the originals are still where they were; the next switch retries
+            fi
         fi
 
         # --- Load target profile's credentials and settings ---
