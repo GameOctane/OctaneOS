@@ -87,6 +87,39 @@ check "the overlay is saved after a switch (unchanged)" '[ -s "${UD}/overlay.log
 fresh; mkdir -p "${UD}/saves"; echo data > "${UD}/saves/game.srm"; prof switch
 check "old flat saves are still migrated into the default profile (inside the test folder only)" '[ -f "${UD}/profiles/.default/saves/game.srm" ] && [ ! -e "${UD}/saves" ]'
 
+echo "== the one-time move of the old flat saves/states into the default profile never risks the player's files"
+proff() { OCTANE_USERDATA="${UD}" PATH="${FAKE}:${PATH}" bash "${SCRIPT}" "$@" 2>&1; }         # output and warnings kept
+flat() { fresh; mkdir -p "${UD}/saves/gba" "${UD}/states"; echo SAVE1 > "${UD}/saves/gba/game.srm"; echo STATE1 > "${UD}/states/game.state"; }
+echo '#!/bin/sh
+exit 1' > "${FAKE}/cp"; chmod +x "${FAKE}/cp"
+flat; OUT="$(proff switch)"
+check "a failing copy: the original saves and states are untouched" '[ "$(cat "${UD}/saves/gba/game.srm")" = SAVE1 ] && [ "$(cat "${UD}/states/game.state")" = STATE1 ]'
+check "...nothing is renamed or marked as done, and a warning is printed" '[ ! -e "${UD}/saves.migrated" ] && [ ! -e "${UD}/profiles/.flat-folders-migrated" ] && echo "${OUT}" | grep -q WARNING'
+check "...and the switch itself still works" 'echo "${OUT}" | grep -q "Switched to profile"'
+rm -f "${FAKE}/cp"
+OUT="$(proff switch)"
+check "the next switch retries and succeeds (the failure was not final)" '[ -f "${UD}/profiles/.default/saves/gba/game.srm" ] && [ -f "${UD}/profiles/.flat-folders-migrated" ]'
+echo '#!/bin/sh
+exit 0' > "${FAKE}/cp"; chmod +x "${FAKE}/cp"
+flat; OUT="$(proff switch)"
+check "a copy that reports success but copied nothing is caught: the original stays" '[ "$(cat "${UD}/saves/gba/game.srm")" = SAVE1 ] && [ ! -e "${UD}/saves.migrated" ] && echo "${OUT}" | grep -q WARNING'
+rm -f "${FAKE}/cp"
+flat; OUT="$(proff switch)"
+check "success: the files are in the default profile" '[ "$(cat "${UD}/profiles/.default/saves/gba/game.srm")" = SAVE1 ] && [ "$(cat "${UD}/profiles/.default/states/game.state")" = STATE1 ]'
+check "...the original is RENAMED, not deleted (the data exists twice)" '[ "$(cat "${UD}/saves.migrated/gba/game.srm")" = SAVE1 ] && [ "$(cat "${UD}/states.migrated/game.state")" = STATE1 ] && [ ! -e "${UD}/saves" ]'
+check "...a marker file records that it is done" '[ -f "${UD}/profiles/.flat-folders-migrated" ]'
+mkdir -p "${UD}/saves/amiga"; echo AMIGA1 > "${UD}/saves/amiga/disk.sav"
+proff switch >/dev/null
+check "once done, a folder an emulator recreates in /userdata/saves is never swept again" '[ "$(cat "${UD}/saves/amiga/disk.sav")" = AMIGA1 ] && [ ! -e "${UD}/profiles/.default/saves/amiga" ]'
+flat; mkdir -p "${UD}/profiles/.default/saves/gba"; echo OTHER > "${UD}/profiles/.default/saves/gba/game.srm"; OUT="$(proff switch)"
+check "a different file of the same name already in .default is never overwritten, and the original stays" '[ "$(cat "${UD}/profiles/.default/saves/gba/game.srm")" = OTHER ] && [ "$(cat "${UD}/saves/gba/game.srm")" = SAVE1 ] && echo "${OUT}" | grep -q WARNING'
+flat; echo "" > "${UD}/system/.batocera-profiles.current"; mkdir -p "${UD}/system"; proff switch >/dev/null
+check "a device that already used profiles (older script) is not swept: its /userdata/saves is left alone" '[ "$(cat "${UD}/saves/gba/game.srm")" = SAVE1 ] && [ -f "${UD}/profiles/.flat-folders-migrated" ] && [ ! -e "${UD}/saves.migrated" ]'
+fresh; mkdir -p "${UD}/real" "${UD}/system"; echo KEEP > "${UD}/real/x"; ln -s "${UD}/real" "${UD}/saves"; proff switch >/dev/null
+check "an old symlink is removed but what it pointed at is not" '[ ! -L "${UD}/saves" ] && [ "$(cat "${UD}/real/x")" = KEEP ]'
+fresh; proff switch >/dev/null; echo X > "${UD}/saves.late" 2>/dev/null
+check "a fresh card with nothing to move just gets the marker" '[ -f "${UD}/profiles/.flat-folders-migrated" ] && [ ! -e "${UD}/saves.migrated" ]'
+
 echo "== the script on the board still uses /userdata by default"
 check "default path is /userdata unless OCTANE_USERDATA is set" 'grep -q "USERDATA=\"\${OCTANE_USERDATA:-/userdata}\"" "${SCRIPT}"'
 check "no hard-coded /userdata path is left in the commands (comments aside)" '! grep -vE "^[[:space:]]*#" "${SCRIPT}" | grep -v "OCTANE_USERDATA:-/userdata" | grep -q "/userdata"'
