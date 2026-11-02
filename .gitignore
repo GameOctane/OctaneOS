@@ -67,3 +67,7 @@ build.log
 # Claude Code internal files
 .claude/
 build.log*
+
+# Secrets that must never be committed (see scripts/check-repo-hygiene.sh)
+keys.txt
+*.key.pem
