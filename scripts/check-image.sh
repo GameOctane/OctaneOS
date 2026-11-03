@@ -171,6 +171,8 @@ check "Amiga saves follow the active profile (configgen patch applied; a stale b
     grep -rq "_adopt_legacy_saves" "${OUT}/target/usr/lib/python3"*/site-packages/configgen/generators/amiberry/
 check "EmulationStation can show the active profile (scripts/apply-es-patches.sh ran before the build)" \
     grep -aq "batocera-profiles.current" "${OUT}/target/usr/bin/emulationstation"
+check "EmulationStation has the profile badge setting (scripts/apply-es-patches.sh ran before the build)" \
+    grep -aq "ProfileBadge" "${OUT}/target/usr/bin/emulationstation"
 check "every system's default emulator and core exists in the image (known upstream quirks: scripts/default-emulators-accepted.txt)" \
     python3 -I "${REPO_ROOT}/scripts/audit-default-emulators.py" "${OUT}/target" --accepted "${REPO_ROOT}/scripts/default-emulators-accepted.txt"
 
