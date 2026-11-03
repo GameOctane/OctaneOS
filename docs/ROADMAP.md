@@ -63,8 +63,12 @@ ordinary engineering.
 5. The real receiver board (Orange Pi Zero 2W first, software decode of 480p; Radxa Zero 3W as a fallback).
 6. Design the link's pairing and security with the same care as update signing. A hidden network name is not security.
 
-**The hardware encoder.** The encoder on the handheld's SoC is off in our kernel (`CONFIG_AW_VIDEO_ENCODER_DECODER=n`; a header from the
-vendor SDK, `cedar_ve.h`, is missing). It is not needed for retro sizes. It matters for demanding systems (PS2, GameCube, Dreamcast), which
+**The hardware encoder.** The video engine ("Cedar") on the handheld's SoC is off in our kernel (`CONFIG_AW_VIDEO_ENCODER_DECODER=n`). It was
+switched off in June 2026 with the note that `cedar_ve.h` was missing. That is **not true of today's kernel tree**: the header is there. On
+2026-11-03 the driver was compiled in a scratch copy of the kernel build with the option on: it fails only because the Makefile has no
+include path for `platforms/` (the vendor line is commented out), and with `ccflags-y += -I$(src)` the whole driver compiles
+(`sunxi-ve.o`). *Not yet checked:* linking it as a module, loading it on the board, and the userspace side (the driver only exposes the
+engine; encoding is believed to need Allwinner's own library, which ffmpeg does not use). It is not needed for retro sizes. It matters for demanding systems (PS2, GameCube, Dreamcast), which
 need the fast cores themselves; how much software encoding costs while such a game runs has *not been measured*. The receiver's hardware
 decoder (Orange Pi, H618) reportedly does not work on mainline *(unverified)*; test software decode first.
 
