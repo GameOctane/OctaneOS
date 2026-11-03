@@ -4,9 +4,9 @@ Nothing is added when profiles are not in use (no named profile exists and the d
 nothing new.  The name comes from GuiProfilesSettings::getActiveProfileLabel(), which reads the same files as the profile screen
 (display_name, then the RetroAchievements username, then the folder name).
 
-* Main menu footer: "PROFILE: <name>" next to the version text.
+* Main menu footer: "Profile: <name>" next to the version text.
 * Start-up message: a six-second alert when EmulationStation starts.
-* Badge: a permanent alert-style label ("PROFILE: <name>") in the FIRST slot of the notification stack, so the other alerts (now
+* Badge: a permanent alert-style label (just the name) in the FIRST slot of the notification stack, so the other alerts (now
   playing, update available) appear below it.  It uses the menu theme's own background, font and colours, so it follows whatever theme
   is installed.  Hidden while a menu or dialog is open.  Setting "ProfileBadge" (auto / on / off), in the user interface settings:
   auto shows it when there are profiles, on shows it always, off never.  It is kept out of the alert list so the power saver still
@@ -24,7 +24,7 @@ index 4a7015d57..7f19b018a 100644
 +	// which profile is playing (nothing is added when profiles are not in use)
 +	std::string profileLabel = GuiProfilesSettings::getActiveProfileLabel();
 +	if (!profileLabel.empty())
-+		label += std::string(label.empty() ? "" : "   -   ") + _("PROFILE") + ": " + profileLabel;
++		label += std::string(label.empty() ? "" : "   -   ") + _("Profile") + ": " + profileLabel;
 +
  	if (!label.empty())
  	{
@@ -100,7 +100,7 @@ index dd1adc53e..dab17cba9 100644
 +
 +	std::string text;
 +	if (mode == "on" || (mode != "off" && !label.empty()))
-+		text = _("PROFILE") + ": " + (label.empty() ? _("DEFAULT") : label);
++		text = (label.empty() ? _("DEFAULT") : label);
 +
 +	window->setProfileBadge(text);
 +}
@@ -152,7 +152,7 @@ index f0bde675a..c2612fc2a 100644
 +		// say which profile is playing (nothing is shown when profiles are not in use)
 +		std::string profileLabel = GuiProfilesSettings::getActiveProfileLabel();
 +		if (!profileLabel.empty())
-+			window.displayNotificationMessage(_("PROFILE") + ": " + profileLabel, 6000);
++			window.displayNotificationMessage(profileLabel, 6000);
  	}
  
  	threadPool->wait();
@@ -253,7 +253,7 @@ index 8b8f65b2f..972da64c9 100644
  	void pushGui(GuiComponent* gui);
  	void displayNotificationMessage(std::string message, int duration = -1); 
 +
-+	// A permanent alert-style label in the first slot of the notification stack ("PROFILE: <name>"); other alerts appear below it.
++	// A permanent alert-style label in the first slot of the notification stack (just the profile name); other alerts appear below it.
 +	// An empty text removes it.  Hidden while a menu or dialog is open.
 +	void setProfileBadge(const std::string& text);
  	void removeGui(GuiComponent* gui);
