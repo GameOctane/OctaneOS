@@ -49,6 +49,20 @@ else
     printf '  SKIP  the EmulationStation source is not at %s\n' "${ES}"
 fi
 
+echo "== a source folder INSIDE a bigger repository (like configgen inside the Batocera submodule); the patch uses 'diff --git' paths"
+rm -rf "${T}/s1" "${T}/big" "${T}/p2"; mkdir -p "${T}/s1" "${T}/p2" "${T}/big/pkg/deep"
+printf 'one\ntwo\nthree\n' > "${T}/s1/a.txt"
+(cd "${T}/s1" && git init -q . && git add -A && git -c user.name=t -c user.email=t@t commit -qm b && sed -i 's/two/TWO-ADDED/' a.txt && git diff > "${T}/p2/0001-a.patch" && git checkout -q a.txt)
+cp -a "${T}/s1" "${T}/big/pkg/deep/src"; rm -rf "${T}/big/pkg/deep/src/.git"
+(cd "${T}/big" && git init -q . && git add -A && git -c user.name=t -c user.email=t@t commit -qm base)
+run "${T}/big/pkg/deep/src" "${T}/p2"
+check "the patch is really applied (the file changes), not silently skipped" '[ "${RC}" = 0 ] && grep -q "^TWO-ADDED" "${T}/big/pkg/deep/src/a.txt" && echo "${OUTTXT}" | grep -q "applied: 0001"'
+run "${T}/big/pkg/deep/src" "${T}/p2"
+check "a second run says already applied" '[ "${RC}" = 0 ] && echo "${OUTTXT}" | grep -q "already applied: 0001"'
+(cd "${T}/big/pkg/deep/src" && git checkout -q a.txt 2>/dev/null; sed -i 's/two/TWO-RENAMED/' a.txt)
+run "${T}/big/pkg/deep/src" "${T}/p2"
+check "a patch that does not match is REFUSED there too (exit 1), never reported as applied" '[ "${RC}" = 1 ] && echo "${OUTTXT}" | grep -q "does not apply"'
+
 echo
 echo "${PASS} passed, ${FAIL} failed"
 [ "${FAIL}" -eq 0 ]

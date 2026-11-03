@@ -1,0 +1,62 @@
+Amiberry (Amiga): save in the active profile's folder instead of the shared /userdata/saves/amiga.
+
+batoceraPaths.SAVES follows the active profile; the Amiga generator ignored it and wrote to a fixed path, so every profile shared (and
+overwrote) the same Amiga saves.  The first time the DEFAULT profile plays after this change, the old shared saves are copied into its
+folder (the originals are never touched); a named profile starts empty.
+diff --git a/configgen/generators/amiberry/amiberryGenerator.py b/configgen/generators/amiberry/amiberryGenerator.py
+index e8e7d0b..8e5f904 100644
+--- a/configgen/generators/amiberry/amiberryGenerator.py
++++ b/configgen/generators/amiberry/amiberryGenerator.py
+@@ -1,12 +1,13 @@
+ from __future__ import annotations
+ 
+ import logging
++import shutil
+ import zipfile
+ from pathlib import Path
+ from typing import TYPE_CHECKING, Final
+ 
+ from ... import Command
+-from ...batoceraPaths import CONFIGS, mkdir_if_not_exists
++from ...batoceraPaths import CONFIGS, SAVES, mkdir_if_not_exists
+ from ...controller import generate_sdl_game_controller_config, write_sdl_controller_db
+ from ...settings.unixSettings import UnixSettings
+ from ..Generator import Generator
+@@ -23,13 +24,28 @@ _RETROARCH_CUSTOM: Final = _CONFIG_DIR / 'retroarch' / 'overlay.cfg'
+ _RETROARCH_INPUTS_DIR: Final = _CONFIG_DIR / 'retroarch' / 'inputs'
+ _AMIBERRY_PLUGINS: Final = _CONFIG_DIR / 'plugins'
+ _WHDBOOT_DIR: Final = _CONFIG_DIR / 'whdboot'
+-_SAVES_DIR: Final = Path('/userdata/saves/amiga')
++_SAVES_DIR: Final = SAVES / 'amiga'                       # follows the active profile (batoceraPaths.SAVES)
++_LEGACY_SAVES_DIR: Final = Path('/userdata/saves/amiga')   # where the Amiga saves used to be shared by every profile
+ _SCREENSHOTS_DIR: Final = Path('/userdata/screenshots')
+ _BIOS_DIR: Final = Path('/userdata/bios/amiga')
+ _LOG_FILE: Final = Path('/userdata/system/logs/amiberry.log')
+ _AMIBERRY_BIN: Final = Path('/usr/bin/amiberry')
+ _AMIBERRY_DATA: Final = Path('/usr/share/amiberry/data')
+ 
++def _adopt_legacy_saves() -> None:
++    """The Amiga saves used to live in one folder shared by every profile.  The first time the DEFAULT profile plays, copy them into its own
++    folder.  The originals are never touched; a named profile starts empty."""
++    if _SAVES_DIR == _LEGACY_SAVES_DIR or _SAVES_DIR.exists() or not _LEGACY_SAVES_DIR.is_dir():
++        return
++    if _SAVES_DIR.parent.parent.name != '.default':
++        return
++    try:
++        shutil.copytree(_LEGACY_SAVES_DIR, _SAVES_DIR)
++    except OSError:
++        _logger.exception('could not copy the shared Amiga saves into the default profile')
++        shutil.rmtree(_SAVES_DIR, ignore_errors=True)    # leave nothing half-copied, so the next run tries again
++
++
+ class AmiberryGenerator(Generator):
+ 
+     def getHotkeysContext(self) -> HotkeysContext:
+@@ -44,6 +60,7 @@ class AmiberryGenerator(Generator):
+     def generate(self, system, rom, playersControllers, metadata, guns, wheels, gameResolution):
+         mkdir_if_not_exists(_RETROARCH_CUSTOM.parent)
+         mkdir_if_not_exists(_AMIBERRY_PLUGINS)
++        _adopt_legacy_saves()
+ 
+         retroconfig = UnixSettings(_RETROARCH_CUSTOM, separator=' ')
+         amiberryconf = UnixSettings(_CONFIG, separator=' ')

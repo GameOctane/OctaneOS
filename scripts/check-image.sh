@@ -167,6 +167,8 @@ check "N64 default: polygon offset on in the seeded mupen64plus.cfg" \
     "${OUT}/target/usr/share/batocera/datainit/system/configs/mupen64/mupen64plus.cfg"
 check "EmulationStation knows the player's RetroAchievements Web API key (scripts/apply-es-patches.sh ran before the build)" \
     grep -aq "global.retroachievements.apikey" "${OUT}/target/usr/bin/emulationstation"
+check "Amiga saves follow the active profile (configgen patch applied; a stale build would write to the shared folder)" \
+    grep -rq "_adopt_legacy_saves" "${OUT}/target/usr/lib/python3"*/site-packages/configgen/generators/amiberry/
 check "EmulationStation can show the active profile (scripts/apply-es-patches.sh ran before the build)" \
     grep -aq "batocera-profiles.current" "${OUT}/target/usr/bin/emulationstation"
 check "every system's default emulator and core exists in the image (known upstream quirks: scripts/default-emulators-accepted.txt)" \

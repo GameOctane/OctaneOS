@@ -15,17 +15,22 @@ if [ -z "${SRC}" ] || [ ! -d "${SRC}" ] || [ ! -d "${PDIR}" ]; then
     echo "usage: apply-es-patches.sh SRC_DIR [PATCH_DIR]   (both must be folders)" >&2; exit 2
 fi
 SRC="$(cd "${SRC}" && pwd)"; n=0
+# A patch made with "diff --git" names its files relative to the ROOT of the repository.  When SRC is a sub-folder of a bigger repository (the
+# configgen source inside the Batocera submodule) git apply would silently skip every file "outside the current folder" and still report
+# success, so tell it which sub-folder we are in.  (Empty for a source that is its own repository, like EmulationStation.)
+PREFIX="$(cd "${SRC}" && git rev-parse --show-prefix 2>/dev/null)"; PREFIX="${PREFIX%/}"
+GA=(git apply); [ -n "${PREFIX}" ] && GA+=("--directory=${PREFIX}")
 shopt -s nullglob
 for p in "${PDIR}"/*.patch; do
     p="$(cd "$(dirname "${p}")" && pwd)/$(basename "${p}")"; name="$(basename "${p}")"; n=$((n+1))
-    if (cd "${SRC}" && git apply --check -R "${p}" >/dev/null 2>&1); then
+    if (cd "${SRC}" && "${GA[@]}" --check -R "${p}" >/dev/null 2>&1); then
         echo "[es-patches] already applied: ${name}"
-    elif (cd "${SRC}" && git apply --check "${p}" >/dev/null 2>&1); then
-        (cd "${SRC}" && git apply "${p}") || { echo "ERROR: ${name} failed while applying" >&2; exit 1; }
+    elif (cd "${SRC}" && "${GA[@]}" --check "${p}" >/dev/null 2>&1); then
+        (cd "${SRC}" && "${GA[@]}" "${p}") || { echo "ERROR: ${name} failed while applying" >&2; exit 1; }
         echo "[es-patches] applied: ${name}"
     else
         echo "ERROR: ${name} does not apply to ${SRC} (the ES source changed? update the patch)" >&2
-        (cd "${SRC}" && git apply --check "${p}") 2>&1 | head -5 >&2
+        (cd "${SRC}" && "${GA[@]}" --check "${p}") 2>&1 | head -5 >&2
         exit 1
     fi
 done
