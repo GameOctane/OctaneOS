@@ -7,9 +7,9 @@ focus: "Profiles v2 shipped in 0.8.2; login-isolation fix is on main but unrelea
 next_milestone: "0.8.3 release (new-profile login fix), then Syncthing verified with profiles"
 milestone_distance: days
 community_pressure: high
-excitement: very high
+excitement: high                 # was 'very high'; Mission-Control's scoring only knows high/medium/low
 strategic: true
-momentum: accelerating
+momentum: rolling                # was 'accelerating'; scoring only knows rolling/steady/blocked/stalled
 audience: diy-retro-gaming-builders
 uniqueness: first-mover
 viral_potential: high
@@ -35,7 +35,6 @@ OctaneOS is the foundation everything else in GameOctane sits on. It is no longe
 - **Release tooling:** secret guard and release-consistency CI checks, publish-release preflight and checklist.
 
 ## Next up
-(from docs/ROADMAP.md, in its order)
 - [ ] **Release 0.8.3** — the new-profile login fix (PR #36) is merged to main after the 0.8.2 tag
 - [ ] Syncthing verified on the board, then with profiles (sync only `saves` and `states`, never the whole profile folder)
 - [ ] Profile v2 remainder — emulators that write saves outside the profile folder (parts of MAME, Saturn, Dreamcast, PS2); MAME high scores
