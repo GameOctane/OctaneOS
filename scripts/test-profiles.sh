@@ -86,7 +86,7 @@ fresh; mkdir -p "${UD}/profiles/dave/saves" "${UD}/profiles/dave/states"; printf
 prof switch
 check "leaving the active profile writes the global key into its (old-format) file" '[ "$(pconf dave apikey)" = "KEYALICE" ]'
 
-echo "== existing behaviour stays"
+echo "== existing behavior stays"
 fresh; prof create bob; printf 'username=zed\npassword=z\nra_enabled=1\n' > "${UD}/profiles/bob/retroachievements.conf"; prof switch bob
 check "a profile without a token still clears the token (unchanged)" '[ -z "$(conf global.retroachievements.token)" ] && [ "$(conf global.retroachievements.username)" = "zed" ]'
 check "the RetroArch username line is set (unchanged)" 'grep -q "^cheevos_username = \"zed\"" "${UD}/system/configs/retroarch/retroarchcustom.cfg"'

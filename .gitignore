@@ -65,7 +65,9 @@ build.log
 /linux/
 
 # Claude Code internal files
-.claude/
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
 build.log*
 
 # Secrets that must never be committed (see scripts/check-repo-hygiene.sh)

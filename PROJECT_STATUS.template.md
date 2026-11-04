@@ -14,6 +14,10 @@ audience: ""                   # who finds this and why they care
 uniqueness: first-mover        # first-mover / competitive / crowded
 viral_potential: low           # low / medium / high — could this spread on its own?
 mvp_distance: weeks            # days / weeks / months — to minimum shippable thing
+waiting_on: none               # jason / claude / external / none — who has the ball
+decision: ""                   # the question waiting on Jason, if any
+if_go: ""                      # what Claude does if Jason says yes
+status_verified: ""            # date + what it was checked against (git history, a test, a device)
 ---
 
 ## Why this exists

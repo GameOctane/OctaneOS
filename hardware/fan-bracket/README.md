@@ -1,7 +1,7 @@
 # Cubie A7S fan bracket (40 mm fan)
 
 A printable bracket that holds a **40 x 40 x 10 mm fan 15 mm above the SoC heatsinks** of the Radxa Cubie A7S. It bolts to the board's own four
-mounting holes (no glue, no drilling, nothing on the board is modified). Licence: [CC BY-NC-SA 4.0](LICENSE.md).
+mounting holes (no glue, no drilling, nothing on the board is modified). License: [CC BY-NC-SA 4.0](LICENSE.md).
 
 | file | what |
 |---|---|
@@ -36,5 +36,5 @@ throttled hard. Details and the other runs: [docs/fan-cooling.md](../../docs/fan
 The fan keeps running after shutdown while the USB-C cable is plugged in (pin 4 is on the always-on 5 V input).
 
 ## Not tested
-Other heatsink sizes and other fans, long-term behaviour of the plastic near a hot heatsink, and the 30 mm fan option in the source file.
+Other heatsink sizes and other fans, long-term behavior of the plastic near a hot heatsink, and the 30 mm fan option in the source file.
 If your heatsink is taller than 9 mm to the fin tips, raise `heat_top` in the OpenSCAD file.
