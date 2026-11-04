@@ -17,7 +17,7 @@ mvp_distance: weeks
 waiting_on: jason                # jason / claude / external / none
 decision: "Flash the new test card image when home, then play-test each console. Release 0.8.3 only after the tests pass, with the profile and password work in it?"
 if_go: "Claude checks the board (version, boot script, password helper, first-boot screen), runs scripts/trace-saves.sh per system, writes one evidence document (tested / by code only / not covered), then opens a release/0.8.3 PR. Jason still does the signed publish and the on-device OTA test."
-status_verified: "2026-11-04 from git history, local branches and tests run in scratch folders (profiles 49, device password 23, ES patches 14 pass). Nothing from the local branches has run on a board; the image build was still running when this was written."
+status_verified: "2026-11-04 from git history, local branches and tests run in scratch folders (profiles 49, device password 23, ES patches 14 pass). Nothing from the local branches has run on a board; the first image build failed the ES check (stale ES package stamps), so a second build was running when this was written."
 ---
 
 ## Why this exists
@@ -75,7 +75,7 @@ Branches `feat/profile-boot-setting` and `feat/device-password` (both have curre
 - Wireless dock: glass-to-glass latency estimated 55-65 ms against a 33 ms target; not met yet.
 
 ## Resume here
-When the build in `/srv/data/octaneos-work/run-integration-build.log` finishes: verify the image (`scripts/check-image.sh`, strings in the ES binary, the S35 script and helper in the target), then make a flash script like `flash-test-card-1104.sh`. Jason flashes the test card (`sudo`), boots it, and tells Claude; then follow `docs/profiles-testing.md` plus the password checks on the board. Keep the local branches unpushed until Jason says to push.
+When the second build (`/srv/data/octaneos-work/run-integration-build2.log`; the first had stale ES stamps, so the new password screen was missing) finishes: verify the image (`scripts/check-image.sh`, strings in the ES binary, the S35 script and helper in the target), then make a flash script like `flash-test-card-1104.sh`. Jason flashes the test card (`sudo`), boots it, and tells Claude; then follow `docs/profiles-testing.md` plus the password checks on the board. Keep the local branches unpushed until Jason says to push.
 
 ## Last session
-2026-11-04: merged the status, spelling and Syncthing PRs; wrote the downgrade notes, the device password research and decision (keep Batocera's storage, SHA-512 for SSH), the device password code and first-boot screen, a clean trial rebase onto Batocera v43.1, and a status automation (CI check + Stop hook). #41 (password findings) is open. A new test image was building at the end. Nothing new has been run on a board.
+2026-11-04: merged the status, spelling and Syncthing PRs; wrote the downgrade notes, the device password research and decision (keep Batocera's storage, SHA-512 for SSH), the device password code and first-boot screen, a clean trial rebase onto Batocera v43.1, and a status automation (CI check + Stop hook). #41 (password findings) is open. A new test image was building at the end (the first build lacked the ES password screen because of stale package stamps; stamps cleared and rebuilt). Nothing new has been run on a board.
