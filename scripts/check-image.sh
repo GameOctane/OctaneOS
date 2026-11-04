@@ -174,6 +174,8 @@ check "EmulationStation can show the active profile (scripts/apply-es-patches.sh
 check "EmulationStation has the profile badge setting (scripts/apply-es-patches.sh ran before the build)" \
     grep -aq "ProfileBadge" "${OUT}/target/usr/bin/emulationstation"
 check "device password helper is installed" test -x "${OUT}/target/usr/bin/octane-device-password"
+check "EmulationStation has the device password screen (scripts/apply-es-patches.sh ran before the build)" \
+    grep -aq "octane-device-password" "${OUT}/target/usr/bin/emulationstation"
 check "the password script in the image is OctaneOS's (SHA-512 login hash, not MD5 crypt)" \
     grep -q "openssl passwd -6" "${OUT}/target/etc/init.d/S35securepasswd"
 check "every system's default emulator and core exists in the image (known upstream quirks: scripts/default-emulators-accepted.txt)" \
