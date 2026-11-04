@@ -26,8 +26,8 @@ The key is stored with the other RetroAchievements settings, which the file shar
 ## Several profiles
 Each profile has its own RetroAchievements account, and the key belongs to the account, so `batocera-profiles` saves and loads it together
 with the username: switching profile switches the key. A profile without a key clears the previous profile's key (the site would reject a
-key that does not match the username). A new profile starts with no login at all (nothing is copied from the profile that created it) and with RetroAchievements switched
-off; the player enters their own username, password and key in the settings screen and turns it on. Switching to a profile without a
+key that does not match the username). A new profile starts with no login at all (nothing is copied from the profile that created it) and with RetroAchievements left
+switched on; the player enters their own username, password and key in the settings screen. Switching to a profile without a
 login also clears the previous player's login, so one player's achievements are never credited to another.
 
 ## Where it lives in the code

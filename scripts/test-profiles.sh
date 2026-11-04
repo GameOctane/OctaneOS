@@ -44,7 +44,7 @@ echo "== a new profile starts as a copy of the current account, key included"
 fresh; prof create bob
 check "create: a new profile does NOT inherit the current login" '[ -z "$(pconf bob username)" ] && [ -z "$(pconf bob password)" ] && [ -z "$(pconf bob apikey)" ] && [ -z "$(pconf bob token)" ]'
 check "create: the new profile is named what was typed" '[ "$(pconf bob display_name)" = "bob" ]'
-check "create: RetroAchievements starts off for the new profile" '[ "$(pconf bob ra_enabled)" = "0" ]'
+check "create: RetroAchievements stays on for the new profile" '[ "$(pconf bob ra_enabled)" = "1" ]'
 echo "== switching to a profile with no login clears the previous player's login"
 prof switch bob
 check "switch to a new profile: the global username and password are cleared" '[ -z "$(conf global.retroachievements.username)" ] && [ -z "$(conf global.retroachievements.password)" ] && [ -z "$(conf global.retroachievements.apikey)" ]'

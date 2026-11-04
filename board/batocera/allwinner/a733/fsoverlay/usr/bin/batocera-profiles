@@ -101,10 +101,10 @@ case "$1" in
         mkdir -p "${PROFILES_DIR}/${NAME}/saves" "${PROFILES_DIR}/${NAME}/states"
         # A new profile starts with NO login: it must never inherit the account of whoever is playing now (each player has their own
         # RetroAchievements account).  It gets a friendly name (what was typed) so it is not labelled by someone else's username, and
-        # RetroAchievements is off until its player logs in.
+        # RetroAchievements stays on, ready for its player to log in.
         write_profile_conf \
             "${PROFILES_DIR}/${NAME}/retroachievements.conf" \
-            "" "" "" "0" ""
+            "" "" "" "1" ""
         printf 'display_name=%s\n' "${NAME}" >> "${PROFILES_DIR}/${NAME}/retroachievements.conf"
         echo "Profile '${NAME}' created."
         ;;
