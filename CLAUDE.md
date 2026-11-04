@@ -17,3 +17,7 @@
 - Never merge a release or publish an OTA update. Releases need Jason's signing keys and an on-device test; follow `docs/releasing.md` and prepare the PR only.
 - Run `scripts/check-patches.sh`, the `scripts/test-*.sh` suites, and `scripts/check-repo-hygiene.sh` before a PR (CI runs them too).
 - No keys, logins, or developer passwords in the repo.
+
+## Keeping the status current automatically
+- CI runs `scripts/check-project-status.sh`: a wrong frontmatter value fails the PR; a status older than the git history only warns.
+- A Stop hook (`.claude/hooks/status-reminder.sh`) asks once, at the end of a session that changed files, to update `PROJECT_STATUS.md`. It never blocks twice and never blocks a session that changed nothing.
