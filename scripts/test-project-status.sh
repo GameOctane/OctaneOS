@@ -14,4 +14,27 @@ good; sed -i 's/^progress:.*/progress: lots/' "${T}/PROJECT_STATUS.md";         
 good; sed -i '/^waiting_on:/d' "${T}/PROJECT_STATUS.md";                          t "a missing key fails" 1
 good; sed -i 's/^status_verified:.*/status_verified: "recently"/' "${T}/PROJECT_STATUS.md"; t "status_verified needs a date" 1
 good; sed -i 's/^status_verified: "[0-9-]*/status_verified: "2020-01-01/' "${T}/PROJECT_STATUS.md"; t "an old date only warns" 0
+
+# --- the Stop hook (.claude/hooks/status-reminder.sh) in scratch repos ---
+HOOK="${HERE}/../.claude/hooks/status-reminder.sh"
+H="${T}/hook"; mkdir -p "${H}"; git -C "${H}" init -q -b main
+g() { git -C "${H}" -c user.name=t -c user.email=t@t "$@"; }
+cm() { GIT_COMMITTER_DATE="$1" GIT_AUTHOR_DATE="$1" g commit -q -m "$2"; }   # cm <date> <message>
+echo status > "${H}/PROJECT_STATUS.md"; echo a > "${H}/a.txt"; g add -A; cm "2026-01-01T10:00:00" first
+hk() { local name="$1" want="$2" input="${3:-{\}}"; local out; out="$(printf '%s' "${input}" | CLAUDE_PROJECT_DIR="${H}" bash "${HOOK}")"
+  local got=quiet; [ -n "${out}" ] && got=block
+  if [ "${got}" = "${want}" ]; then PASS=$((PASS+1)); echo "  ok    ${name}"; else FAILN=$((FAILN+1)); echo "  FAIL  ${name} (${got}, wanted ${want})"; fi; }
+hk "hook: nothing changed since the status commit stays quiet" quiet
+echo b >> "${H}/a.txt";                                              hk "hook: an uncommitted file asks for a status update" block
+hk "hook: never blocks twice in a row" quiet '{"stop_hook_active": true}'
+g add -A; cm "2026-01-02T10:00:00" "code change";                     hk "hook: a commit made after the status commit asks" block
+echo s2 >> "${H}/PROJECT_STATUS.md"; g add -A; cm "2026-01-03T10:00:00" "status";   hk "hook: after the status commit it is quiet again" quiet
+# The status is updated on another branch (a separate worktree) after this branch's last commit.
+g checkout -q -b work; echo c >> "${H}/a.txt"; g add -A; cm "2026-01-04T10:00:00" "more code"
+g checkout -q main; g worktree add -q -b statusbr "${T}/wt-status" main
+echo s3 >> "${T}/wt-status/PROJECT_STATUS.md"; git -C "${T}/wt-status" add -A; git -C "${T}/wt-status" -c user.name=t -c user.email=t@t commit -q -m status3 --date=2026-01-05T10:00:00
+GIT_COMMITTER_DATE=2026-01-05T10:00:00 git -C "${T}/wt-status" -c user.name=t -c user.email=t@t commit -q --amend --no-edit --date=2026-01-05T10:00:00
+g checkout -q work;                                                    hk "hook: status updated on another branch counts" quiet
+echo d >> "${H}/a.txt"
+echo s4 >> "${T}/wt-status/PROJECT_STATUS.md";                         hk "hook: an uncommitted status edit in another worktree counts" quiet
 echo "${PASS} passed, ${FAILN} failed"; [ "${FAILN}" -eq 0 ]

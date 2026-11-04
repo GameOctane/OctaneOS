@@ -2,8 +2,8 @@
 phase: active
 priority: high
 category: hardware
-progress: 45                     # share of docs/ROADMAP.md Part 1 (software, 6 steps) done: step 1 done, steps 2 and 3 mostly done but not fully proven, steps 4-6 not started. Part 2 (wireless dock, handheld) is not started and is not counted. Jason to confirm.
-focus: "Proving profiles v2 on the test card: start-up profile setting and the save audit are written and built, not yet run on a board"
+progress: 50                     # share of docs/ROADMAP.md Part 1 (software, 6 steps): step 1 done; 2 (Syncthing) and 3 (profile v2) mostly done but not proven on a board; 4 (device password) designed, decided and coded, not run; 5 (Batocera rebase) trial rebase clean, not built; 6 (upstream PR) not started. Part 2 (wireless dock, handheld) not started and not counted. Jason to confirm.
+focus: "The new test image (profile start-up setting + device password first-boot screen) is built and verified; waiting for Jason to flash it and boot the board"
 next_milestone: "Roadmap Part 1 (software) finished: profiles v2 proven per console, device password, Batocera v43.1 rebase, Batocera PR refreshed"
 milestone_distance: weeks
 community_pressure: high
@@ -15,9 +15,9 @@ uniqueness: first-mover
 viral_potential: high
 mvp_distance: weeks
 waiting_on: jason                # jason / claude / external / none
-decision: "Flash the test card and play-test each console (needs your sudo and games), then cut 0.8.3 with everything that passed, instead of releasing the one-line login fix alone?"
-if_go: "Claude runs scripts/trace-saves.sh per system, writes the results into one evidence document (tested / by code only / not covered), then opens a release/0.8.3 PR. Jason still does the signed publish and the on-device OTA test."
-status_verified: "2026-11-04 from git history, the local feat/profile-boot-setting branch and a built test image (check-image passed). Nothing from that branch has run on a board yet."
+decision: "Flash the new test image when home (sudo bash /srv/data/octaneos-work/flash-test-card-1104b.sh /dev/sdc), then play-test each console. Release 0.8.3 only after the tests pass, with the profile and password work in it?"
+if_go: "Claude checks the board (version, boot script, password helper, first-boot screen), runs scripts/trace-saves.sh per system, writes one evidence document (tested / by code only / not covered), then opens a release/0.8.3 PR. Jason still does the signed publish and the on-device OTA test."
+status_verified: "2026-11-04 from git history, local branches, scratch-folder tests (profiles 49, device password 23, ES patches 14) and scripts/check-image.sh on the final image (ALL CHECKS PASSED, ES binary has the password screen). Nothing from the local branches has run on a board."
 ---
 
 ## Why this exists
@@ -36,19 +36,23 @@ OctaneOS is the foundation everything else in GameOctane sits on. It is no longe
 - **Hardware:** PWM fan support, real EDID, DS vsync fix (the real cause of the audio warble), 30-pin header + fan bracket docs.
 - **Release tooling:** secret guard and release-consistency CI checks, publish-release preflight and checklist.
 
-## Written locally, not pushed, not yet run on a board (branch `feat/profile-boot-setting`)
-- **START IN PROFILE setting** (last one used / always the main profile) with a boot script `S14octane-profile`. In the built image; the menu entry has not been seen on a screen.
+## Written locally, not pushed, not run on a board
+Branches `feat/profile-boot-setting` and `feat/device-password` (both have current main merged in) are combined in the local `test/integration-1104b`, which a test image is being built from (dev key, never to be released).
+- **START IN PROFILE setting** (last one used / always the main profile) with a boot script `S14octane-profile`. The menu entry has not been seen on a screen.
 - **Save audit fixes:** DuckStation memory cards and save states, and Game Boy link-cable saves, now follow the profile.
-- **`scripts/trace-saves.sh` and `docs/profiles-testing.md`:** show which files a play session wrote and whether they went into the active profile's folder.
-- A dev-key test image is built (never to be released). It needs flashing to the test card by Jason.
+- **`scripts/trace-saves.sh`, `docs/profiles-testing.md`, `docs/profiles-downgrade.md`:** which files a play session wrote, and how to go back to an older version after profiles.
+- **Device password:** `S35securepasswd` override (SHA-512, a Samba password that survives `%` and `\`, a `reset-password` file on the boot partition), the `octane-device-password` helper, and an EmulationStation first-boot question plus a Security menu entry (patch 0004). Tested only in scratch folders; the ES file was syntax-checked against stub headers, never compiled with the real ES. Not yet checked on the board: the encryption key (CPU serial and ethernet MAC), the SHA-512 hash being accepted, remounting `/boot`.
+- **Profile rename quoting fix** (`fix/profile-rename-quoting`, ES patch 0005): a typed profile name was pasted into a shell command; now written without a shell and quoted safely. 9 tests compile the new functions and try hostile names. Not in the current test image, not compiled inside real ES, not run on a board.
+- **Stop hook fix** (`fix/status-hook-worktrees`): the reminder now looks at commits since the status file last changed on any branch, so it stops firing when the status lives in another worktree. 14 scratch-repo tests pass; pushed 2026-11-04 (PR not opened yet), not yet used for real.
+- **Video engine note** (`docs/video-engine-note`): libcedarc 2.0.0, license unknown. Radxa was emailed 2026-11-04.
 
 ## Next up
-- [ ] **Flash the test card and test each console** (NES, SNES, GB/GBC/GBA, Mega Drive, N64, DS, PlayStation incl. memory cards, PSP, Dreamcast, arcade incl. high scores, DOSBox Pure, ScummVM, Amiga, Game Boy link). Also test the boot setting, a default-profile rename and Amiga adoption (the last two were never device-tested)
-- [ ] Open a PR for `feat/profile-boot-setting` once the tests pass, then **release 0.8.3** with it and the login fix (#36)
-- [ ] Review the Batocera maintainers' comments on #2207, then refresh it with the Syncthing result, the profile indicator and the per-console test evidence
-- [ ] Syncthing: two-way sync of real saves, other profiles' saves folders, a "how to sync" page (sync only `saves` and `states`, never the whole profile folder)
-- [ ] Device password (first-boot screen, `docs/security-design-phase1.md` phase 2)
-- [ ] Rebase onto Batocera v43.1 (51 commits behind as of the roadmap; our base is the 2026-04-06 snapshot)
+- [ ] **Flash the new test image and test each console** (NES, SNES, GB/GBC/GBA, Mega Drive, N64, DS, PlayStation incl. memory cards, PSP, Dreamcast, arcade incl. high scores, DOSBox Pure, ScummVM, Amiga, Game Boy link). Also test the boot setting, a default-profile rename and Amiga adoption (the last two were never device-tested)
+- [ ] Open PRs for `feat/profile-boot-setting` and `feat/device-password` once the board tests pass, then **release 0.8.3** with them and the login fix (#36)
+- [ ] Refresh Batocera PR #2207 (the maintainer's points are in an earlier chat and answered in our design: no symlinks, per-profile saves, safe migration, downgrade notes; the start-up setting and per-console evidence are still needed); then refresh it with the Syncthing result, the profile indicator and the per-console test evidence
+- [ ] Syncthing: two-way sync of real saves and other profiles' saves folders (the one-way how-to page is in `docs/syncing-saves.md`)
+- [ ] Device password: test on the board; Syncthing's page password; a reminder when the password was skipped
+- [ ] Rebase onto Batocera v43.1 (51 commits): a trial rebase of our 34 Batocera commits and 6 ES commits is clean with the ES patches still applying; not built or tested. Do it after the profile tests pass
 - [ ] Profile PIN (optional, design first); two players at once is a stretch and not wanted for now
 - [ ] Wireless dock / handheld research (streaming latency, DPI screen, power, heat): Part 2 of the roadmap
 - [ ] Video encoder (Cedar) is parked until Radxa names a license contact (libcedarc 2.0.0, no license file shipped)
@@ -73,7 +77,7 @@ OctaneOS is the foundation everything else in GameOctane sits on. It is no longe
 - Wireless dock: glass-to-glass latency estimated 55-65 ms against a 33 ms target; not met yet.
 
 ## Resume here
-Jason flashes the test card: `sudo bash /srv/data/octaneos-work/flash-test-card-1104.sh /dev/sdc` (confirm it is the test card first). Then boot the board and follow `docs/profiles-testing.md` on the `feat/profile-boot-setting` branch (`scripts/trace-saves.sh start` / `report` per game). Keep that branch local until Jason says to push.
+The test image is built and checked (`/srv/data/octaneos-work/test-image-20261104-pw/`, from local branch `test/integration-1104b`, dev key, never to be released). Jason flashes the test card: `sudo bash /srv/data/octaneos-work/flash-test-card-1104b.sh /dev/sdc`, boots it, and tells Claude. Then: board checks (version, boot script, password helper status, whether the A7S has a CPU serial and a steady ethernet interface for the stored-password key), the start-up profile test, the first-boot password screen, then the per-console saves tests in `docs/profiles-testing.md`. Keep the local branches unpushed until Jason says to push.
 
 ## Last session
-2026-11-04: 0.8.2 announced and merged; PR #36 (new profile has no login) merged; Syncthing one-way saves backup working on the main card and server; start-up profile setting, DuckStation and Game Boy link save fixes written and built into a test image (verified in the image, not run on a board). `progress` is now 45, defined as the share of roadmap Part 1; the earlier 90 was a guess.
+2026-11-04: fixed the Stop hook so it stops repeating (local branch `fix/status-hook-worktrees`); merged the status, spelling and Syncthing PRs; wrote the downgrade notes, the device password research and decision (keep Batocera's storage, SHA-512 for SSH), the device password code and ES first-boot screen, a clean trial rebase onto Batocera v43.1, status automation (CI check + Stop hook), a fix to `apply-es-patches.sh` for patches on neighbouring lines, and the profile-rename quoting fix (patch 0005). Two build attempts failed first (stale ES stamps, then the patch applier); the third image passed `check-image.sh`. #41 (password findings) is open. Nothing new has run on a board.
