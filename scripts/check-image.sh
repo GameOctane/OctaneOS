@@ -173,6 +173,9 @@ check "EmulationStation can show the active profile (scripts/apply-es-patches.sh
     grep -aq "batocera-profiles.current" "${OUT}/target/usr/bin/emulationstation"
 check "EmulationStation has the profile badge setting (scripts/apply-es-patches.sh ran before the build)" \
     grep -aq "ProfileBadge" "${OUT}/target/usr/bin/emulationstation"
+check "device password helper is installed" test -x "${OUT}/target/usr/bin/octane-device-password"
+check "the password script in the image is OctaneOS's (SHA-512 login hash, not MD5 crypt)" \
+    grep -q "openssl passwd -6" "${OUT}/target/etc/init.d/S35securepasswd"
 check "every system's default emulator and core exists in the image (known upstream quirks: scripts/default-emulators-accepted.txt)" \
     python3 -I "${REPO_ROOT}/scripts/audit-default-emulators.py" "${OUT}/target" --accepted "${REPO_ROOT}/scripts/default-emulators-accepted.txt"
 
