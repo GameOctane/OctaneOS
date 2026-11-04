@@ -197,7 +197,9 @@ case "$1" in
         fi
 
         echo "${NAME}" > "${CURRENT_FILE}"
-        batocera-save-overlay
+        # The boot script (S14octane-profile) sets OCTANE_PROFILES_NO_OVERLAY_SAVE: at start-up there is nothing worth saving to the overlay and
+        # it would remount /boot read-write for no reason.
+        [ -n "${OCTANE_PROFILES_NO_OVERLAY_SAVE:-}" ] || batocera-save-overlay
         echo "Switched to profile '${NAME:-DEFAULT}'."
         ;;
 

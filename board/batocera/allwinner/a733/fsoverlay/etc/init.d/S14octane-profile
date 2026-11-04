@@ -1,0 +1,24 @@
+#!/bin/sh
+# OctaneOS: which profile is active when the device starts.
+#   profiles.boot=last   (default) leave the active profile alone: after a restart the profile that was in use stays in use.
+#   profiles.boot=main   switch back to the main (default) profile at every start-up.
+# The setting is in batocera.conf and is changed on the PROFILES screen ("START IN PROFILE").  It uses the real "batocera-profiles switch" and
+# not just a reset of the current-profile file, because a switch also loads that profile's RetroAchievements login; resetting only the file
+# would leave the previous player's login active in the main profile.  Runs before EmulationStation starts.
+# OCTANE_USERDATA and OCTANE_PROFILES_BIN exist only so scripts/test-profiles.sh can run this without a real /userdata.
+
+USERDATA="${OCTANE_USERDATA:-/userdata}"
+PROFILES_BIN="${OCTANE_PROFILES_BIN:-/usr/bin/batocera-profiles}"
+
+case "$1" in
+  start)
+    MODE=$(grep '^profiles.boot=' "${USERDATA}/system/batocera.conf" 2>/dev/null | tail -n 1 | cut -d= -f2-)
+    CURRENT=$(cat "${USERDATA}/system/.batocera-profiles.current" 2>/dev/null)
+    if [ "${MODE}" = "main" ] && [ -n "${CURRENT}" ]; then
+        OCTANE_PROFILES_NO_OVERLAY_SAVE=1 "${PROFILES_BIN}" switch >/dev/null 2>&1 \
+            || echo "S14octane-profile: could not switch to the main profile; '${CURRENT}' stays active" >&2
+    fi
+    ;;
+  stop|restart|reload) ;;
+esac
+exit 0

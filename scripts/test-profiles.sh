@@ -40,7 +40,7 @@ EOF
 # the key must always belong to the username it is used with
 paired() { [ "$(conf global.retroachievements.username)" = "$1" ] && [ "$(conf global.retroachievements.apikey)" = "$2" ]; }
 
-echo "== a new profile starts as a copy of the current account, key included"
+echo "== a new profile starts with no login and is named what was typed"
 fresh; prof create bob
 check "create: a new profile does NOT inherit the current login" '[ -z "$(pconf bob username)" ] && [ -z "$(pconf bob password)" ] && [ -z "$(pconf bob apikey)" ] && [ -z "$(pconf bob token)" ]'
 check "create: the new profile is named what was typed" '[ "$(pconf bob display_name)" = "bob" ]'
@@ -127,6 +127,28 @@ fresh; mkdir -p "${UD}/real" "${UD}/system"; echo KEEP > "${UD}/real/x"; ln -s "
 check "an old symlink is removed but what it pointed at is not" '[ ! -L "${UD}/saves" ] && [ "$(cat "${UD}/real/x")" = KEEP ]'
 fresh; proff switch >/dev/null; echo X > "${UD}/saves.late" 2>/dev/null
 check "a fresh card with nothing to move just gets the marker" '[ -f "${UD}/profiles/.flat-folders-migrated" ] && [ ! -e "${UD}/saves.migrated" ]'
+
+echo "== the start-up script: profiles.boot=main goes back to the main profile, last (or nothing set) leaves it alone"
+BOOT="${REPO_ROOT}/board/batocera/allwinner/a733/fsoverlay/etc/init.d/S14octane-profile"
+boot() { OCTANE_USERDATA="${UD}" OCTANE_PROFILES_BIN="${FAKE}/profiles-wrapper" PATH="${FAKE}:${PATH}" sh "${BOOT}" start >/dev/null 2>&1; }
+cat > "${FAKE}/profiles-wrapper" <<EOS
+#!/bin/sh
+OCTANE_USERDATA="${UD}" PATH="${FAKE}:\${PATH}" exec bash "${SCRIPT}" "\$@"
+EOS
+chmod +x "${FAKE}/profiles-wrapper"
+fresh; prof create bob; prof switch bob; rm -f "${UD}/overlay.log"
+boot
+check "nothing set: the last profile stays active after a start-up" '[ "$(cat "${UD}/system/.batocera-profiles.current")" = bob ]'
+setg profiles.boot last; boot
+check "profiles.boot=last: the last profile stays active" '[ "$(cat "${UD}/system/.batocera-profiles.current")" = bob ]'
+setg profiles.boot main; boot
+check "profiles.boot=main: back to the main profile" '[ -z "$(cat "${UD}/system/.batocera-profiles.current")" ]'
+check "...and the main profile's own login is loaded (not the previous player's)" '[ "$(conf global.retroachievements.username)" = alice ] && [ "$(conf global.retroachievements.apikey)" = KEYALICE ]'
+check "...without saving the overlay at start-up" '[ ! -e "${UD}/overlay.log" ]'
+prof switch bob; boot; boot
+check "a second start-up is harmless (already on the main profile after the first)" '[ -z "$(cat "${UD}/system/.batocera-profiles.current")" ]'
+fresh; boot
+check "no profile data at all: the start-up script does nothing and does not fail" 'boot'
 
 echo "== the script on the board still uses /userdata by default"
 check "default path is /userdata unless OCTANE_USERDATA is set" 'grep -q "USERDATA=\"\${OCTANE_USERDATA:-/userdata}\"" "${SCRIPT}"'

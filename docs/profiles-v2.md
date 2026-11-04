@@ -15,8 +15,11 @@ RetroAchievements with one account per session, so two accounts cannot earn on t
   (In the Carbon theme: controller icons top left, Wi-Fi and battery top right, clock bottom right, button prompts along the bottom.)
 - **Avatars later:** a local image in the profile folder, or the player's RetroAchievements picture (EmulationStation already shows it on
   the RA page; fetch once and cache it).
-- **On boot:** the active profile is stored in `/userdata/system/.batocera-profiles.current` and nothing resets it, so after a reboot the
-  **last** profile stays active. A setting is planned: keep last / always the main profile / ask who is playing.
+- **On boot (built):** the active profile is stored in `/userdata/system/.batocera-profiles.current`. The setting **START IN PROFILE** on the
+  PROFILES screen (stored as `profiles.boot` in `batocera.conf`) chooses what happens when the device starts: `last` (the default, as before:
+  the profile that was in use stays in use) or `main` (the boot script `S14octane-profile` switches back to the main profile, loading its
+  RetroAchievements login as a normal switch does). "Ask who is playing" is not built yet: it needs a picker shown by EmulationStation at
+  start-up.
 
 ## 2. Optional PIN (convenience, not security)
 - Per profile, optional. It guards **switching into** a profile and **deleting** one, so nobody plays or deletes as someone else by accident.

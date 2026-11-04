@@ -117,6 +117,7 @@ check "kernel Image exists" test -s "${OUT}/images/Image"
 check "second filesystem layer rufomaculata exists" test -s "${OUT}/images/rufomaculata"
 check "flight recorder installed and executable" test -x "${OUT}/target/usr/bin/octane-flightlog"
 check "flight recorder init script installed" test -x "${OUT}/target/etc/init.d/S98octane-flightlog"
+check "profile start-up script installed" test -x "${OUT}/target/etc/init.d/S14octane-profile"
 check "splash trace installed (records every start of the boot video)" \
     test -x "${OUT}/target/etc/init.d/S11splash-trace"
 check "image is newer than the kernel it contains" \
