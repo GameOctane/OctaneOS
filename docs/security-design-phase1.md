@@ -118,10 +118,37 @@ is left for phase 2 after checking how common that is.
 
 ## Unknowns to verify before building
 
-- How Batocera persists the root password (and whether its "security" option can be reused).
+- Resolved (2026-11-04, by reading the Batocera code in the fork; **not yet run on a board**): how Batocera persists the root password.
+  See "How Batocera stores the root password today" below.
 - Samba behaviour of `veto files` across client operating systems.
 - Editing Syncthing's configuration without breaking existing pairings.
 - Resolved: the profile code (`batocera-profiles`) writes `retroachievements.conf`, not the
   `retroarch.cfg.override` that the spec names, so the spec is out of date on that point. The
   RetroAchievements password is also still in `batocera.conf`. A later improvement is to store
   RetroAchievements' login token and not the password.
+
+## How Batocera stores the root password today (read from the code, 2026-11-04)
+Batocera already has a "security" option. We should reuse it and not invent a second mechanism.
+
+- **The switch:** `system.security.enabled` in `batocera.conf`. Off (the default): the root password is the fixed word `linux`, for SSH and for the
+  file share. On: a password is used instead.
+- **Where it is kept:** in `/boot/batocera-boot.conf` (the FAT boot partition) as `rootshadowpassword=enc:...`. If the line is empty the first boot
+  makes a random 8-character password. `batocera-config setRootPassword <word>` stores a chosen one and `getRootPassword` reads it back.
+- **How it is "protected":** `batocera-encode` encrypts it with AES-128-CBC using a key made from the CPU serial number plus the ethernet MAC address.
+  That is **reversible**, and the key comes from the device, so anyone with the card (or SSH access) can read it back. It hides the word from a quick
+  look, nothing more. This is the real answer to "is today's password stored as a hash": it is not hashed at all.
+- **How it is applied:** `/etc/init.d/S35securepasswd` runs at every boot. It reads the stored word, writes `/run/batocera.shadow` (in memory only)
+  with `openssl passwd -1` (this is the old MD5 crypt), and sets the Samba password with `smbpasswd`. So the login hash is rebuilt at each boot.
+- **EmulationStation** already has a Security entry that toggles `system.security.enabled` and shows the password on screen.
+
+### What this means for our phase 2 design
+1. **No new storage mechanism.** The first-boot screen only has to call `setRootPassword <chosen word>` and set `system.security.enabled=1`.
+2. **A strong hash is easy for SSH:** change `openssl passwd -1` to `-6` (SHA-512) in S35securepasswd. This is a one-word change in a patch.
+3. **Samba is the catch.** Samba needs the password itself (or its NT hash, which is weak). So the word must still be recoverable at boot, which
+   is why Batocera stores it reversibly. A real one-way hash is possible for SSH only. We should accept this, or drop Samba password login
+   (the file share is already narrowed in phase 1). **Decision needed.**
+4. **The reset file** (`reset-password` on the boot partition) fits: S35 can look for it at boot, clear `rootshadowpassword`, and delete the file.
+5. **The key depends on the board.** The encryption key uses the CPU serial and the ethernet MAC. We have not checked whether the A7S has a
+   `Serial` line in `/proc/cpuinfo` or an `eth*` interface that is always present. If either is missing or changes (for example a USB ethernet
+   dongle), the stored password could fail to decode and a new one would be generated. **To verify on the board** before relying on this.
+6. **The Syncthing page** is not covered by any of this: it needs its own setting (its GUI password) set from the same screen.
