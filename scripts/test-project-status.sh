@@ -37,4 +37,10 @@ GIT_COMMITTER_DATE=2026-01-05T10:00:00 git -C "${T}/wt-status" -c user.name=t -c
 g checkout -q work;                                                    hk "hook: status updated on another branch counts" quiet
 echo d >> "${H}/a.txt"
 echo s4 >> "${T}/wt-status/PROJECT_STATUS.md";                         hk "hook: an uncommitted status edit in another worktree counts" quiet
+# A build that patches files inside a submodule leaves it "modified"; that is not a session change.
+git init -q "${T}/sub"; git -C "${T}/sub" -c user.name=t -c user.email=t@t commit -q --allow-empty -m s; echo x > "${T}/sub/f"; git -C "${T}/sub" add f; git -C "${T}/sub" -c user.name=t -c user.email=t@t commit -q -m f
+g checkout -q -- . ; g checkout -q main; git -C "${H}" -c protocol.file.allow=always submodule add -q "${T}/sub" sub; cm "2026-01-06T10:00:00" "add submodule"
+echo S >> "${T}/wt-status/PROJECT_STATUS.md"; git -C "${T}/wt-status" checkout -q -- PROJECT_STATUS.md
+echo s5 >> "${H}/PROJECT_STATUS.md"; g add -A; cm "2026-01-07T10:00:00" "status5"
+echo dirty >> "${H}/sub/f";                                            hk "hook: a modified submodule is not a session change" quiet
 echo "${PASS} passed, ${FAILN} failed"; [ "${FAILN}" -eq 0 ]
