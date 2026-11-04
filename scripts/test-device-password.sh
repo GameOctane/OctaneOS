@@ -84,8 +84,18 @@ sh "${HELPER}" skip >/dev/null
 check "skip: the screen does not ask again" '[ "$(sh "${HELPER}" status)" = skipped ]'
 boot
 check "...and the device stays on the default word" 'shadow_ok linux && smb_in linux'
+check "skip: not due yet, a day later" '[ "$(OCTANE_NOW=$(( $(date +%s) + 86400 )) sh "${HELPER}" status)" = skipped ]'
+check "skip: due after a week (reminder)" '[ "$(OCTANE_NOW=$(( $(date +%s) + 8 * 86400 )) sh "${HELPER}" status)" = remind ]'
+sh "${HELPER}" decline >/dev/null
+check "decline: never asks, even years later" '[ "$(OCTANE_NOW=$(( $(date +%s) + 900 * 86400 )) sh "${HELPER}" status)" = declined ]'
+check "...and the device stays on the default word" 'shadow_ok linux'
+batocera-settings-set octane.password.remind_after ""; batocera-settings-set octane.password.declined 0
+check "an older put-off without a date never nags" '[ "$(OCTANE_NOW=$(( $(date +%s) + 900 * 86400 )) sh "${HELPER}" status)" = skipped ]'
 sh "${HELPER}" ask-again
 check "ask-again makes the screen ask once more" '[ "$(sh "${HELPER}" status)" = ask ]'
+sh "${HELPER}" decline >/dev/null; printf '%s\n' 'a-good-passphrase' | sh "${HELPER}" set >/dev/null
+check "choosing a password after declining shows it as set" '[ "$(sh "${HELPER}" status)" = set ]'
+sh "${HELPER}" ask-again; : > "${CONF}"; rm -f "${BOOT}/batocera-boot.conf"
 
 echo "== an existing device after an update (security was never touched)"
 : > "${CONF}"; rm -f "${BOOT}/reset-password"; boot
