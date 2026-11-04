@@ -68,7 +68,13 @@ switched off in June 2026 with the note that `cedar_ve.h` was missing. That is *
 2026-11-03 the driver was compiled in a scratch copy of the kernel build with the option on: it fails only because the Makefile has no
 include path for `platforms/` (the vendor line is commented out), and with `ccflags-y += -I$(src)` the whole driver compiles
 (`sunxi-ve.o`). *Not yet checked:* linking it as a module, loading it on the board, and the userspace side (the driver only exposes the
-engine; encoding is believed to need Allwinner's own library, which ffmpeg does not use). It is not needed for retro sizes. It matters for demanding systems (PS2, GameCube, Dreamcast), which
+engine; encoding needs Allwinner's own library, which ffmpeg does not use). **The userspace side, found 2026-11-04:** Radxa's A733 package
+`task-a733-vpu` depends on `libcedarc` **2.0.0** and `libgstreamer-openmax-allwinner` (a Radxa employee pointed to its `debian/control`; read
+through a summarizing fetch, not line by line). These are closed prebuilt binaries built for Debian, and the packages carry **no license
+file**, so we do not know whether we may redistribute them. We asked Radxa (their support staff cannot answer legal questions; a direct email
+was sent on 2026-11-04) and ship nothing from them until there is an answer. If redistribution is not allowed, a download-on-demand opt-in
+(the user fetches them and accepts Radxa's terms) is the fallback design. Whether they run on Batocera's libc and read-only root file system
+is untested. It is not needed for retro sizes. It matters for demanding systems (PS2, GameCube, Dreamcast), which
 need the fast cores themselves; how much software encoding costs while such a game runs has *not been measured*. The receiver's hardware
 decoder (Orange Pi, H618) reportedly does not work on mainline *(unverified)*; test software decode first.
 
