@@ -15,7 +15,7 @@
 // this heatsink height (heat_top = 9).  10-minute emulator load with the fan at full speed on this bracket: peak 45 C, average 42 C, no
 // CPU throttling (without a fan the same load reached 80 C and throttled hard).  The 30 mm variant is untested.
 // Designed with AI assistance (Claude, by Anthropic); dimensions checked and the parts printed and fitted by the human author.
-// Licence: CC BY-NC-SA 4.0 (Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International), chosen by the author.
+// License: CC BY-NC-SA 4.0 (Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International), chosen by the author.
 //
 // part = "gauge"   -> thin hole-check plate, no posts
 // part = "bracket" -> the real part (plate + 4 posts).  With flip = true the plate lies flat on the print bed and the
@@ -32,7 +32,7 @@ hole_pitch = board - 2*hole_off;     // 43.8
 // ---- TODO: measure these on the real board ---------------------------------------------------------------------
 heat_top = 9;       // board surface to the TOP of the fin tips on the SoC heatsink (7 mm fins + chip + pad; ~estimate)
 gap      = 6;       // clear gap between the fin tips and the fan underside  (heat_top + gap = 15 mm total)
-fx = 0;  fy = 0;    // fan centre relative to the BOARD centre (put it over the SoC heatsink centre)
+fx = 0;  fy = 0;    // fan center relative to the BOARD center (put it over the SoC heatsink center)
 // -----------------------------------------------------------------------------------------------------------------
 
 post_od  = 6;       // post outside diameter
