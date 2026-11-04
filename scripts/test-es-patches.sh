@@ -23,6 +23,11 @@ run "${T}/src" "${T}/p"
 check "applies both patches, in order" '[ "${RC}" = 0 ] && grep -q "^TWO-ADDED" "${T}/src/a.txt" && grep -q "^BETA" "${T}/src/b.txt" && echo "${OUTTXT}" | grep -c "applied:" | grep -q "^2$"'
 cp "${T}/src/a.txt" "${T}/a.once"; run "${T}/src" "${T}/p"
 check "running it again changes nothing and says 'already applied'" '[ "${RC}" = 0 ] && cmp -s "${T}/src/a.txt" "${T}/a.once" && echo "${OUTTXT}" | grep -c "already applied" | grep -q "^2$"'
+# two patches that touch NEIGHBOURING lines (the second was made on top of the first): a second run must still say "already applied"
+new_src; printf 'one\ntwo\nthree\nfour\nfive\nsix\n' > "${T}/src/a.txt"; mkpatch 0001-a a.txt three "three\nX-FIRST"
+cp "${T}/src/a.txt" "${T}/a.base"; run "${T}/src" "${T}/p"; mkpatch 0002-a a.txt X-FIRST "X-FIRST\nY-SECOND"; cp "${T}/a.base" "${T}/src/a.txt"; run "${T}/src" "${T}/p"
+cp "${T}/src/a.txt" "${T}/a.both"; run "${T}/src" "${T}/p"
+check "two patches on neighbouring lines: a second run changes nothing and reports 'already applied' for both" '[ "${RC}" = 0 ] && cmp -s "${T}/src/a.txt" "${T}/a.both" && grep -q "^X-FIRST" "${T}/src/a.txt" && grep -q "^Y-SECOND" "${T}/src/a.txt" && [ "$(echo "${OUTTXT}" | grep -c "already applied")" = 2 ]'
 new_src; mkpatch 0001-a a.txt two "two\nTWO-ADDED"; cp "${T}/src/a.txt" "${T}/a.orig"; sed -i 's/three/THREE-CHANGED-UPSTREAM/; s/two/TWO-RENAMED/' "${T}/src/a.txt"; cp "${T}/src/a.txt" "${T}/a.changed"
 run "${T}/src" "${T}/p"
 check "a patch that no longer applies -> exit 1, a clear message, the file untouched" '[ "${RC}" = 1 ] && echo "${OUTTXT}" | grep -q "does not apply" && cmp -s "${T}/src/a.txt" "${T}/a.changed"'

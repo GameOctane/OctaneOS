@@ -28,6 +28,11 @@ for p in "${PDIR}"/*.patch; do
     elif (cd "${SRC}" && "${GA[@]}" --check "${p}" >/dev/null 2>&1); then
         (cd "${SRC}" && "${GA[@]}" "${p}") || { echo "ERROR: ${name} failed while applying" >&2; exit 1; }
         echo "[es-patches] applied: ${name}"
+    elif [ -z "${PREFIX}" ] && (cd "${SRC}" && patch -p1 -R --dry-run -F3 -s < "${p}" >/dev/null 2>&1); then
+        # A LATER patch changed lines right next to this patch's hunk, so the exact reverse check above fails although this patch is in.
+        # Allow a little context difference (fuzz) for the reverse check only.  A patch that really is missing never reaches here: it
+        # applied forward in the branch before.
+        echo "[es-patches] already applied (a later patch touches its neighbour lines): ${name}"
     else
         echo "ERROR: ${name} does not apply to ${SRC} (the ES source changed? update the patch)" >&2
         (cd "${SRC}" && "${GA[@]}" --check "${p}") 2>&1 | head -5 >&2
