@@ -99,13 +99,13 @@ case "$1" in
             exit 1
         fi
         mkdir -p "${PROFILES_DIR}/${NAME}/saves" "${PROFILES_DIR}/${NAME}/states"
-        RA_USER=$(get_batocera_key "global.retroachievements.username")
-        RA_PASS=$(get_batocera_key "global.retroachievements.password")
-        RA_ENABLED=$(get_batocera_key "global.retroachievements")
-        RA_APIKEY=$(get_batocera_key "global.retroachievements.apikey")
+        # A new profile starts with NO login: it must never inherit the account of whoever is playing now (each player has their own
+        # RetroAchievements account).  It gets a friendly name (what was typed) so it is not labelled by someone else's username, and
+        # RetroAchievements is off until its player logs in.
         write_profile_conf \
             "${PROFILES_DIR}/${NAME}/retroachievements.conf" \
-            "${RA_USER}" "${RA_PASS}" "" "${RA_ENABLED:-1}" "${RA_APIKEY}"
+            "" "" "" "0" ""
+        printf 'display_name=%s\n' "${NAME}" >> "${PROFILES_DIR}/${NAME}/retroachievements.conf"
         echo "Profile '${NAME}' created."
         ;;
 
@@ -128,9 +128,13 @@ case "$1" in
                 "${PROFILES_DIR}/${ACTIVE}/retroachievements.conf" \
                 "${CUR_USER}" "${CUR_PASS}" "${CUR_TOKEN}" "${CUR_RA_ENABLED:-1}" "${CUR_APIKEY}"
         else
+            # The first time the default profile gets a settings file, give it a friendly name; otherwise it would be labelled by the
+            # RetroAchievements username and look identical to a profile made later.
+            DEFAULT_NEW=0; [ -f "${PROFILES_DIR}/.default-retroachievements.conf" ] || DEFAULT_NEW=1
             write_profile_conf \
                 "${PROFILES_DIR}/.default-retroachievements.conf" \
                 "${CUR_USER}" "${CUR_PASS}" "${CUR_TOKEN}" "${CUR_RA_ENABLED:-1}" "${CUR_APIKEY}"
+            [ "${DEFAULT_NEW}" = 1 ] && printf 'display_name=Default\n' >> "${PROFILES_DIR}/.default-retroachievements.conf"
         fi
 
         # --- One-time migration of pre-profiles saves into .default ---
@@ -176,14 +180,11 @@ case "$1" in
             RA_USER="" ; RA_PASS="" ; RA_TOKEN="" ; RA_APIKEY="" ; RA_ENABLED=""
         fi
 
-        if [ -n "${RA_USER}" ]; then
-            batocera-settings-set global.retroachievements.username "${RA_USER}"
-            set_retroarch_key "cheevos_username" "${RA_USER}"
-        fi
-        if [ -n "${RA_PASS}" ]; then
-            batocera-settings-set global.retroachievements.password "${RA_PASS}"
-            set_retroarch_key "cheevos_password" "${RA_PASS}"
-        fi
+        # Always write username and password, even when empty: a profile without a login must not keep the previous player's account.
+        batocera-settings-set global.retroachievements.username "${RA_USER}"
+        set_retroarch_key "cheevos_username" "${RA_USER}"
+        batocera-settings-set global.retroachievements.password "${RA_PASS}"
+        set_retroarch_key "cheevos_password" "${RA_PASS}"
         # Always write token — empty string clears a stale one
         batocera-settings-set global.retroachievements.token "${RA_TOKEN}"
         set_retroarch_key "cheevos_token" "${RA_TOKEN}"
