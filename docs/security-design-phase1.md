@@ -144,9 +144,14 @@ Batocera already has a "security" option. We should reuse it and not invent a se
 ### What this means for our phase 2 design
 1. **No new storage mechanism.** The first-boot screen only has to call `setRootPassword <chosen word>` and set `system.security.enabled=1`.
 2. **A strong hash is easy for SSH:** change `openssl passwd -1` to `-6` (SHA-512) in S35securepasswd. This is a one-word change in a patch.
-3. **Samba is the catch.** Samba needs the password itself (or its NT hash, which is weak). So the word must still be recoverable at boot, which
-   is why Batocera stores it reversibly. A real one-way hash is possible for SSH only. We should accept this, or drop Samba password login
-   (the file share is already narrowed in phase 1). **Decision needed.**
+3. **Samba is the catch.** Windows file sharing logs in with a challenge that needs the password itself or its NT hash (a fast, unsalted MD4
+   fingerprint, which on the network is as good as the password). So Samba cannot use a slow salted hash, and the word has to be recoverable
+   at boot, which is why Batocera stores it reversibly. A real one-way hash is possible for SSH only.
+   **Decision (2026-11-04): keep Batocera's storage as it is, and use SHA-512 for SSH.** Reason: the password protects against someone on the
+   network guessing in. It does not protect against someone holding the SD card, who can already read the Wi-Fi password, the profiles' logins
+   and all saves straight off the card; making the stored copy a one-way hash would defend against an attack that does not exist here.
+   Revisit only if we decide the file share should not be offered at all (turning off password login on it, or the share itself, is the
+   alternative we did not choose).
 4. **The reset file** (`reset-password` on the boot partition) fits: S35 can look for it at boot, clear `rootshadowpassword`, and delete the file.
 5. **The key depends on the board.** The encryption key uses the CPU serial and the ethernet MAC. We have not checked whether the A7S has a
    `Serial` line in `/proc/cpuinfo` or an `eth*` interface that is always present. If either is missing or changes (for example a USB ethernet
