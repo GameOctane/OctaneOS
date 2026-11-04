@@ -119,7 +119,7 @@ is left for phase 2 after checking how common that is.
 ## Unknowns to verify before building
 
 - How Batocera persists the root password (and whether its "security" option can be reused).
-- Samba behaviour of `veto files` across client operating systems.
+- Samba behavior of `veto files` across client operating systems.
 - Editing Syncthing's configuration without breaking existing pairings.
 - Resolved: the profile code (`batocera-profiles`) writes `retroachievements.conf`, not the
   `retroarch.cfg.override` that the spec names, so the spec is out of date on that point. The

@@ -16,7 +16,7 @@ T="$(mktemp -d)"
 trap 'rm -rf "${T:?}"' EXIT
 
 # The signing scripts look for the project's public keys next to themselves (../keys/update). Run them from a copy with an EMPTY keys
-# folder, so these tests do not change behaviour when the real keys are committed to keys/update.
+# folder, so these tests do not change behavior when the real keys are committed to keys/update.
 SB="${T}/sandbox"; mkdir -p "${SB}/scripts" "${SB}/keys/update"
 cp "${S}/make-manifest.sh" "${S}/sign-release.sh" "${S}/verify-signature.sh" "${SB}/scripts/"
 command -v openssl >/dev/null || { echo "openssl is needed for these tests" >&2; exit 2; }

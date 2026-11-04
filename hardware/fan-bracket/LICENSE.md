@@ -1,4 +1,4 @@
-# Licence of this folder
+# License of this folder
 
 The files in `hardware/fan-bracket/` (the OpenSCAD source and the STL models) are licensed under
 **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)**:

@@ -51,7 +51,7 @@ board reaches 120 Hz without any override. `labwc-launch` also applies a correct
 themselves are **untested** since we do not have them.
 **Now:** the boot line no longer forces the profile, so each display is read for what it really is (`scripts/check-image.sh` fails a build that puts it back). A forced
 profile hides a monitor's or TV's real modes, and a screen that cannot do 1080p at 120 Hz is a risk of a black picture. The runtime quirk for the glasses' maker id stays,
-still untested. Someone who owns the glasses and needs the old behaviour can add `drm.edid_firmware=DP-1:edid/smartglasses.bin` to the `APPEND` line of
+still untested. Someone who owns the glasses and needs the old behavior can add `drm.edid_firmware=DP-1:edid/smartglasses.bin` to the `APPEND` line of
 `/boot/extlinux/extlinux.conf` (`mount -o remount,rw /boot` first, and `mount -o remount,ro /boot` afterwards).
 
 ### 7. The display link is negotiated at the monitor's maximum, not what we configured  *(verified, cause of blackouts is theory)*
@@ -129,7 +129,7 @@ frame rate collapses while the menu opens.
 
 ---
 
-## Device behaviour
+## Device behavior
 
 ### 16. Edits over SSH can silently vanish  *(verified)*
 The root file system is an overlay on tmpfs: changes under `/etc` and `/usr` are lost at the next boot, `/boot` is read-only FAT, and only `/userdata` persists.
