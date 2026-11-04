@@ -11,7 +11,7 @@ git rev-parse --git-dir >/dev/null 2>&1 || exit 0
 # PROJECT_STATUS.md.  Looking at every branch matters because the status is often updated in a separate worktree; comparing only with origin/main
 # made the hook fire on every turn even when the status was already current.
 LAST="$(git log --all -1 --format=%ct -- PROJECT_STATUS.md 2>/dev/null)"
-CHANGED="$( { git status --porcelain | cut -c4-; if [ -n "${LAST}" ]; then git log --after="$((LAST + 1))" --name-only --format= HEAD 2>/dev/null; else git diff --name-only origin/main...HEAD 2>/dev/null; fi; } | sort -u )"
+CHANGED="$( { git status --porcelain --ignore-submodules=dirty | cut -c4-; if [ -n "${LAST}" ]; then git log --after="$((LAST + 1))" --name-only --format= HEAD 2>/dev/null; else git diff --name-only origin/main...HEAD 2>/dev/null; fi; } | sort -u )"
 [ -n "${CHANGED}" ] || exit 0
 printf '%s\n' "${CHANGED}" | grep -qx 'PROJECT_STATUS.md' && exit 0
 # A status edit that is not committed yet, in any worktree of this repo, also counts as "updated".
