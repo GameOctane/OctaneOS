@@ -157,7 +157,7 @@ check "/boot locked again after the failure" 'relocked'
 check "boot menu (extlinux.conf) is the LAST file and was not reached" '[ "$(cat ${T}/boot/extlinux/extlinux.conf)" = OLD-EXTLINUX ]'
 check "no half-written .new file left behind" '[ -z "$(find ${T}/boot -name "*.new")" ]'
 
-echo "== other behaviour"
+echo "== other behavior"
 reset_device; set_serve good; ( flock 9; sleep 4 ) 9> "${T}/lock" & sleep 0.5; run_upgrade; wait
 check "a second update while one is running is refused" '[ "${RC}" = 1 ] && echo "${OUT}" | grep -q "already running"'
 reset_device; set_serve good; head -c 120000 "${T}/serve/boot.tar.xz" > "${T}/upg/boot.tar.xz"; run_upgrade

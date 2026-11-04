@@ -9,7 +9,7 @@
   - `Resume here` — the first file or command for the next session.
   - `waiting_on` — `jason`, `claude`, `external` or `none`. If a decision is Jason's, put the question in `decision` and what you will do on a yes in `if_go`.
   - `focus`, `next_milestone`, `momentum` if they changed.
-- Only write what you verified from the code, git history or a test. Mark anything you did not test (hardware, on-device behaviour) as untested. Do not change `excitement` or `priority`; those are Jason's.
+- Only write what you verified from the code, git history or a test. Mark anything you did not test (hardware, on-device behavior) as untested. Do not change `excitement` or `priority`; those are Jason's.
 - Keep the file's existing sections, and keep `Ideas / Backlog` intact.
 
 ## Conventions
