@@ -3,7 +3,7 @@ phase: active
 priority: high
 category: hardware
 progress: 50                     # share of docs/ROADMAP.md Part 1 (software, 6 steps): step 1 done; 2 (Syncthing) and 3 (profile v2) mostly done but not proven on a board; 4 (device password) designed, decided and coded, not run; 5 (Batocera rebase) trial rebase clean, not built; 6 (upstream PR) not started. Part 2 (wireless dock, handheld) not started and not counted. Jason to confirm.
-focus: "A new test image (profile start-up setting + device password first-boot screen) is building; next is flashing it and testing profiles and the password on the board"
+focus: "The new test image (profile start-up setting + device password first-boot screen) is built and verified; waiting for Jason to flash it and boot the board"
 next_milestone: "Roadmap Part 1 (software) finished: profiles v2 proven per console, device password, Batocera v43.1 rebase, Batocera PR refreshed"
 milestone_distance: weeks
 community_pressure: high
@@ -15,9 +15,9 @@ uniqueness: first-mover
 viral_potential: high
 mvp_distance: weeks
 waiting_on: jason                # jason / claude / external / none
-decision: "Flash the new test card image when home, then play-test each console. Release 0.8.3 only after the tests pass, with the profile and password work in it?"
+decision: "Flash the new test image when home (sudo bash /srv/data/octaneos-work/flash-test-card-1104b.sh /dev/sdc), then play-test each console. Release 0.8.3 only after the tests pass, with the profile and password work in it?"
 if_go: "Claude checks the board (version, boot script, password helper, first-boot screen), runs scripts/trace-saves.sh per system, writes one evidence document (tested / by code only / not covered), then opens a release/0.8.3 PR. Jason still does the signed publish and the on-device OTA test."
-status_verified: "2026-11-04 from git history, local branches and tests run in scratch folders (profiles 49, device password 23, ES patches 14 pass). Nothing from the local branches has run on a board; the first image build failed the ES check (stale ES package stamps), so a second build was running when this was written."
+status_verified: "2026-11-04 from git history, local branches, scratch-folder tests (profiles 49, device password 23, ES patches 14) and scripts/check-image.sh on the final image (ALL CHECKS PASSED, ES binary has the password screen). Nothing from the local branches has run on a board."
 ---
 
 ## Why this exists
@@ -75,7 +75,7 @@ Branches `feat/profile-boot-setting` and `feat/device-password` (both have curre
 - Wireless dock: glass-to-glass latency estimated 55-65 ms against a 33 ms target; not met yet.
 
 ## Resume here
-When the second build (`/srv/data/octaneos-work/run-integration-build2.log`; the first had stale ES stamps, so the new password screen was missing) finishes: verify the image (`scripts/check-image.sh`, strings in the ES binary, the S35 script and helper in the target), then make a flash script like `flash-test-card-1104.sh`. Jason flashes the test card (`sudo`), boots it, and tells Claude; then follow `docs/profiles-testing.md` plus the password checks on the board. Keep the local branches unpushed until Jason says to push.
+The test image is built and checked (`/srv/data/octaneos-work/test-image-20261104-pw/`, from local branch `test/integration-1104b`, dev key, never to be released). Jason flashes the test card: `sudo bash /srv/data/octaneos-work/flash-test-card-1104b.sh /dev/sdc`, boots it, and tells Claude. Then: board checks (version, boot script, password helper status, whether the A7S has a CPU serial and a steady ethernet interface for the stored-password key), the start-up profile test, the first-boot password screen, then the per-console saves tests in `docs/profiles-testing.md`. Keep the local branches unpushed until Jason says to push.
 
 ## Last session
-2026-11-04: merged the status, spelling and Syncthing PRs; wrote the downgrade notes, the device password research and decision (keep Batocera's storage, SHA-512 for SSH), the device password code and first-boot screen, a clean trial rebase onto Batocera v43.1, and a status automation (CI check + Stop hook). #41 (password findings) is open. A new test image was building at the end (the first build lacked the ES password screen because of stale package stamps; stamps cleared and rebuilt). Nothing new has been run on a board.
+2026-11-04: merged the status, spelling and Syncthing PRs; wrote the downgrade notes, the device password research and decision (keep Batocera's storage, SHA-512 for SSH), the device password code and ES first-boot screen, a clean trial rebase onto Batocera v43.1, status automation (CI check + Stop hook), and a fix to `apply-es-patches.sh` for patches on neighbouring lines. Two build attempts failed first (stale ES stamps, then the patch applier); the third image passed `check-image.sh`. #41 (password findings) is open. Nothing new has run on a board.
