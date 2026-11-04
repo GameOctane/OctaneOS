@@ -42,13 +42,21 @@ paired() { [ "$(conf global.retroachievements.username)" = "$1" ] && [ "$(conf g
 
 echo "== a new profile starts as a copy of the current account, key included"
 fresh; prof create bob
-check "create: the profile file has the account's key" '[ "$(pconf bob apikey)" = "KEYALICE" ] && [ "$(pconf bob username)" = "alice" ]'
-check "create: token starts empty, as before" '[ -z "$(pconf bob token)" ]'
+check "create: a new profile does NOT inherit the current login" '[ -z "$(pconf bob username)" ] && [ -z "$(pconf bob password)" ] && [ -z "$(pconf bob apikey)" ] && [ -z "$(pconf bob token)" ]'
+check "create: the new profile is named what was typed" '[ "$(pconf bob display_name)" = "bob" ]'
+check "create: RetroAchievements stays on for the new profile" '[ "$(pconf bob ra_enabled)" = "1" ]'
+echo "== switching to a profile with no login clears the previous player's login"
+prof switch bob
+check "switch to a new profile: the global username and password are cleared" '[ -z "$(conf global.retroachievements.username)" ] && [ -z "$(conf global.retroachievements.password)" ] && [ -z "$(conf global.retroachievements.apikey)" ]'
+check "switch to a new profile: RetroArch no longer holds the old login" 'grep -q "^cheevos_username = \"\"" "${UD}/system/configs/retroarch/retroarchcustom.cfg" && grep -q "^cheevos_password = \"\"" "${UD}/system/configs/retroarch/retroarchcustom.cfg"'
+check "the default profile got a friendly name and kept alice's login" '[ "$(dconf display_name)" = "Default" ] && [ "$(dconf username)" = "alice" ]'
+prof switch ""
+check "back to default: alice's login is restored" '[ "$(conf global.retroachievements.username)" = "alice" ] && [ "$(conf global.retroachievements.apikey)" = "KEYALICE" ]'
 
 echo "== two accounts, switching back and forth: the key always follows the username"
 prof switch bob
 check "switch to bob: the default profile's file got alice's key" '[ "$(dconf apikey)" = "KEYALICE" ] && [ "$(dconf username)" = "alice" ]'
-check "...and the global settings are bob's profile (cloned alice)" 'paired alice KEYALICE'
+check "...and bob starts logged out (nothing is cloned from alice)" '[ -z "$(conf global.retroachievements.username)" ] && [ -z "$(conf global.retroachievements.apikey)" ]'
 setg global.retroachievements.username bob; setg global.retroachievements.password bobpw; setg global.retroachievements.token tokbob; setg global.retroachievements.apikey KEYBOB
 prof switch
 check "switch to default: bob's file saved bob's key" '[ "$(pconf bob apikey)" = "KEYBOB" ] && [ "$(pconf bob username)" = "bob" ]'
