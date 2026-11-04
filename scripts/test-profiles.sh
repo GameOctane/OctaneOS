@@ -150,6 +150,15 @@ check "a second start-up is harmless (already on the main profile after the firs
 fresh; boot
 check "no profile data at all: the start-up script does nothing and does not fail" 'boot'
 
+echo "== going back: the commands in docs/profiles-downgrade.md bring a profile's saves back to a flat /userdata/saves"
+fresh; flat; proff switch >/dev/null
+mkdir -p "${UD}/profiles/.default/saves/snes"; echo NEWER > "${UD}/profiles/.default/saves/snes/new.srm"; echo STATE2 > "${UD}/profiles/.default/states/new.state"
+check "after the move, a flat /userdata/saves does not exist (an older version would see no saves)" '[ ! -e "${UD}/saves" ]'
+( ud="${UD}"; mkdir -p "${ud}/saves" "${ud}/states"
+  cp -a "${ud}/profiles/.default/saves/." "${ud}/saves/"; cp -a "${ud}/profiles/.default/states/." "${ud}/states/" )
+check "copying the profile back gives an older version the old saves AND the ones made since" '[ "$(cat "${UD}/saves/gba/game.srm")" = SAVE1 ] && [ "$(cat "${UD}/saves/snes/new.srm")" = NEWER ] && [ "$(cat "${UD}/states/new.state")" = STATE2 ]'
+check "...and the profile's own copy is untouched (the copy is a copy, not a move)" '[ "$(cat "${UD}/profiles/.default/saves/snes/new.srm")" = NEWER ]'
+
 echo "== the script on the board still uses /userdata by default"
 check "default path is /userdata unless OCTANE_USERDATA is set" 'grep -q "USERDATA=\"\${OCTANE_USERDATA:-/userdata}\"" "${SCRIPT}"'
 check "no hard-coded /userdata path is left in the commands (comments aside)" '! grep -vE "^[[:space:]]*#" "${SCRIPT}" | grep -v "OCTANE_USERDATA:-/userdata" | grep -q "/userdata"'

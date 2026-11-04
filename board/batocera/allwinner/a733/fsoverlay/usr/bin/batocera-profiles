@@ -2,8 +2,8 @@
 # batocera-profiles — multi-user profile management
 #
 # Each profile lives in /userdata/profiles/<name>/  with:
-#   saves/                   — SRAM save files (via /userdata/saves symlink)
-#   states/                  — save states    (via /userdata/states symlink)
+#   saves/                   — SRAM save files (configgen reads the active profile at game start; no symlink)
+#   states/                  — save states    (same: no symlink)
 #   retroachievements.conf   — per-profile settings:
 #                               username=, password=, token=
 #                               apikey=  (the player's own RetroAchievements Web API key, retroachievements.org > Settings > Keys;
