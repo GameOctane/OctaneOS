@@ -51,7 +51,7 @@ OctaneOS is the foundation everything else in GameOctane sits on. It is no longe
 - [ ] Rebase onto Batocera v43.1 (51 commits behind as of the roadmap; our base is the 2026-04-06 snapshot)
 - [ ] Profile PIN (optional, design first); two players at once is a stretch and not wanted for now
 - [ ] Wireless dock / handheld research (streaming latency, DPI screen, power, heat): Part 2 of the roadmap
-- [ ] Video encoder (Cedar) is parked until Radxa names a licence contact (libcedarc 2.0.0, no licence file shipped)
+- [ ] Video encoder (Cedar) is parked until Radxa names a license contact (libcedarc 2.0.0, no licence file shipped)
 - [ ] GameOctane companion app integration and the three-mode system (handheld / docked / streaming): carried over from the old list, not in the roadmap
 
 ## Decisions for the maintainer (from the roadmap)
