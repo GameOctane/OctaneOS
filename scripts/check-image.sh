@@ -179,6 +179,8 @@ check "EmulationStation has the device password screen (scripts/apply-es-patches
     grep -aq "octane-device-password" "${OUT}/target/usr/bin/emulationstation"
 check "the password script in the image is OctaneOS's (SHA-512 login hash, not MD5 crypt)" \
     grep -q "openssl passwd -6" "${OUT}/target/etc/init.d/S35securepasswd"
+check "the stored-password key in the image is OctaneOS's (permanent MAC only; the stock key changes at every boot on this board)" \
+    grep -q "addr_assign_type" "${OUT}/target/usr/bin/batocera-encode"
 check "every system's default emulator and core exists in the image (known upstream quirks: scripts/default-emulators-accepted.txt)" \
     python3 -I "${REPO_ROOT}/scripts/audit-default-emulators.py" "${OUT}/target" --accepted "${REPO_ROOT}/scripts/default-emulators-accepted.txt"
 
