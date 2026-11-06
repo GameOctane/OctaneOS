@@ -177,6 +177,8 @@ check "EmulationStation has the profile badge setting (scripts/apply-es-patches.
 check "device password helper is installed" test -x "${OUT}/target/usr/bin/octane-device-password"
 check "EmulationStation has the device password screen (scripts/apply-es-patches.sh ran before the build)" \
     grep -aq "octane-device-password" "${OUT}/target/usr/bin/emulationstation"
+check "EmulationStation has the hotkey double tap for the profile screen (scripts/apply-es-patches.sh ran before the build)" \
+    grep -aq "iconHotkey" "${OUT}/target/usr/bin/emulationstation"
 check "the password script in the image is OctaneOS's (SHA-512 login hash, not MD5 crypt)" \
     grep -q "openssl passwd -6" "${OUT}/target/etc/init.d/S35securepasswd"
 check "the stored-password key in the image is OctaneOS's (permanent MAC only; the stock key changes at every boot on this board)" \

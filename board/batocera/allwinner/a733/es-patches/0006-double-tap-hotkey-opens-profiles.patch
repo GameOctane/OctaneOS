@@ -1,0 +1,124 @@
+diff --git a/es-app/src/main.cpp b/es-app/src/main.cpp
+index 070cb1b4c..18c684942 100644
+--- a/es-app/src/main.cpp
++++ b/es-app/src/main.cpp
+@@ -5,6 +5,7 @@
+ #include "guis/GuiDetectDevice.h"
+ #include "guis/GuiMsgBox.h"
+ #include "guis/GuiProfilesSettings.h"
++#include "views/UIModeController.h"
+ #include "guis/GuiDevicePassword.h"
+ #include "utils/FileSystemUtil.h"
+ #include "views/ViewController.h"
+@@ -443,6 +444,14 @@ void launchStartupGame()
+ 
+ // #include "utils/MathExpr.h"
+ 
++#ifdef BATOCERA
++// The hotkey double tap opens the profile screen only from the normal views (no menu or message in front) and in the full interface.
++static bool ProfilesHotkeyAllowed(Window* window)
++{
++	return window->peekGui() == ViewController::get() && UIModeController::getInstance()->isUIModeFull();
++}
++#endif
++
+ int main(int argc, char* argv[])
+ {	
+ 	// Utils::MathExpr::performUnitTests();
+@@ -677,6 +686,9 @@ int main(int argc, char* argv[])
+ 
+ #ifdef BATOCERA
+ 	bool hotkeyPressed = false;
++	bool hotkeyUsed = false;      // another button was pressed while the hotkey was held (a combo, not a tap)
++	int  lastHotkeyTap = 0;       // SDL_GetTicks() of the last lone tap of the hotkey, 0 = none
++	const int HOTKEY_DOUBLE_TAP_MS = 450;
+ #endif
+ 
+ 	while(running)
+@@ -713,7 +725,31 @@ int main(int argc, char* argv[])
+ 					{
+ 					  Input input = Input(event.jbutton.which, TYPE_BUTTON, event.jbutton.button, event.jbutton.state == SDL_PRESSED, false);
+ 					  if (config->isMappedTo("hotkey", input))
+-					    hotkeyPressed = input.value != 0;
++					    {
++					      hotkeyPressed = input.value != 0;
++					      if (hotkeyPressed)
++						hotkeyUsed = false;
++					      else if (!hotkeyUsed && !ProfilesHotkeyAllowed(&window))
++						lastHotkeyTap = 0;
++					      else if (!hotkeyUsed)
++						{
++						  // Released with nothing else pressed: a tap.  Two taps close together open the profile screen.
++						  // (A single tap does nothing, so the hotkey combos and games are never disturbed.)
++						  int now = SDL_GetTicks();
++						  if (lastHotkeyTap != 0 && now - lastHotkeyTap <= HOTKEY_DOUBLE_TAP_MS)
++						    {
++						      lastHotkeyTap = 0;
++						      window.pushGui(new GuiProfilesSettings(&window));
++						    }
++						  else
++						    lastHotkeyTap = now;
++						}
++					    }
++					  else if (input.value != 0)
++					    {
++					      hotkeyUsed = hotkeyUsed || hotkeyPressed;
++					      lastHotkeyTap = 0;
++					    }
+ 
+ 					  if(hotkeyPressed && input.value != 0)
+ 					    {
+diff --git a/es-core/src/components/HelpComponent.cpp b/es-core/src/components/HelpComponent.cpp
+index b29c4c0f0..70f1864c3 100644
+--- a/es-core/src/components/HelpComponent.cpp
++++ b/es-core/src/components/HelpComponent.cpp
+@@ -28,6 +28,7 @@ static const std::map<std::string, const char*> ICON_PATH_MAP{
+ 	{ "lr", ":/help/button_lr.svg" },
+ 	{ "start", ":/help/button_start.svg" },
+ 	{ "select", ":/help/button_select.svg" },
++	{ "hotkey", ":/help/button_hotkey.svg" },
+ 	{ "F1", ":/help/F1.svg" }
+ };
+ 
+diff --git a/es-core/src/HelpStyle.cpp b/es-core/src/HelpStyle.cpp
+index cec29ced4..cd20596d1 100644
+--- a/es-core/src/HelpStyle.cpp
++++ b/es-core/src/HelpStyle.cpp
+@@ -81,6 +81,9 @@ void HelpStyle::applyTheme(const std::shared_ptr<ThemeData>& theme, const std::s
+ 		if (elem->has("iconSelect"))
+ 			iconMap["select"] = elem->get<std::string>("iconSelect");
+ 
++		if (elem->has("iconHotkey"))
++			iconMap["hotkey"] = elem->get<std::string>("iconHotkey");
++
+ 		if (elem->has("iconF1"))
+ 			iconMap["F1"] = elem->get<std::string>("iconF1");
+ 	}
+diff --git a/es-app/src/views/SystemView.cpp b/es-app/src/views/SystemView.cpp
+index 88330e709..ced219136 100644
+--- a/es-app/src/views/SystemView.cpp
++++ b/es-app/src/views/SystemView.cpp
+@@ -910,6 +910,9 @@ std::vector<HelpPrompt> SystemView::getHelpPrompts()
+ 	if (SystemData::IsManufacturerSupported)
+ 		prompts.push_back(HelpPrompt("b", _("NAVIGATION BAR"), [&] { showNavigationBar(); }));
+ 
++	if (UIModeController::getInstance()->isUIModeFull())
++		prompts.push_back(HelpPrompt("hotkey", _("PROFILES") + std::string(" (2x)")));
++
+ #ifdef _ENABLE_FILEMANAGER_
+ 	if (UIModeController::getInstance()->isUIModeFull()) {
+ 		prompts.push_back(HelpPrompt("F1", _("FILES")));
+diff --git a/es-app/src/views/gamelist/ISimpleGameListView.cpp b/es-app/src/views/gamelist/ISimpleGameListView.cpp
+index 6d22c2deb..462e04010 100644
+--- a/es-app/src/views/gamelist/ISimpleGameListView.cpp
++++ b/es-app/src/views/gamelist/ISimpleGameListView.cpp
+@@ -700,6 +700,9 @@ std::vector<HelpPrompt> ISimpleGameListView::getHelpPrompts()
+ 	if (!UIModeController::getInstance()->isUIModeKid())
+ 		prompts.push_back(HelpPrompt("select", _("OPTIONS"), [&] { showGamelistOptions(); }));
+ 
++	if (UIModeController::getInstance()->isUIModeFull())
++		prompts.push_back(HelpPrompt("hotkey", _("PROFILES") + std::string(" (2x)")));
++
+ 	if (cursorHasSaveStatesEnabled())
+ 	{
+ 		if (invertNorthButton)
