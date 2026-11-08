@@ -1,0 +1,13 @@
+diff --git a/es-core/src/Settings.cpp b/es-core/src/Settings.cpp
+index 2c41da48f..9ab0851a7 100644
+--- a/es-core/src/Settings.cpp
++++ b/es-core/src/Settings.cpp
+@@ -180,7 +180,7 @@ void Settings::setDefaults()
+ 	mBoolMap["FirstJoystickOnly"] = false;
+     mBoolMap["EnableSounds"] = false;
+ 	mBoolMap["ShowHelpPrompts"] = true;
+-	mStringMap["ProfilesHotkey"] = "auto"; // double tap of the hotkey opens the profile screen: auto (once a profile exists) / on / off
++	mStringMap["ProfilesHotkey"] = "on"; // OctaneOS: the hotkey double tap is always on (upstream default is auto: on once a profile exists)
+ 	mBoolMap["ScrapeRatings"] = true;
+ 	mBoolMap["ScrapeNames"] = true;	
+ 	mBoolMap["ScrapeDescription"] = true;
