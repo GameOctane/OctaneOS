@@ -15,8 +15,11 @@ RetroAchievements with one account per session, so two accounts cannot earn on t
   (In the Carbon theme: controller icons top left, Wi-Fi and battery top right, clock bottom right, button prompts along the bottom.)
 - **Avatars later:** a local image in the profile folder, or the player's RetroAchievements picture (EmulationStation already shows it on
   the RA page; fetch once and cache it).
-- **On boot:** the active profile is stored in `/userdata/system/.batocera-profiles.current` and nothing resets it, so after a reboot the
-  **last** profile stays active. A setting is planned: keep last / always the main profile / ask who is playing.
+- **On boot (built):** the active profile is stored in `/userdata/system/.batocera-profiles.current`. The setting **START IN PROFILE** on the
+  PROFILES screen (stored as `profiles.boot` in `batocera.conf`) chooses what happens when the device starts: `last` (the default, as before:
+  the profile that was in use stays in use) or `main` (the boot script `S14octane-profile` switches back to the main profile, loading its
+  RetroAchievements login as a normal switch does). "Ask who is playing" is not built yet: it needs a picker shown by EmulationStation at
+  start-up.
 
 ## 2. Optional PIN (convenience, not security)
 - Per profile, optional. It guards **switching into** a profile and **deleting** one, so nobody plays or deletes as someone else by accident.
@@ -31,14 +34,21 @@ RetroAchievements with one account per session, so two accounts cannot earn on t
   still `root` / `linux`. If a device is lost, treat its credentials as exposed: reset the RetroAchievements key and password, the
   Wi-Fi password and the ScreenScraper password.
 
-## 3. Saves that bypass the profile folder (to fix or document)
-Emulators that write to a fixed `/userdata/saves/...` path are shared by all profiles:
-| Emulator | Path | In the image? |
-|---|---|---|
-| Amiberry (Amiga) | `/userdata/saves/amiga` | yes: small fix |
-| libretro Game Boy link-cable saves | `/userdata/saves/<system>/...` | yes: needs care (it moves files) |
-| shadps4, demul, ymir, xemu | fixed paths | no |
-Still to audit: emulators that keep saves in their own configuration folders (Dolphin memory cards, 3DS and similar).
+## 3. Saves that bypass the profile folder (audit)
+Audit of 2026-11-03, **from reading the configgen code and the list of packages in the image, not by running each emulator**.
+`batoceraPaths.SAVES` follows the active profile; an emulator is per-profile when its generator builds its save paths from it.
+- **In the image, fixed:** Amiberry (Amiga, 0.8.2); DuckStation (PlayStation memory cards and states were the relative path
+  `../../../saves/duckstation`, always the shared folder); Game Boy link cable `gb2players` / `gbc2players` (copied saves in from the profile
+  folder but its exit script copied them back to the fixed `/userdata/saves`). Both of the last two: configgen patch 0002.
+- **In the image, per-profile already:** mupen64plus, Flycast (Dreamcast), standalone MAME, PPSSPP, melonDS, ScummVM, EDuke32, Raze,
+  Cannonball, EasyRPG, DevilutionX, Xash3D, TheXTech, ECWolf, FS-UAE, and every RetroArch core that honours RetroArch's save and state
+  folders (those two are set per profile).
+- **Not audited:** libretro cores that ignore RetroArch's folders and write to their own path (for example DOSBox Pure, the ScummVM and
+  libretro MAME cores). Needs a run on the board per core, or a look at each core's source.
+- **Hard-coded fixed path, not in the image (matters only if added later):** shadps4, demul, Ymir (Saturn), xemu.
+- The earlier note that Saturn, Dreamcast and parts of MAME write outside the profile folders did not hold up for what is in the image:
+  Dreamcast (Flycast) and standalone MAME follow the profile, and Saturn here is the YabaSanshiro libretro core. PS2 and Dolphin standalone
+  are not in the image.
 **High scores:** the MAME core in the image (2003-Plus) keeps them in a `hi` folder inside the RetroArch save folder, so they are per-profile
 today. Keep that for now; a "share arcade high scores" setting (per profile) would link `hi` to a common folder.
 

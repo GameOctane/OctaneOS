@@ -1,0 +1,86 @@
+#!/bin/sh
+
+# OctaneOS override of Batocera's batocera-encode (it hides the stored root password with a key made from this device).
+#
+# Why it is overridden: Batocera builds the key from the CPU serial plus the MAC address of "eth*".  On the Cubie A7S there is no CPU serial, and the
+# ethernet MAC is RANDOM and changes at every boot (no address stored on the board, see /sys/class/net/eth0/addr_assign_type = 1).  So a password
+# stored one boot could not be decrypted the next boot, and S35securepasswd then quietly replaced it with a new random one.
+#
+# What it does instead: the key is the CPU serial (empty here) plus the PERMANENT hardware address of a network interface (addr_assign_type = 0),
+# built-in ones (not USB) first, each list sorted by name.  A MAC that is random (changes every boot) is never used.
+#   * encode uses the first such address.
+#   * decode tries every such address, then Batocera's own key.  So a password stays readable when a USB network adapter is plugged in or removed.
+#   * On a board whose ethernet MAC is permanent, the first address is eth0's, which is exactly Batocera's key: passwords stored by stock Batocera still decode.
+# Overrides for tests: OCTANE_SYS_NET (default /sys/class/net), OCTANE_CPUINFO (default /proc/cpuinfo).
+
+ACTION=$1
+CODE=$2
+NET="${OCTANE_SYS_NET:-/sys/class/net}"
+CPUINFO="${OCTANE_CPUINFO:-/proc/cpuinfo}"
+
+serial() { grep -E '^Serial' "${CPUINFO}" 2>/dev/null | sed -e s+'^Serial[\t]*: '++; }
+
+# one line per usable interface: the key text for it.  Built-in interfaces first, then USB ones.
+candidates() {
+    SERIAL="$(serial)"
+    for PASS in builtin usb; do
+        for IF in $(ls "${NET}" 2>/dev/null | sort); do
+            [ "${IF}" = "lo" ] && continue
+            [ -r "${NET}/${IF}/address" ] || continue
+            # 0 = the address is stored in the hardware.  1 = random, 2 = set by hand, 3 = copied from another device: none of those is stable.
+            [ "$(cat "${NET}/${IF}/addr_assign_type" 2>/dev/null)" = "0" ] || continue
+            case "$(readlink -f "${NET}/${IF}/device" 2>/dev/null)" in *usb*) KIND=usb ;; *) KIND=builtin ;; esac
+            [ "${KIND}" = "${PASS}" ] || continue
+            MAC="$(cat "${NET}/${IF}/address")"
+            [ -n "${MAC}" ] && echo "${SERIAL}${MAC}"
+        done
+    done
+}
+
+# Batocera's own key, kept so that passwords stored by stock Batocera still decode.
+stockPassword() {
+    SERIAL="$(serial)"
+    ETHMAC=$(cat "${NET}"/eth*/address 2>/dev/null)
+    echo "${SERIAL}${ETHMAC}"
+}
+
+decodeWith() { # decodeWith <key>: the decoded text, or a non-zero exit
+    echo "${CODE}" | sed -e s+"^enc:"++ | openssl enc -aes-128-cbc -a -d -salt -pass pass:"$1" 2>/dev/null
+}
+
+case "${ACTION}" in
+    "decode")
+	if echo "${CODE}" | grep -qE '^enc:'
+	then
+	    # A wrong key usually fails, but can by chance give garbage; the stored text is always printable, so require that.
+	    RESULT=""
+	    KEYS="$(candidates)"
+	    OLDIFS="${IFS}"; IFS='
+'
+	    for KEY in ${KEYS}
+	    do
+		OUT="$(decodeWith "${KEY}")" || continue
+		case "${OUT}" in ''|*[![:print:]]*) continue ;; esac
+		RESULT="${OUT}"; break
+	    done
+	    IFS="${OLDIFS}"
+	    if [ -z "${RESULT}" ]
+	    then
+		OUT="$(decodeWith "$(stockPassword)")" && case "${OUT}" in ''|*[![:print:]]*) ;; *) RESULT="${OUT}" ;; esac
+	    fi
+	    [ -n "${RESULT}" ] || exit 1
+	    printf '%s\n' "${RESULT}"
+	else
+	    echo "${CODE}"
+	fi
+    ;;
+
+    "encode")
+	PASSWORD="$(candidates | head -n 1)"
+	[ -n "${PASSWORD}" ] || PASSWORD="$(stockPassword)"
+	CODE=$(echo "${CODE}" | openssl enc -aes-128-cbc -a -salt -pass pass:"${PASSWORD}")
+	echo "enc:${CODE}"
+    ;;
+esac
+
+exit 0

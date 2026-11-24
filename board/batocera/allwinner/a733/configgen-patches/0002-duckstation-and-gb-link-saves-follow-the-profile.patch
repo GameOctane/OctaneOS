@@ -1,0 +1,47 @@
+DuckStation and Game Boy link cable: save in the active profile's folder.
+
+batoceraPaths.SAVES follows the active profile.  DuckStation was given the relative paths "../../../saves/duckstation[/memcards]" (always the
+shared /userdata/saves), so every profile used the same PlayStation memory cards and states.  The Game Boy link cable (gb2players,
+gbc2players) copies saves into its two-player folder from the profile folder at start but its exit script copied them back to the fixed
+/userdata/saves, so a profile's progress went to the shared folder.  Both now use SAVES.  The first time the DEFAULT profile plays after the
+migration its old files are already in .default/saves, so nothing has to be moved.
+
+diff --git a/configgen/generators/duckstation/duckstationGenerator.py b/configgen/generators/duckstation/duckstationGenerator.py
+--- a/configgen/generators/duckstation/duckstationGenerator.py
++++ b/configgen/generators/duckstation/duckstationGenerator.py
+@@ -290,7 +290,10 @@ class DuckstationGenerator(Generator):
+         if not settings.has_section("MemoryCards"):
+             settings.add_section("MemoryCards")
+         # Set memory card location
+-        settings.set("MemoryCards", "Directory", "../../../saves/duckstation/memcards")
++        # An absolute path in the active profile's folder: the old relative "../../../saves/duckstation/memcards" always meant the shared
++        # /userdata/saves, so every profile used the same memory cards.
++        mkdir_if_not_exists(SAVES / "duckstation" / "memcards")
++        settings.set("MemoryCards", "Directory", str(SAVES / "duckstation" / "memcards"))
+ 
+         ## [Folders]
+         if not settings.has_section("Folders"):
+@@ -301,7 +304,7 @@ class DuckstationGenerator(Generator):
+         mkdir_if_not_exists(SCREENSHOTS)
+         settings.set("Folders", "Screenshots", "../../../screenshots")
+         mkdir_if_not_exists(SAVES / "duckstation")
+-        settings.set("Folders", "SaveStates", "../../../saves/duckstation")
++        settings.set("Folders", "SaveStates", str(SAVES / "duckstation"))
+         mkdir_if_not_exists(CHEATS / "duckstation")
+         settings.set("Folders", "Cheats", "../../../cheats/duckstation")
+ 
+diff --git a/configgen/generators/libretro/libretroGenerator.py b/configgen/generators/libretro/libretroGenerator.py
+--- a/configgen/generators/libretro/libretroGenerator.py
++++ b/configgen/generators/libretro/libretroGenerator.py
+@@ -208,8 +208,9 @@ class LibretroGenerator(Generator):
+                 GBMultiScript.write("       if [ $2 = 'gb2players' ] || [ $2 = 'gbc2players' ]\n")
+                 GBMultiScript.write("       then\n")
+                 for x in range(len(GBMultiSave)):
+-                    saveFile = "/userdata/saves/" + GBMultiSys[x] + "/" + GBMultiSave[x]
+-                    newSaveFile = "/userdata/saves/" + system.name + "/" + GBMultiSave[x]
++                    # the same profile folder the saves were copied from above (a fixed /userdata/saves/ here copied them into the shared folder)
++                    saveFile = str(SAVES / GBMultiSys[x] / GBMultiSave[x])
++                    newSaveFile = str(SAVES / system.name / GBMultiSave[x])
+                     GBMultiScript.write('           cp "' + newSaveFile + '" "' + saveFile + '"\n')
+                 GBMultiScript.write("       fi\n")
+                 # Deletes itself after running
