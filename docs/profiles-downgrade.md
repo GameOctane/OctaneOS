@@ -37,5 +37,5 @@ cp -a /userdata/states/. /userdata/profiles/.default/states/
 (`cp -a` overwrites a file with the same name, so if both sides changed the same save, pick the newer one yourself.)
 
 ## What is tested
-`scripts/test-profiles.sh` runs both copy commands against a fake `/userdata` and checks the older version would see the old and the new saves.
+The two copy commands are plain `cp -a`; they were run in a scratch test against a fake `/userdata` and brought the saves back (that test is not part of this change).
 Not tested: an actual older image on a board reading the copied files (needs the test card).
