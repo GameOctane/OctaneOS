@@ -1,0 +1,216 @@
+diff --git a/es-app/src/guis/GuiProfilesSettings.cpp b/es-app/src/guis/GuiProfilesSettings.cpp
+index 8e300f961..f319e5a18 100644
+--- a/es-app/src/guis/GuiProfilesSettings.cpp
++++ b/es-app/src/guis/GuiProfilesSettings.cpp
+@@ -179,6 +179,32 @@ static bool writeDisplayName(const std::string& confPath, const std::string& raw
+ 	return true;
+ }
+ 
++// True if at least one named profile exists (a folder in /userdata/profiles that does not start with a dot; the main profile is the
++// hidden .default folder).
++static bool anyNamedProfile()
++{
++	DIR* d = opendir("/userdata/profiles");
++	if (!d)
++		return false;
++	bool found = false;
++	struct dirent* e;
++	while (!found && (e = readdir(d)) != nullptr)
++		if (e->d_name[0] != '.')
++			found = true;
++	closedir(d);
++	return found;
++}
++
++bool GuiProfilesSettings::isHotkeyEnabled()
++{
++	std::string mode = Settings::getInstance()->getString("ProfilesHotkey");
++	if (mode == "on")
++		return true;
++	if (mode == "off")
++		return false;
++	return anyNamedProfile();
++}
++
+ // Open the rename keyboard for a given profile conf file.
+ static void openRenameKeyboard(Window* window, const std::string& confPath)
+ {
+@@ -328,4 +354,11 @@ GuiProfilesSettings::GuiProfilesSettings(Window* window)
+ 	addOptionList(_("START IN PROFILE"),
+ 		{ { _("THE LAST ONE USED"), "last" }, { _("ALWAYS THE MAIN PROFILE"), "main" } },
+ 		"profiles.boot", false);
++
++	// Two quick taps of the hotkey button open this screen from the system and game lists.  Off by default, because the hotkey
++	// button is also the start of many button combinations.
++	addGroup(_("SHORTCUT"));
++	addOptionList(_("DOUBLE TAP HOTKEY OPENS PROFILES"),
++		{ { _("AUTO (WHEN THERE ARE PROFILES)"), "auto" }, { _("ALWAYS"), "on" }, { _("NEVER"), "off" } },
++		"ProfilesHotkey", true);
+ }
+diff --git a/es-app/src/guis/GuiProfilesSettings.h b/es-app/src/guis/GuiProfilesSettings.h
+index 116cfd890..fa0d97d4e 100644
+--- a/es-app/src/guis/GuiProfilesSettings.h
++++ b/es-app/src/guis/GuiProfilesSettings.h
+@@ -16,4 +16,8 @@ public:
+ 
+ 	// Set or clear the permanent profile badge according to the "ProfileBadge" setting (auto / on / off).  Cheap: call it every second or two.
+ 	static void refreshProfileBadge(Window* window);
++
++	// Is the hotkey double tap (and its help bar entry) active?  Setting "ProfilesHotkey": auto (the default: on as soon as a profile
++	// has been created), on, or off.
++	static bool isHotkeyEnabled();
+ };
+diff --git a/es-app/src/main.cpp b/es-app/src/main.cpp
+index 070cb1b4c..ec26a4015 100644
+--- a/es-app/src/main.cpp
++++ b/es-app/src/main.cpp
+@@ -6,6 +6,7 @@
+ #include "guis/GuiMsgBox.h"
+ #include "guis/GuiProfilesSettings.h"
+ #include "guis/GuiDevicePassword.h"
++#include "views/UIModeController.h"
+ #include "utils/FileSystemUtil.h"
+ #include "views/ViewController.h"
+ #include "CollectionSystemManager.h"
+@@ -443,6 +444,16 @@ void launchStartupGame()
+ 
+ // #include "utils/MathExpr.h"
+ 
++#ifdef BATOCERA
++// The hotkey double tap opens the profile screen only when the "ProfilesHotkey" setting allows it (auto: once a profile exists), from the
++// normal views (no menu or message in front) and in the full interface.
++static bool ProfilesHotkeyAllowed(Window* window)
++{
++	return GuiProfilesSettings::isHotkeyEnabled() &&
++		window->peekGui() == ViewController::get() && UIModeController::getInstance()->isUIModeFull();
++}
++#endif
++
+ int main(int argc, char* argv[])
+ {	
+ 	// Utils::MathExpr::performUnitTests();
+@@ -677,6 +688,9 @@ int main(int argc, char* argv[])
+ 
+ #ifdef BATOCERA
+ 	bool hotkeyPressed = false;
++	bool hotkeyUsed = false;      // another button was pressed while the hotkey was held (a combo, not a tap)
++	int  lastHotkeyTap = 0;       // SDL_GetTicks() of the last lone tap of the hotkey, 0 = none
++	const int HOTKEY_DOUBLE_TAP_MS = 450;
+ #endif
+ 
+ 	while(running)
+@@ -713,7 +727,31 @@ int main(int argc, char* argv[])
+ 					{
+ 					  Input input = Input(event.jbutton.which, TYPE_BUTTON, event.jbutton.button, event.jbutton.state == SDL_PRESSED, false);
+ 					  if (config->isMappedTo("hotkey", input))
+-					    hotkeyPressed = input.value != 0;
++					    {
++					      hotkeyPressed = input.value != 0;
++					      if (hotkeyPressed)
++						hotkeyUsed = false;
++					      else if (!hotkeyUsed && !ProfilesHotkeyAllowed(&window))
++						lastHotkeyTap = 0;
++					      else if (!hotkeyUsed)
++						{
++						  // Released with nothing else pressed: a tap.  Two taps close together open the profile screen.
++						  // (A single tap does nothing, so the hotkey combos and games are never disturbed.)
++						  int now = SDL_GetTicks();
++						  if (lastHotkeyTap != 0 && now - lastHotkeyTap <= HOTKEY_DOUBLE_TAP_MS)
++						    {
++						      lastHotkeyTap = 0;
++						      window.pushGui(new GuiProfilesSettings(&window));
++						    }
++						  else
++						    lastHotkeyTap = now;
++						}
++					    }
++					  else if (input.value != 0)
++					    {
++					      hotkeyUsed = hotkeyUsed || hotkeyPressed;
++					      lastHotkeyTap = 0;
++					    }
+ 
+ 					  if(hotkeyPressed && input.value != 0)
+ 					    {
+diff --git a/es-app/src/views/SystemView.cpp b/es-app/src/views/SystemView.cpp
+index 88330e709..08bea59da 100644
+--- a/es-app/src/views/SystemView.cpp
++++ b/es-app/src/views/SystemView.cpp
+@@ -3,6 +3,7 @@
+ #include "animations/LambdaAnimation.h"
+ #include "guis/GuiMsgBox.h"
+ #include "views/UIModeController.h"
++#include "guis/GuiProfilesSettings.h"
+ #include "views/ViewController.h"
+ #include "Log.h"
+ #include "Scripting.h"
+@@ -910,6 +911,9 @@ std::vector<HelpPrompt> SystemView::getHelpPrompts()
+ 	if (SystemData::IsManufacturerSupported)
+ 		prompts.push_back(HelpPrompt("b", _("NAVIGATION BAR"), [&] { showNavigationBar(); }));
+ 
++	if (UIModeController::getInstance()->isUIModeFull() && GuiProfilesSettings::isHotkeyEnabled())
++		prompts.push_back(HelpPrompt("hotkey", _("PROFILES") + std::string(" (2x)")));
++
+ #ifdef _ENABLE_FILEMANAGER_
+ 	if (UIModeController::getInstance()->isUIModeFull()) {
+ 		prompts.push_back(HelpPrompt("F1", _("FILES")));
+diff --git a/es-app/src/views/gamelist/ISimpleGameListView.cpp b/es-app/src/views/gamelist/ISimpleGameListView.cpp
+index 6d22c2deb..3b951afb2 100644
+--- a/es-app/src/views/gamelist/ISimpleGameListView.cpp
++++ b/es-app/src/views/gamelist/ISimpleGameListView.cpp
+@@ -1,6 +1,7 @@
+ #include "views/gamelist/ISimpleGameListView.h"
+ 
+ #include "views/UIModeController.h"
++#include "guis/GuiProfilesSettings.h"
+ #include "views/ViewController.h"
+ #include "CollectionSystemManager.h"
+ #include "Settings.h"
+@@ -700,6 +701,9 @@ std::vector<HelpPrompt> ISimpleGameListView::getHelpPrompts()
+ 	if (!UIModeController::getInstance()->isUIModeKid())
+ 		prompts.push_back(HelpPrompt("select", _("OPTIONS"), [&] { showGamelistOptions(); }));
+ 
++	if (UIModeController::getInstance()->isUIModeFull() && GuiProfilesSettings::isHotkeyEnabled())
++		prompts.push_back(HelpPrompt("hotkey", _("PROFILES") + std::string(" (2x)")));
++
+ 	if (cursorHasSaveStatesEnabled())
+ 	{
+ 		if (invertNorthButton)
+diff --git a/es-core/src/HelpStyle.cpp b/es-core/src/HelpStyle.cpp
+index cec29ced4..cd20596d1 100644
+--- a/es-core/src/HelpStyle.cpp
++++ b/es-core/src/HelpStyle.cpp
+@@ -81,6 +81,9 @@ void HelpStyle::applyTheme(const std::shared_ptr<ThemeData>& theme, const std::s
+ 		if (elem->has("iconSelect"))
+ 			iconMap["select"] = elem->get<std::string>("iconSelect");
+ 
++		if (elem->has("iconHotkey"))
++			iconMap["hotkey"] = elem->get<std::string>("iconHotkey");
++
+ 		if (elem->has("iconF1"))
+ 			iconMap["F1"] = elem->get<std::string>("iconF1");
+ 	}
+diff --git a/es-core/src/Settings.cpp b/es-core/src/Settings.cpp
+index 1286c1bc0..2c41da48f 100644
+--- a/es-core/src/Settings.cpp
++++ b/es-core/src/Settings.cpp
+@@ -180,6 +180,7 @@ void Settings::setDefaults()
+ 	mBoolMap["FirstJoystickOnly"] = false;
+     mBoolMap["EnableSounds"] = false;
+ 	mBoolMap["ShowHelpPrompts"] = true;
++	mStringMap["ProfilesHotkey"] = "auto"; // double tap of the hotkey opens the profile screen: auto (once a profile exists) / on / off
+ 	mBoolMap["ScrapeRatings"] = true;
+ 	mBoolMap["ScrapeNames"] = true;	
+ 	mBoolMap["ScrapeDescription"] = true;
+diff --git a/es-core/src/components/HelpComponent.cpp b/es-core/src/components/HelpComponent.cpp
+index b29c4c0f0..70f1864c3 100644
+--- a/es-core/src/components/HelpComponent.cpp
++++ b/es-core/src/components/HelpComponent.cpp
+@@ -28,6 +28,7 @@ static const std::map<std::string, const char*> ICON_PATH_MAP{
+ 	{ "lr", ":/help/button_lr.svg" },
+ 	{ "start", ":/help/button_start.svg" },
+ 	{ "select", ":/help/button_select.svg" },
++	{ "hotkey", ":/help/button_hotkey.svg" },
+ 	{ "F1", ":/help/F1.svg" }
+ };
+ 

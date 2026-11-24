@@ -2,8 +2,8 @@
 # batocera-profiles — multi-user profile management
 #
 # Each profile lives in /userdata/profiles/<name>/  with:
-#   saves/                   — SRAM save files (via /userdata/saves symlink)
-#   states/                  — save states    (via /userdata/states symlink)
+#   saves/                   — SRAM save files (configgen reads the active profile at game start; no symlink)
+#   states/                  — save states    (same: no symlink)
 #   retroachievements.conf   — per-profile settings:
 #                               username=, password=, token=
 #                               apikey=  (the player's own RetroAchievements Web API key, retroachievements.org > Settings > Keys;
@@ -197,7 +197,9 @@ case "$1" in
         fi
 
         echo "${NAME}" > "${CURRENT_FILE}"
-        batocera-save-overlay
+        # The boot script (S14octane-profile) sets OCTANE_PROFILES_NO_OVERLAY_SAVE: at start-up there is nothing worth saving to the overlay and
+        # it would remount /boot read-write for no reason.
+        [ -n "${OCTANE_PROFILES_NO_OVERLAY_SAVE:-}" ] || batocera-save-overlay
         echo "Switched to profile '${NAME:-DEFAULT}'."
         ;;
 

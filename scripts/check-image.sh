@@ -117,6 +117,7 @@ check "kernel Image exists" test -s "${OUT}/images/Image"
 check "second filesystem layer rufomaculata exists" test -s "${OUT}/images/rufomaculata"
 check "flight recorder installed and executable" test -x "${OUT}/target/usr/bin/octane-flightlog"
 check "flight recorder init script installed" test -x "${OUT}/target/etc/init.d/S98octane-flightlog"
+check "profile start-up script installed" test -x "${OUT}/target/etc/init.d/S14octane-profile"
 check "splash trace installed (records every start of the boot video)" \
     test -x "${OUT}/target/etc/init.d/S11splash-trace"
 check "image is newer than the kernel it contains" \
@@ -173,6 +174,17 @@ check "EmulationStation can show the active profile (scripts/apply-es-patches.sh
     grep -aq "batocera-profiles.current" "${OUT}/target/usr/bin/emulationstation"
 check "EmulationStation has the profile badge setting (scripts/apply-es-patches.sh ran before the build)" \
     grep -aq "ProfileBadge" "${OUT}/target/usr/bin/emulationstation"
+check "device password helper is installed" test -x "${OUT}/target/usr/bin/octane-device-password"
+check "EmulationStation has the device password screen (scripts/apply-es-patches.sh ran before the build)" \
+    grep -aq "octane-device-password" "${OUT}/target/usr/bin/emulationstation"
+check "EmulationStation has the hotkey double tap for the profile screen (scripts/apply-es-patches.sh ran before the build)" \
+    grep -aq "iconHotkey" "${OUT}/target/usr/bin/emulationstation"
+check "EmulationStation has the hotkey double tap setting (ProfilesHotkey: auto, on, off)" \
+    grep -aq "ProfilesHotkey" "${OUT}/target/usr/bin/emulationstation"
+check "the password script in the image is OctaneOS's (SHA-512 login hash, not MD5 crypt)" \
+    grep -q "openssl passwd -6" "${OUT}/target/etc/init.d/S35securepasswd"
+check "the stored-password key in the image is OctaneOS's (permanent MAC only; the stock key changes at every boot on this board)" \
+    grep -q "addr_assign_type" "${OUT}/target/usr/bin/batocera-encode"
 check "every system's default emulator and core exists in the image (known upstream quirks: scripts/default-emulators-accepted.txt)" \
     python3 -I "${REPO_ROOT}/scripts/audit-default-emulators.py" "${OUT}/target" --accepted "${REPO_ROOT}/scripts/default-emulators-accepted.txt"
 

@@ -1,0 +1,22 @@
+Profiles screen: a setting for which profile is active when the device starts.
+
+"START IN PROFILE": THE LAST ONE USED (default, today's behaviour) or ALWAYS THE MAIN PROFILE.  Saved in batocera.conf as
+profiles.boot; the boot script S14octane-profile does the work (it switches back to the default profile when the value is "main"), so
+EmulationStation itself changes nothing at start-up.
+
+---
+diff --git a/es-app/src/guis/GuiProfilesSettings.cpp b/es-app/src/guis/GuiProfilesSettings.cpp
+--- a/es-app/src/guis/GuiProfilesSettings.cpp
++++ b/es-app/src/guis/GuiProfilesSettings.cpp
+@@ -267,4 +267,11 @@ GuiProfilesSettings::GuiProfilesSettings(Window* window)
+ 					GuiMsgBoxIcon::ICON_WARNING));
+ 			});
+ 	}
++
++	// What the device does with the active profile when it starts.  Stored in batocera.conf as profiles.boot; the boot script
++	// (S14octane-profile) reads it: "last" (the default) leaves the active profile alone, "main" switches back to the default profile.
++	addGroup(_("WHEN THE DEVICE STARTS"));
++	addOptionList(_("START IN PROFILE"),
++		{ { _("THE LAST ONE USED"), "last" }, { _("ALWAYS THE MAIN PROFILE"), "main" } },
++		"profiles.boot", false);
+ }

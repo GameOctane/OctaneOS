@@ -1,0 +1,65 @@
+#!/bin/sh
+# OctaneOS version of Batocera's S35securepasswd (the a733 overlay is applied last, so this file wins).
+# Same job as the original: build the root login and the Samba password from the one device password, at every boot.
+# Differences from Batocera:
+#   1. SHA-512 ("openssl passwd -6") instead of the old MD5 crypt ("-1") for the login hash.
+#   2. The Samba password is passed with printf '%s', not as the printf FORMAT. The original used the password itself as the format, so a
+#      password containing % or a backslash was garbled.
+#   3. A file named "reset-password" on the boot partition (a normal FAT disk, readable from any computer) turns the device password off,
+#      forgets the stored one and makes the first-boot password screen ask again.  The file is removed.  Whoever holds the card could change
+#      the system anyway, so this adds no new exposure.
+# Overrides for tests: OCTANE_BOOT (the boot partition), OCTANE_RUN (where the shadow file goes), OCTANE_SMB_DIR, OCTANE_NO_REMOUNT=1.
+BOOT="${OCTANE_BOOT:-/boot}"; RUN="${OCTANE_RUN:-/run}"; SMBDIR="${OCTANE_SMB_DIR:-/var/lib/samba/private}"
+
+if test "$1" != "start"
+then
+  exit 0
+fi
+
+printf "Starting securepasswd: "
+
+remount() { [ -n "${OCTANE_NO_REMOUNT:-}" ] || mount -o "remount,$1" "${BOOT}" 2>/dev/null; }
+
+# --- forgotten password: the reset file ---
+if [ -e "${BOOT}/reset-password" ]
+then
+    batocera-settings-set system.security.enabled 0
+    batocera-settings-set octane.password.prompted 0
+    remount rw
+    if [ -f "${BOOT}/batocera-boot.conf" ]; then
+        grep -vE '^[ 	]*rootshadowpassword[ 	]*=' "${BOOT}/batocera-boot.conf" > "${BOOT}/batocera-boot.conf.new" \
+            && mv "${BOOT}/batocera-boot.conf.new" "${BOOT}/batocera-boot.conf"
+    fi
+    rm -f "${BOOT}/reset-password"
+    remount ro
+    printf "password reset, "
+fi
+
+# /etc/shadow is dynamically generated from the password found in /boot/batocera-boot.conf
+# the password is visible only in the es interface
+# or to people having already a ssh password via the command : batocera-config setRootPassword xyz
+MASTERPASSWD=$(batocera-config getRootPassword)
+if test -z "${MASTERPASSWD}"
+then
+    # generate a new one
+    # hum, in case of error, what to do ? nothing.
+    batocera-config setRootPassword
+    MASTERPASSWD=$(batocera-config getRootPassword)
+fi
+
+# secure ssh
+enabled="$(batocera-settings-get system.security.enabled)"
+if [ "$enabled" != "1" ];then
+    MASTERPASSWD="linux"
+fi
+
+# write the /etc/shadow file
+SHADOWPASSWD=$(openssl passwd -6 "${MASTERPASSWD}")
+echo "root:${SHADOWPASSWD}:::::::" > "${RUN}/batocera.shadow"
+echo "batocera::::::::" >> "${RUN}/batocera.shadow" # required for su for flatpak/batocera user
+
+# secure samba
+mkdir -p "${SMBDIR}"
+printf '%s\n%s\n' "$MASTERPASSWD" "$MASTERPASSWD" | smbpasswd -a -s root > /dev/null
+
+echo "done."
